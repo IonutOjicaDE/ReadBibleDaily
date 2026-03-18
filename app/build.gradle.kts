@@ -49,7 +49,7 @@ val applicationIdStandard = "ro.ionutojica.readbibledaily"
 // An alternative applicationId, to be used for the "discrete" flavor.
 val applicationIdDiscrete = "com.app.calculator"
 // An alternative applicationId, to be used for the "accrescent" flavor.
-val applicationIdAccrescent = "org.andbible.andbible"
+val applicationIdAccrescent = "ro.ionutojica.readbibledaily.accrescent"
 
 // The flavor dimension for the app's distribution channel
 val dimDistributionChannelName = "distchannel"
