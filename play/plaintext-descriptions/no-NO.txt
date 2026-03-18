@@ -1,6 +1,6 @@
 Kraftig bibelstudie-verktøy
 
-"AndBible: Bibelstudie" er en kraftig og lettbrukelig applikasjon for bibelstudier for Android. Applikasjonen er ikke bygget bare for å lese bibelen, men fokuserer på å være et avansert verktøy for dype personlige bibelstudier.
+"ReadBibleDaily: Bibelstudie" er en kraftig og lettbrukelig applikasjon for bibelstudier for Android. Applikasjonen er ikke bygget bare for å lese bibelen, men fokuserer på å være et avansert verktøy for dype personlige bibelstudier.
 
 Applikasjonen er utviklet av bibellesere, for bibellesere. Den fokuserer på å gjøre bibelstudier både lettvint, dyp og trivelig. Det beste med dette ikke-kommersielle dugnadsprosjektet er at kildekoden er åpen, fullstendig gratis og inneholder ingen reklame. Den har blitt bygget fullstendig fra grunnen av for Android, og er derfor liten å laste ned og dermed svært effektiv og rask å bruke.
 
@@ -35,14 +35,14 @@ Dersom du er en profesjonell programvareutvikler eller programvaretester, vennli
 
 Support by sponsoring development time!
 
-If you don't have time or skills for code contribution, you can support AndBible by sponsoring development time.
+If you don't have time or skills for code contribution, you can support ReadBibleDaily by sponsoring development time.
 
 See sponsorship options here:: https://shop.andbible.org/
 
 Lenker
 
- * Hjemmeside: https://andbible.org
- * Lik And Bible på Facebook: https://www.facebook.com/AndBible/
- * Vår Youtube-kanal: https://www.youtube.com/c/AndBible
+ * Hjemmeside: https://ionutojica.ro
+ * Lik ReadBibleDaily på Facebook: https://facebook.com/ionutojicade
+ * Vår Youtube-kanal: https://youtube.com/@IonutOjicaDE
  * Ofte spurte spørsmål (FAQ): https://git.io/JJm8E
- * Prosjektsiden på Github: https://github.com/AndBible/and-bible
+ * Prosjektsiden på Github: https://github.com/IonutOjicaDE/ReadBibleDaily

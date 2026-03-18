@@ -1,6 +1,6 @@
 Poderoso Instrumento para Estudiar la Biblia
 
-AndBible: Estudio de la Biblia es una aplicación de estudio bíblico fuera de línea, poderosa, pero fácil de usar, para Android. La aplicación no pretende ser simplemente un lector de la Biblia, sino que se centra en ser una herramienta avanzada para realizar un estudio bíblico personal en profundidad.
+ReadBibleDaily: Estudio de la Biblia es una aplicación de estudio bíblico fuera de línea, poderosa, pero fácil de usar, para Android. La aplicación no pretende ser simplemente un lector de la Biblia, sino que se centra en ser una herramienta avanzada para realizar un estudio bíblico personal en profundidad.
 
 Esta aplicación está desarrollada por personas lectoras de la Biblia, para personas lectoras de la Biblia. Pretende ayudarle a hacer su estudio de la Biblia adecuado, profundo y divertido. La mejor parte de este proyecto comunitario sin ánimo de lucro es que es software libre, completamente gratuito y no contiene anuncios.
 
@@ -24,7 +24,7 @@ La aplicación tiene muchas características interesantes y originales que hacen
 
 ¡Hagamos juntos la mejor aplicación de la Biblia!
 
-AndBible es un proyecto comunitario de código abierto. En la práctica, esto significa que cualquier persona con las habilidades adecuadas puede, y se le anima a, contribuir al proyecto mediante:
+ReadBibleDaily es un proyecto comunitario de código abierto. En la práctica, esto significa que cualquier persona con las habilidades adecuadas puede, y se le anima a, contribuir al proyecto mediante:
 
  * desarrollando nuevas funciones,
  * probando funciones que aún no se han lanzado,
@@ -41,8 +41,8 @@ Vea las opciones: https://shop.andbible.org/
 
 Enlaces
 
- * Página de inicio: https://andbible.org
- * Dé Me Gusta a AndBible en Facebook: https://www.facebook.com/AndBible/
- * Nuestro canal de YouTube: https://www.youtube.com/c/AndBible
+ * Página de inicio: https://ionutojica.ro
+ * Dé Me Gusta a ReadBibleDaily en Facebook: https://facebook.com/ionutojicade
+ * Nuestro canal de YouTube: https://youtube.com/@IonutOjicaDE
  * Preguntas frecuentes: https://git.io/JJm8E
- * Página del proyecto en Github: https://github.com/AndBible/and-bible
+ * Página del proyecto en Github: https://github.com/IonutOjicaDE/ReadBibleDaily

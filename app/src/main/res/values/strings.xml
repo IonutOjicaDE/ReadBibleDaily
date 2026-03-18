@@ -14,18 +14,28 @@
   ~
   ~ You should have received a copy of the GNU General Public License along with AndBible.
   ~ If not, see http://www.gnu.org/licenses/.
-  -->
+  ~
+  ~ Additional changes for this fork:
+  ~
+  ~ This file is also part of ReadBibleDaily, a fork of AndBible: Bible Study.
+  ~ ReadBibleDaily is maintained by Ionut Ojica and includes project-specific
+  ~ changes such as customized reading plans, Orthodox Bible support,
+  ~ and project-specific branding.
+  ~
+  ~ Fork repository:
+  ~ https://github.com/IonutOjicaDE/ReadBibleDaily
+-->
 
 <!-- Application text
 
  @author Martin Denham [mjdenham at gmail dot com]
 -->
 <resources>
-    <string name="app_name_andbible">AndBible</string>
+    <string name="app_name_andbible">ReadBibleDaily</string>
     <string name="app_name_short">Bible Study</string>
-    <string name="app_name_medium">Bible Study (AndBible)</string>
-    <string name="app_name_long">AndBible: Bible Study</string>
-    <string name="project">AndBible Open Source Project</string>
+    <string name="app_name_medium">Bible Study (ReadBibleDaily)</string>
+    <string name="app_name_long">ReadBibleDaily: Bible Study</string>
+    <string name="project">ReadBibleDaily Open Source Project</string>
 
     <string name="version_text">Version %s</string>
     <string name="no_sdcard_error">Please insert an SD card and restart application.</string>

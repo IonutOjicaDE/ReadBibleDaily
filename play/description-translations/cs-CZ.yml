@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: Studium Bible"
+title: "ReadBibleDaily: Studium Bible"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: "Čtěte Bibli, studujte komentáře či slovníky nebo čtěte knihy offline."
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -46,7 +46,7 @@ feature_13: >
   Studijní složky pro psaní poznámek a biblických odkazů při poslechu kázání.
 subtitle_3: Pojďme tvořit nejlepší aplikaci Bible společně!
 paragraph_3_1: >
-  Projekt And Bible je komunitní otevřený software. V praxi to znamená, že kdokoli s potřebnými schopnostmi může, a k tomu povzbuzujeme, přispět  projektu:
+  Projekt ReadBibleDaily je komunitní otevřený software. V praxi to znamená, že kdokoli s potřebnými schopnostmi může, a k tomu povzbuzujeme, přispět  projektu:
 contr_1: "vývojem nových funkcí,"
 contr_2: "testováním nezveřejněných funkcí,"
 contr_3: aktualizací překladu uživatelského rozhraní a
@@ -58,7 +58,7 @@ subtitle_4: Odkazy
 link_1: >
   Domovská stránka: {{homepage_url}}
 link_2: >
-  Sledujte AndBible na Facebooku: {{facebook_url}}
+  Sledujte ReadBibleDaily na Facebooku: {{facebook_url}}
 link_3: >
   Náš kanál Youtube: {{youtube_url}}
 link_4: >

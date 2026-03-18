@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: Bible Study"
+title: "ReadBibleDaily: Bible Study"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: "Διαβάστε την Βίβλο, σχόλια μελέτης ή λεξικά, ή διαβάστε βιβλία εκτός σύνδεσης"
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -46,7 +46,7 @@ feature_13: >
   Σημειωματάρια μελέτης για προσθήκη σημειώσεων και Βιβλικών παραπομπών κατά την ακρόαση κηρυγμάτων.
 subtitle_3: Ας φτιάξουμε μαζί την καλύτερη εφαρμογή της Βίβλου!
 paragraph_3_1: >
-  Το AndBible είναι ένα κοινοτικό έργο ανοιχτού κώδικα. Στην πράξη αυτό σημαίνει ότι ο καθένας με τα κατάλληλα προσόντα μπορεί, και ενθαρρύνεται να, συνεισφέρει στο έργο μέσω:
+  Το ReadBibleDaily είναι ένα κοινοτικό έργο ανοιχτού κώδικα. Στην πράξη αυτό σημαίνει ότι ο καθένας με τα κατάλληλα προσόντα μπορεί, και ενθαρρύνεται να, συνεισφέρει στο έργο μέσω:
 contr_1: "ανάπτυξης νέων χαρακτηριστικών,"
 contr_2: "δοκιμάζοντας χαρακτηριστικά που δεν έχουν ακόμα εκδοθεί,"
 contr_3: "κρατώντας ενημερωμένες τις μεταφράσεις του περιβάλλοντος χρήστη, και"
@@ -58,7 +58,7 @@ subtitle_4: Σύνδεσμοι
 link_1: >
   Ιστοσελίδα: {{homepage_url}}
 link_2: >
-  Κάνετε Like στο Facebook του AndBible: {{facebook_url}}
+  Κάνετε Like στο Facebook του ReadBibleDaily: {{facebook_url}}
 link_3: >
   Το κανάλι μας στο Youtube: {{youtube_url}}
 link_4: >

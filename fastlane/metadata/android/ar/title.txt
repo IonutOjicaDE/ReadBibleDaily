@@ -1,1 +1,1 @@
-AndBible: دراسة الكتاب المقدس
+ReadBibleDaily: دراسة الكتاب المقدس

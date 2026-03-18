@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Киелі Кітапті Зерттеу</string>
-  <string name="app_name_medium">Киелі Кітапты Зерттеу (AndBible)</string>
-  <string name="app_name_long">AndBible: Киелі Кітап+</string>
-  <string name="project">AndBible Ашық Бастапқы код Жобасы</string>
+  <string name="app_name_medium">Киелі Кітапты Зерттеу (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Киелі Кітап+</string>
+  <string name="project">ReadBibleDaily Ашық Бастапқы код Жобасы</string>
   <string name="version_text">Нұсқа %s</string>
   <string name="no_sdcard_error">SD картаны салыңыз және қолданбаны қайта іске қосыңыз.</string>
   <!--Main menu-->

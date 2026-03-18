@@ -1,6 +1,6 @@
 <b>Kraftfullt bibelstudieverktyg</b>
 
-"AndBible: Studera Bibeln" är en kraftfull, men samtidigt lättanvänd, bibelstudieapp för Android. Appen fungerar även offline. Dess mål är inte att bara vara en enkel bibelläsningsapp, utan att vara ett avancerat verktyg för ingående personliga studier av Bibeln.
+"ReadBibleDaily: Studera Bibeln" är en kraftfull, men samtidigt lättanvänd, bibelstudieapp för Android. Appen fungerar även offline. Dess mål är inte att bara vara en enkel bibelläsningsapp, utan att vara ett avancerat verktyg för ingående personliga studier av Bibeln.
 
 Appen är utvecklad av bibelläsare, för bibelläsare. Dess syfte är att göra dina bibelstudier smidigare, djupa och roliga. Det bästa med det här ideella gemenskapsprojektet är det har öppen källkod, är helt gratis och inte innehåller någon reklam.
 
@@ -24,7 +24,7 @@ Appen har många insiktsfulla och unika funktioner som gör komplicerade och dju
 
 <b>Låt oss bygga den bästa bibelappen tillsammans!</b>
 
-AndBible är ett projekt med öppen källkod som utvecklas av en nätgemenskap. I praktiken innebär det här att vem som helst med lämpliga kunskaper kan – och uppmuntras till att – bidra till projektet genom att:
+ReadBibleDaily är ett projekt med öppen källkod som utvecklas av en nätgemenskap. I praktiken innebär det här att vem som helst med lämpliga kunskaper kan – och uppmuntras till att – bidra till projektet genom att:
 
  * utveckla nya funktioner,
  * testa funktioner som inte lanserats ännu,
@@ -41,8 +41,8 @@ Se alternativ: https://shop.andbible.org/
 
 <b>Länkar</b>
 
- * Webbplats: https://andbible.org
- * Gilla AndBible på Facebook: https://www.facebook.com/AndBible/
- * Vår Youtubekanal: https://www.youtube.com/c/AndBible
+ * Webbplats: https://ionutojica.ro
+ * Gilla ReadBibleDaily på Facebook: https://facebook.com/ionutojicade
+ * Vår Youtubekanal: https://youtube.com/@IonutOjicaDE
  * Frågor och svar: https://git.io/JJm8E
- * Projektsida på Github: https://github.com/AndBible/and-bible
+ * Projektsida på Github: https://github.com/IonutOjicaDE/ReadBibleDaily

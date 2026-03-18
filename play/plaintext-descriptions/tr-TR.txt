@@ -1,6 +1,6 @@
 Güçlü Kutsal Kitap çalışma aracı
 
-"AndBible: İncil Çalışması" Android için güçlü, ancak kullanımı kolay, çevrimdışı bir Kutsal Kitap çalışma uygulamasıdır. Uygulama sadece bir Kutsal Kitap okuyucusu olmayı hedeflemez, ancak derinlemesine kişisel Kutsal Kitap çalışması yapmak için gelişmiş bir araç olmaya odaklanır.
+"ReadBibleDaily: İncil Çalışması" Android için güçlü, ancak kullanımı kolay, çevrimdışı bir Kutsal Kitap çalışma uygulamasıdır. Uygulama sadece bir Kutsal Kitap okuyucusu olmayı hedeflemez, ancak derinlemesine kişisel Kutsal Kitap çalışması yapmak için gelişmiş bir araç olmaya odaklanır.
 
 Bu uygulama Kutsal Kitap okuyucuları tarafından, Kutsal Kitap okuyucuları için geliştirilmiştir. Kutsal Kitap çalışmanızı rahat, derin ve eğlenceli hale getirmenize yardımcı olmayı amaçlamaktadır. Kâr amacı gütmeyen bu topluluk projesinin en iyi yanı, açık kaynaklı, tamamen ücretsiz olması ve reklam içermemesidir.
 
@@ -26,7 +26,7 @@ teolojik yorumlar, sözlükler, haritalar ve Hristiyan kitapları.
 
 Birlikte en iyi Kutsal Kitap uygulamasını yapalım!
 
-AndBible açık kaynaklı bir topluluk projesidir. Pratikte bu, uygun becerilere sahip herkesin
+ReadBibleDaily açık kaynaklı bir topluluk projesidir. Pratikte bu, uygun becerilere sahip herkesin
 
  * yeni özellikler geliştirerek,
  * henüz yayımlanmamış özellikleri test ederek,
@@ -43,8 +43,8 @@ Seçenekleri görün: https://shop.andbible.org/
 
 Bağlantılar
 
- * Ana Sayfa: https://andbible.org
- * AndBible’ı Facebook’ta Beğen: https://www.facebook.com/AndBible/
- * Youtube Kanalımız: https://www.youtube.com/c/AndBible
+ * Ana Sayfa: https://ionutojica.ro
+ * ReadBibleDaily’ı Facebook’ta Beğen: https://facebook.com/ionutojicade
+ * Youtube Kanalımız: https://youtube.com/@IonutOjicaDE
  * Sıkça Sorulan Sorular: https://git.io/JJm8E
- * Github üzerindeki proje sayfası: https://github.com/AndBible/and-bible
+ * Github üzerindeki proje sayfası: https://github.com/IonutOjicaDE/ReadBibleDaily

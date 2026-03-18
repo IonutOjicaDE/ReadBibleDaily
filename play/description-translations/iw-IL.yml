@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "לתנ\"ך, :AndBible"
+title: "לתנ\"ך, :ReadBibleDaily"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: "קריאה בתנ\"ך, חקר פרשנויות ומילונים, וקריאת ספרים ללא חיבור לרשת."
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -46,7 +46,7 @@ feature_13: >
   פנקסי לימוד להוספת רשימות ומראי מקום בזמן האזנה לדרשות.
 subtitle_3: בואו וניצור יחד את אפליקציית הכתובים הטובה ביותר!
 paragraph_3_1: >
-  And Bible הוא פרוייקט קהילייתי בקוד פתוח. בפועל, זה אומר שכל אחד עם יכולות מתאימות, יכול, ומוזמן, לתרום לפרוייקט, ע"י:
+  ReadBibleDaily הוא פרוייקט קהילייתי בקוד פתוח. בפועל, זה אומר שכל אחד עם יכולות מתאימות, יכול, ומוזמן, לתרום לפרוייקט, ע"י:
 contr_1: "פיתוח יכולות חדשות,"
 contr_2: בדיקות יכולות חדשות שטרם שוחררו לציבור
 contr_3: שמירה על עדכניות תרגום ממשק המשתמש
@@ -58,7 +58,7 @@ subtitle_4: קישורים
 link_1: >
   אתר: {{homepage_url}}
 link_2: >
-  לייק And Bible on בפייסבוק: {{facebook_url}}
+  לייק ReadBibleDaily on בפייסבוק: {{facebook_url}}
 link_3: >
   ערוץ היוטיוב שלנו  : {{youtube_url}}
 link_4: >

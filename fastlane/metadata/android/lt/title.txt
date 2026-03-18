@@ -1,1 +1,1 @@
-AndBible: Biblija
+ReadBibleDaily: Biblija

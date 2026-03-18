@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: 研經工具"
+title: "ReadBibleDaily: 研經工具"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: 離線閱讀聖經、註釋、字典或書本。
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -46,7 +46,7 @@ feature_13: >
   研習筆記可以讓你在聆聽講道時新增筆記及參考。
 subtitle_3: 我們需要大家一起造出最好的聖經工具！
 paragraph_3_1: >
-  And Bible是一個開源計劃。這代表了我們需要所有有能之士，為此計劃一同用以下方式貢獻：
+  ReadBibleDaily是一個開源計劃。這代表了我們需要所有有能之士，為此計劃一同用以下方式貢獻：
 contr_1: 開發新功能，
 contr_2: 測驗未開放的新功能，
 contr_3: 保持介面翻譯更新，及
@@ -58,7 +58,7 @@ subtitle_4: 連結
 link_1: >
   主頁：{{homepage_url}}
 link_2: >
-  在 Facebook 上讚好 AndBible：{{facebook_url}}
+  在 Facebook 上讚好 ReadBibleDaily：{{facebook_url}}
 link_3: >
   我們的 Youtube 頻道：{{youtube_url}}
 link_4: >

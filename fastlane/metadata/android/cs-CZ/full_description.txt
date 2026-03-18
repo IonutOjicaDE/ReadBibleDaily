@@ -1,6 +1,6 @@
 <b>Rozsáhlý nástroj pro studium Bible</b>
 
-"AndBible: Studium Bible" je obsáhlá a přitom snadná aplikace na offline studium Bible pro Android. Aplikace nemá za cíl jen zprostředkovat četbu Bible, ale je pokročilým nástrojem pro hluboké osobní studium Bible.
+"ReadBibleDaily: Studium Bible" je obsáhlá a přitom snadná aplikace na offline studium Bible pro Android. Aplikace nemá za cíl jen zprostředkovat četbu Bible, ale je pokročilým nástrojem pro hluboké osobní studium Bible.
 
 Tuto aplikaci vyvíjí čtenáři Bible pro čtenáře Bible. Má za cíl vám studium Bible zjednodušit, prohloubit a zpříjemnit. Nejlepší na tomto neziskovém komunitním projektu je to, že jde o otevřený software zcela zdarma a neobsahuje žádné reklamy
 
@@ -24,7 +24,7 @@ Aplikace obsahuje mnohé podnětné, originální funkce, které složitý a hlu
 
 <b>Pojďme tvořit nejlepší aplikaci Bible společně!</b>
 
-Projekt And Bible je komunitní otevřený software. V praxi to znamená, že kdokoli s potřebnými schopnostmi může, a k tomu povzbuzujeme, přispět  projektu:
+Projekt ReadBibleDaily je komunitní otevřený software. V praxi to znamená, že kdokoli s potřebnými schopnostmi může, a k tomu povzbuzujeme, přispět  projektu:
 
  * vývojem nových funkcí,
  * testováním nezveřejněných funkcí,
@@ -41,8 +41,8 @@ Podívejte se na možnosti: https://shop.andbible.org/
 
 <b>Odkazy</b>
 
- * Domovská stránka: https://andbible.org
- * Sledujte AndBible na Facebooku: https://www.facebook.com/AndBible/
- * Náš kanál Youtube: https://www.youtube.com/c/AndBible
+ * Domovská stránka: https://ionutojica.ro
+ * Sledujte ReadBibleDaily na Facebooku: https://facebook.com/ionutojicade
+ * Náš kanál Youtube: https://youtube.com/@IonutOjicaDE
  * Často kladené otázky: https://git.io/JJm8E
- * Stránka projektu na Githubu: https://github.com/AndBible/and-bible
+ * Stránka projektu na Githubu: https://github.com/IonutOjicaDE/ReadBibleDaily

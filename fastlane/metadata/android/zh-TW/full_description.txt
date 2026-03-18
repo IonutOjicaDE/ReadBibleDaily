@@ -1,6 +1,6 @@
 <b>功能強大的研經工具</b>
 
-"AndBible: 研經工具" 研經工具是一款多功能、易用的離線Android程式。此程式不單是一個純粹的聖經閱讀器，也專注於成功個人全方位的研經工具。
+"ReadBibleDaily: 研經工具" 研經工具是一款多功能、易用的離線Android程式。此程式不單是一個純粹的聖經閱讀器，也專注於成功個人全方位的研經工具。
 
 此程式是由聖經讀者開發，也是為聖經讀者開發。目的是提供便利、有深度且有趣的查經體驗。此程式是非營利、也是開源，更重要是完全沒有廣告滋擾。
 
@@ -24,7 +24,7 @@
 
 <b>我們需要大家一起造出最好的聖經工具！</b>
 
-And Bible是一個開源計劃。這代表了我們需要所有有能之士，為此計劃一同用以下方式貢獻：
+ReadBibleDaily是一個開源計劃。這代表了我們需要所有有能之士，為此計劃一同用以下方式貢獻：
 
  * 開發新功能，
  * 測驗未開放的新功能，
@@ -41,8 +41,8 @@ And Bible是一個開源計劃。這代表了我們需要所有有能之士，�
 
 <b>連結</b>
 
- * 主頁：https://andbible.org
- * 在 Facebook 上讚好 AndBible：https://www.facebook.com/AndBible/
- * 我們的 Youtube 頻道：https://www.youtube.com/c/AndBible
+ * 主頁：https://ionutojica.ro
+ * 在 Facebook 上讚好 ReadBibleDaily：https://facebook.com/ionutojicade
+ * 我們的 Youtube 頻道：https://youtube.com/@IonutOjicaDE
  * 常見問題：https://git.io/JJm8E
- * Github Project 頁面：https://github.com/AndBible/and-bible
+ * Github Project 頁面：https://github.com/IonutOjicaDE/ReadBibleDaily

@@ -18,8 +18,8 @@
 
 <resources>
   <string name="app_name_short">Учење Библије</string>
-  <string name="app_name_medium">Учење Библије (Анд Библија)</string>
-  <string name="app_name_long">Учење Библије, од \"And Bible Open Source Project\"</string>
+  <string name="app_name_medium">Учење Библије (ReadBibleDaily)</string>
+  <string name="app_name_long">Учење Библије, од \"ReadBibleDaily Open Source Project\"</string>
   <!--Startup & Help-->
   <string name="help_nav_title">Навигација</string>
   <string name="help_nav_text">Прелазак на следеће или претходно поглавље превлачећи прстом по екрану.

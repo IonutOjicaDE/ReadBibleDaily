@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
   <string name="app_name_short">Bibelstudie</string>
-  <string name="app_name_long">AndBible: Bibelstudie</string>
+  <string name="app_name_long">ReadBibleDaily: Bibelstudie</string>
   <string name="version_text">Versjon %s</string>
   <string name="no_sdcard_error">Sett inn minnekort og restart applikasjonen</string>
   <!--Main menu-->

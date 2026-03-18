@@ -24,7 +24,7 @@
 
 కలిసి అత్యుత్తమ బైబిల్ యాప్‌ని తయారు చేద్దాం రండి!
 
-AndBible అనేది ఓపెన్ సోర్స్ కమ్యూనిటీ ప్రాజెక్ట్. ఆచరణలో, తగిన నైపుణ్యాలు ఉన్న ఎవరైనా ప్రాజెక్ట్‌కు సహకరించగలరని మరియు ప్రోత్సహించబడవచ్చని దీని అర్థం:
+ReadBibleDaily అనేది ఓపెన్ సోర్స్ కమ్యూనిటీ ప్రాజెక్ట్. ఆచరణలో, తగిన నైపుణ్యాలు ఉన్న ఎవరైనా ప్రాజెక్ట్‌కు సహకరించగలరని మరియు ప్రోత్సహించబడవచ్చని దీని అర్థం:
 
  * కొత్త ప్రత్యేకతలు అభివృద్ధి చేయడం,
  * ఇంకా విడుదల కాని ప్రత్యేకతలను పరీక్షించడం,
@@ -41,8 +41,8 @@ AndBible అనేది ఓపెన్ సోర్స్ కమ్యూన�
 
 లింకులు
 
- * హోమ్‌పేజీ: https://andbible.org
- * Facebook యందు AndBible ను లైక్ చేయండి: https://www.facebook.com/AndBible/
- * మా యూట్యూబ్ ఛానెల్: https://www.youtube.com/c/AndBible
+ * హోమ్‌పేజీ: https://ionutojica.ro
+ * Facebook యందు ReadBibleDaily ను లైక్ చేయండి: https://facebook.com/ionutojicade
+ * మా యూట్యూబ్ ఛానెల్: https://youtube.com/@IonutOjicaDE
  * తరచుగా అడిగే ప్రశ్నలు: https://git.io/JJm8E
- * Github పై ప్రాజెక్టు పేజీ: https://github.com/AndBible/and-bible
+ * Github పై ప్రాజెక్టు పేజీ: https://github.com/IonutOjicaDE/ReadBibleDaily

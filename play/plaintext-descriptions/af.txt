@@ -1,6 +1,6 @@
 Kragtige Bybelstudie instrument
 
-"AndBible: Bybel Studie" is 'n kragtige, maar tog maklik om te gebruik, vanlyn Bybelstudie applikasie vir Android. Die toep beoog nie om bloot 'n Bybelleser te wees nie, maar fokus daarop om 'n gevorderde hulpmiddel te wees om diepgaande persoonlike Bybelstudie te doen.
+"ReadBibleDaily: Bybel Studie" is 'n kragtige, maar tog maklik om te gebruik, vanlyn Bybelstudie applikasie vir Android. Die toep beoog nie om bloot 'n Bybelleser te wees nie, maar fokus daarop om 'n gevorderde hulpmiddel te wees om diepgaande persoonlike Bybelstudie te doen.
 
 Hierdie toepassing is ontwikkel deur Bybellesers, vir Bybellesers. Dit het ten doel om jou te help om jou Bybelstudie gerieflik, diep en prettig te maak. Die beste deel van hierdie nie-winsgewende gemeenskapsprojek is dat dit open source is, heeltemal gratis is en geen advertensies bevat nie.
 
@@ -24,7 +24,7 @@ Die toepassing het baie insiggewende, oorspronklike kenmerke, wat 'n komplekse e
 
 Kom ons maak die beste Bybel toep saam!
 
-AndBible is 'n oopbron gemeenskapsprojek. In die praktyk beteken dit dat enigiemand met geskikte vaardighede kan, en aangemoedig word om, by te dra tot die projek deur:
+ReadBibleDaily is 'n oopbron gemeenskapsprojek. In die praktyk beteken dit dat enigiemand met geskikte vaardighede kan, en aangemoedig word om, by te dra tot die projek deur:
 
  * ontwikkeling van nuwe kenmerke,
  * toets nog nie vrygestelde kenmerke nie,
@@ -41,8 +41,8 @@ Sien opsies: https://shop.andbible.org/
 
 Skakels
 
- * Tuisblad: https://andbible.org
- * Hou van AndBible op Facebook: https://www.facebook.com/AndBible/
- * Ons Youtube kanaal: https://www.youtube.com/c/AndBible
+ * Tuisblad: https://ionutojica.ro
+ * Hou van ReadBibleDaily op Facebook: https://facebook.com/ionutojicade
+ * Ons Youtube kanaal: https://youtube.com/@IonutOjicaDE
  * Algemene vrae: https://git.io/JJm8E
- * Projekbladsy op Github: https://github.com/AndBible/and-bible
+ * Projekbladsy op Github: https://github.com/IonutOjicaDE/ReadBibleDaily

@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Studi Biblici</string>
-  <string name="app_name_medium">Studi Biblici (AndBible)</string>
-  <string name="app_name_long">AndBible: Studi Biblici</string>
-  <string name="project">AndBible progetto open source</string>
+  <string name="app_name_medium">Studi Biblici (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Studi Biblici</string>
+  <string name="project">ReadBibleDaily progetto open source</string>
   <string name="version_text">Versione %s</string>
   <string name="no_sdcard_error">Inserisci una scheda SD e riavvia l\'applicazione.</string>
   <!--Main menu-->

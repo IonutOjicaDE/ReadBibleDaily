@@ -1,1 +1,1 @@
-AndBible: Bijbelstudie
+ReadBibleDaily: Bijbelstudie

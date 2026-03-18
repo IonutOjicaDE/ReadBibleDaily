@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: Biblia"
+title: "ReadBibleDaily: Biblia"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: "Bibliaolvasás, bibliakommentárok és -szótárak tanulmányozása."
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -48,7 +48,7 @@ feature_13: >
   Jegyzetlapok jegyzetekkel és biblia hivatkozásokkal: igehirdetésre készülve vagy igehirdetés hallgatása közben.
 subtitle_3: Segítsen az alkalmazás jobbá tételében!
 paragraph_3_1: >
-  Az And Bible nyílt forráskódú közösségi projekt. Bárkit, aki megfelelő képességekkel rendelkezik, bátorítunk a közreműködésre:
+  Az ReadBibleDaily nyílt forráskódú közösségi projekt. Bárkit, aki megfelelő képességekkel rendelkezik, bátorítunk a közreműködésre:
 contr_1: új funkciók kifejlesztésével
 contr_2: újonnan fejlesztett funkciók tesztelésével
 contr_3: a felhasználói felület fordításainak karbantartásával és
@@ -60,7 +60,7 @@ subtitle_4: Hivatkozások
 link_1: >
   Internetcím: {{homepage_url}}
 link_2: >
-  Kövesd az AndBible-t Facbookon: {{facebook_url}}
+  Kövesd az ReadBibleDaily-t Facbookon: {{facebook_url}}
 link_3: >
   YouTube csatornánk: {{youtube_url}}
 link_4: >

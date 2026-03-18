@@ -14,6 +14,16 @@
   ~
   ~ You should have received a copy of the GNU General Public License along with AndBible.
   ~ If not, see http://www.gnu.org/licenses/.
+  ~
+  ~ Additional changes for this fork:
+  ~
+  ~ This file is also part of ReadBibleDaily, a fork of AndBible: Bible Study.
+  ~ ReadBibleDaily is maintained by Ionut Ojica and includes project-specific
+  ~ changes such as customized reading plans, Orthodox Bible support,
+  ~ and project-specific branding.
+  ~
+  ~ Fork repository:
+  ~ https://github.com/IonutOjicaDE/ReadBibleDaily
   -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"

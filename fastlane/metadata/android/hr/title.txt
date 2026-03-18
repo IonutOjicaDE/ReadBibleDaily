@@ -1,1 +1,1 @@
-AndBible: Biblija Studij
+ReadBibleDaily: Biblija Studij

@@ -1,6 +1,6 @@
 Ein mächtiges Werkzeug für das Bibelstudium
 
-"AndBible: Bibel+" ist ein umfangreiches und trotzdem einfach zu bedienendes  Programm für das Bibelstudium - auch ohne Internet. Diese App ist nicht nur ein einfaches Bibelleseprogramm, sondern will ein Werkzeug für fortgeschrittenes, in die Tiefe gehendes Bibelstudium sein.
+"ReadBibleDaily: Bibel+" ist ein umfangreiches und trotzdem einfach zu bedienendes  Programm für das Bibelstudium - auch ohne Internet. Diese App ist nicht nur ein einfaches Bibelleseprogramm, sondern will ein Werkzeug für fortgeschrittenes, in die Tiefe gehendes Bibelstudium sein.
 
 Dieses Programm wird von Bibellesern für Bibelleser entwickelt. Es zielt darauf ab, dein Bibelstudium einfach, bedeutsam und unterhaltsam zu machen. Das Beste an diesem Non-Profit Projekt ist, dass es Open Source ist - völlig kostenlos und ohne Werbung.
 
@@ -42,8 +42,8 @@ Optionen anzeigen: https://shop.andbible.org/
 
 Links
 
- * Homepage: https://andbible.org
- * Like AndBible on Facebook: https://www.facebook.com/AndBible/
- * Unser Youtube Kanal: https://www.youtube.com/c/AndBible
+ * Homepage: https://ionutojica.ro
+ * Like ReadBibleDaily on Facebook: https://facebook.com/ionutojicade
+ * Unser Youtube Kanal: https://youtube.com/@IonutOjicaDE
  * Häufig gestellte Fragen: https://git.io/JJm8E
- * Projektseite auf Github: https://github.com/AndBible/and-bible
+ * Projektseite auf Github: https://github.com/IonutOjicaDE/ReadBibleDaily

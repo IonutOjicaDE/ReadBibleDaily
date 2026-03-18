@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: Киелі Кітап+"
+title: "ReadBibleDaily: Киелі Кітап+"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: "Киелі кітап оқу, түсіндірмелерді немесе сөздіктерді оқу немесе офлайн кітап оқу."
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -46,7 +46,7 @@ feature_13: >
   Уағыздарды тыңдау кезінде жазбалар мен Киелі кітапқа сілтемелер қосуға арналған оқу тақталары.
 subtitle_3: Ең жақсы Киелі Кітап қолданбасын бірге жасайық!
 paragraph_3_1: >
-  AndBible – бұл ашық коды бар қауымдық жоба. Іс жүзінде бұл сәйкес дағдылары бар кез келген адам жобаға келесі жолдармен үлес қоса алады және ынталандыра алады:
+  ReadBibleDaily – бұл ашық коды бар қауымдық жоба. Іс жүзінде бұл сәйкес дағдылары бар кез келген адам жобаға келесі жолдармен үлес қоса алады және ынталандыра алады:
 contr_1: "жаңа мүмкіндіктерді дамыту,"
 contr_2: "әлі шығарылмаған функцияларды тексеру,"
 contr_3: пайдаланушы интерфейсінің аудармаларын жаңартып отыру және
@@ -58,7 +58,7 @@ subtitle_4: Сілтемелер
 link_1: >
   Негізгі бет: {{homepage_url}}
 link_2: >
-  Facebook-те AndBible сияқты: {{facebook_url}}
+  Facebook-те ReadBibleDaily сияқты: {{facebook_url}}
 link_3: >
   Біздің Youtube каналымыз: {{youtube_url}}
 link_4: >

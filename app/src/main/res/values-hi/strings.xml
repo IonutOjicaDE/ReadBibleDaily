@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
   <string name="app_name_short">बाइबिल अध्ययन</string>
-  <string name="app_name_long">AndBible: बाइबिल</string>
+  <string name="app_name_long">ReadBibleDaily: बाइबिल</string>
   <string name="version_text">संस्करण %s</string>
   <string name="no_sdcard_error"> कृपया एसडी कार्ड डालें और ऐप पुनः आरंभ करें।</string>
   <!--Main menu-->

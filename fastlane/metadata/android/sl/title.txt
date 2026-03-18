@@ -1,1 +1,1 @@
-AndBible: Proučevanje Biblije
+ReadBibleDaily: Proučevanje Biblije

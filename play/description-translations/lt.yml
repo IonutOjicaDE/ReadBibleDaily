@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: Biblija"
+title: "ReadBibleDaily: Biblija"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: "Skaityti Bibliją, studijuoti komentarus, žodynus, skaityti knygas įrenginyje."
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -47,7 +47,7 @@ feature_13: >
   Bloknotai, skirti, klausantis pamokslo, pridėti pastabas ir Biblijos nuorodas.
 subtitle_3: Sukurkime geriausią Biblijos programėlę kartu!
 paragraph_3_1: >
-  AndBible yra atvirojo kodo bendruomenės projektas. Praktiškai, tai reiškia, kad kiekvienas žmogus su tinkamais įgūdžiai gali, ir yra skatinamas, talkinti projektui:
+  ReadBibleDaily yra atvirojo kodo bendruomenės projektas. Praktiškai, tai reiškia, kad kiekvienas žmogus su tinkamais įgūdžiai gali, ir yra skatinamas, talkinti projektui:
 contr_1: "plėtojant naujas ypatybes,"
 contr_2: "išbandant kol kas neišleistas ypatybes,"
 contr_3: "palaikant naudotojo sąsają išverstą į savo kalbą bei "
@@ -59,7 +59,7 @@ subtitle_4: Nuorodos
 link_1: >
   Pagrindinis puslapis: {{homepage_url}}
 link_2: >
-  Spauskite „Patinka“ AndBible „Facebook“ puslapyje: {{facebook_url}}
+  Spauskite „Patinka“ ReadBibleDaily „Facebook“ puslapyje: {{facebook_url}}
 link_3: >
   Mūsų „Youtube“ kanalas: {{youtube_url}}
 link_4: >

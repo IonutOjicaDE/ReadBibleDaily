@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Bijbelstudie</string>
-  <string name="app_name_medium">Bijbelstudie (And Bible)</string>
-  <string name="app_name_long">AndBible: Bijbelstudie</string>
-  <string name="project">AndBible open-source-project</string>
+  <string name="app_name_medium">Bijbelstudie (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Bijbelstudie</string>
+  <string name="project">ReadBibleDaily open-source-project</string>
   <string name="version_text">Versie %s</string>
   <string name="no_sdcard_error">Voer een SD-kaart in en start And Bible opnieuw.</string>
   <!--Main menu-->

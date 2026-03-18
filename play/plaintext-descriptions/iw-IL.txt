@@ -1,6 +1,6 @@
 כלי מקצועי ללימוד הכתובים
 
-"לתנ"ך, :AndBible" הוא יישום רב עוצמה, ועם זאת קל לשימוש, ללימוד תנ"ך לא-מקוון, עבור אנדרואיד. כוונת היישום אינה להיות תוכנת קריאה פשוטה, אלא מתמקדת ביכולות מתקדמות ללימוד אישי ומעמיק של התנ"ך.
+"לתנ"ך, :ReadBibleDaily" הוא יישום רב עוצמה, ועם זאת קל לשימוש, ללימוד תנ"ך לא-מקוון, עבור אנדרואיד. כוונת היישום אינה להיות תוכנת קריאה פשוטה, אלא מתמקדת ביכולות מתקדמות ללימוד אישי ומעמיק של התנ"ך.
 
 היישום מפותח ע"י קוראים בתנ"ך ועבורם. הוא מיועד לעזור ללימוד התנ"ך להיות נוח, עמוק ומהנה. החלק הכי טוב אודות פרוייקט זה, הוא שהוא לא למטרות רווח, קוד-פתוח, חופשי לחלוטין, ואינו מכיל פרסומות. בהיותו מפותח למין ההתחלה עבור אנדרואיד, הוא תופס מעט מקום, יעיל ומהיר במיוחד.
 
@@ -24,7 +24,7 @@
 
 בואו וניצור יחד את אפליקציית הכתובים הטובה ביותר!
 
-And Bible הוא פרוייקט קהילייתי בקוד פתוח. בפועל, זה אומר שכל אחד עם יכולות מתאימות, יכול, ומוזמן, לתרום לפרוייקט, ע"י:
+ReadBibleDaily הוא פרוייקט קהילייתי בקוד פתוח. בפועל, זה אומר שכל אחד עם יכולות מתאימות, יכול, ומוזמן, לתרום לפרוייקט, ע"י:
 
  * פיתוח יכולות חדשות,
  * בדיקות יכולות חדשות שטרם שוחררו לציבור
@@ -35,14 +35,14 @@ And Bible הוא פרוייקט קהילייתי בקוד פתוח. בפועל, 
 
 Support by sponsoring development time!
 
-If you don't have time or skills for code contribution, you can support AndBible by sponsoring development time.
+If you don't have time or skills for code contribution, you can support ReadBibleDaily by sponsoring development time.
 
 See sponsorship options here:: https://shop.andbible.org/
 
 קישורים
 
- * אתר: https://andbible.org
- * לייק And Bible on בפייסבוק: https://www.facebook.com/AndBible/
- * ערוץ היוטיוב שלנו  : https://www.youtube.com/c/AndBible
+ * אתר: https://ionutojica.ro
+ * לייק ReadBibleDaily on בפייסבוק: https://facebook.com/ionutojicade
+ * ערוץ היוטיוב שלנו  : https://youtube.com/@IonutOjicaDE
  * שאלות נפוצות  : https://git.io/JJm8E
- * עמוד הפרוייקט ב   Github: https://github.com/AndBible/and-bible
+ * עמוד הפרוייקט ב   Github: https://github.com/IonutOjicaDE/ReadBibleDaily

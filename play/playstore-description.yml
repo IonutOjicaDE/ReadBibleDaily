@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: Bible Study"
+title: "ReadBibleDaily: Bible Study"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: Read the Bible, study commentaries or dictionaries, or read books offline.
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -57,7 +57,7 @@ feature_13: >
   Study Pads for adding notes and Bible references while listening to sermons.
 subtitle_3: Let’s make the best Bible app together!
 paragraph_3_1: >
-  AndBible is an open-source community project. In practice, this means that anyone with
+  ReadBibleDaily is an open-source community project. In practice, this means that anyone with
   suitable skills can, and is encouraged to, contribute to the project by:
 contr_1: developing new features,
 contr_2: testing not-yet-released features,
@@ -71,7 +71,7 @@ subtitle_4: Links
 link_1: >
   Homepage: {{homepage_url}}
 link_2: >
-  Like AndBible on Facebook: {{facebook_url}}
+  Like ReadBibleDaily on Facebook: {{facebook_url}}
 link_3: >
   Our Youtube Channel: {{youtube_url}}
 link_4: >

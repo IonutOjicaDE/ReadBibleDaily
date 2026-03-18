@@ -1,1 +1,1 @@
-AndBible: Bibel+
+ReadBibleDaily: Bibel+

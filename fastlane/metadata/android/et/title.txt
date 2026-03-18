@@ -1,1 +1,1 @@
-AndBible: Piibliuurimine
+ReadBibleDaily: Piibliuurimine

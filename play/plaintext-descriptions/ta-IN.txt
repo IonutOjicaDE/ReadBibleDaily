@@ -41,8 +41,8 @@
 
 இணைப்புகள்
 
- * முகப்பு பக்கம்: https://andbible.org
- * Facebook இல் ஆண்ட் பைபிலை லைக் செய்யவும்: https://www.facebook.com/AndBible/
- * எங்கள் யூடியூப் சேனல்: https://www.youtube.com/c/AndBible
+ * முகப்பு பக்கம்: https://ionutojica.ro
+ * Facebook இல் ஆண்ட் பைபிலை லைக் செய்யவும்: https://facebook.com/ionutojicade
+ * எங்கள் யூடியூப் சேனல்: https://youtube.com/@IonutOjicaDE
  * அடிக்கடி கேட்கப்படும் கேள்விகள்: https://git.io/JJm8E
- * கிட்ஹப்பில் திட்ட பக்கம்: https://github.com/AndBible/and-bible
+ * கிட்ஹப்பில் திட்ட பக்கம்: https://github.com/IonutOjicaDE/ReadBibleDaily

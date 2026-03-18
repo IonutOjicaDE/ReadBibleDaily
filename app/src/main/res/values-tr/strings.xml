@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Kutsal Kitap Çalışması</string>
-  <string name="app_name_medium">Kutsal Kitap Çalışması (AndBible)</string>
+  <string name="app_name_medium">Kutsal Kitap Çalışması (ReadBibleDaily)</string>
   <string name="app_name_long">&amp;Bible: Kutsal Kitap Çalışması</string>
-  <string name="project">AndBible Açık Kaynak Projesi</string>
+  <string name="project">ReadBibleDaily Açık Kaynak Projesi</string>
   <string name="version_text">Sürüm %s</string>
   <string name="no_sdcard_error">Lütfen bir hafıza kartı takıp uygulamayı yeniden başlatın.</string>
   <!--Main menu-->

@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Biblijos studijos</string>
-  <string name="app_name_medium">Biblijos studijos (AndBible)</string>
-  <string name="app_name_long">AndBible: Biblijos studijos</string>
-  <string name="project">AndBible atviro kodo projektas</string>
+  <string name="app_name_medium">Biblijos studijos (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Biblijos studijos</string>
+  <string name="project">ReadBibleDaily atviro kodo projektas</string>
   <string name="version_text">Versija %s</string>
   <string name="no_sdcard_error">Įdėkite SD kortelę ir paleiskite programėlę iš naujo.</string>
   <!--Main menu-->

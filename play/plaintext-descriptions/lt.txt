@@ -1,6 +1,6 @@
 Galingas Biblijos studijavimo įrankis
 
-"AndBible: Biblija" tai galinga, bet tuo pačiu metu lengva naudoti „Android“ Biblijos studijų programėlė, kuri nereikalauja interneto. Ši programėlė nesiekia būti paprasta Biblijos skaitytuve, bet verčiau yra sutelkta į tai, kad būtų išplėstiniu įrankiu, kuris yra skirtas išsamiai asmeniškai nagrinėti Bibliją.
+"ReadBibleDaily: Biblija" tai galinga, bet tuo pačiu metu lengva naudoti „Android“ Biblijos studijų programėlė, kuri nereikalauja interneto. Ši programėlė nesiekia būti paprasta Biblijos skaitytuve, bet verčiau yra sutelkta į tai, kad būtų išplėstiniu įrankiu, kuris yra skirtas išsamiai asmeniškai nagrinėti Bibliją.
 
 Šią programėlę Biblijos skaitytojams sukūrė Biblijos skaitytojai. Jos tikslas – padėti jums patogiai, išsamiai ir linksmai nagrinėti Bibliją. Geriausia, kas yra šiame nekomerciniame bendruomenės projekte yra tai, jog jis yra atvirojo kodo, visiškai nemokamas ir be jokių reklamų.
 
@@ -24,7 +24,7 @@ Programėlėje yra daug sumanių, išskirtinių ypatybių, kurios sudėtingą ir
 
 Sukurkime geriausią Biblijos programėlę kartu!
 
-AndBible yra atvirojo kodo bendruomenės projektas. Praktiškai, tai reiškia, kad kiekvienas žmogus su tinkamais įgūdžiai gali, ir yra skatinamas, talkinti projektui:
+ReadBibleDaily yra atvirojo kodo bendruomenės projektas. Praktiškai, tai reiškia, kad kiekvienas žmogus su tinkamais įgūdžiai gali, ir yra skatinamas, talkinti projektui:
 
  * plėtojant naujas ypatybes,
  * išbandant kol kas neišleistas ypatybes,
@@ -41,8 +41,8 @@ Jei neturite įgūdžių ar laiko talkinti projektui, galite palaikyti projektą
 
 Nuorodos
 
- * Pagrindinis puslapis: https://andbible.org
- * Spauskite „Patinka“ AndBible „Facebook“ puslapyje: https://www.facebook.com/AndBible/
- * Mūsų „Youtube“ kanalas: https://www.youtube.com/c/AndBible
+ * Pagrindinis puslapis: https://ionutojica.ro
+ * Spauskite „Patinka“ ReadBibleDaily „Facebook“ puslapyje: https://facebook.com/ionutojicade
+ * Mūsų „Youtube“ kanalas: https://youtube.com/@IonutOjicaDE
  * Dažnai užduodami klausimai: https://git.io/JJm8E
- * Projekto puslapis „Github“ svetainėje: https://github.com/AndBible/and-bible
+ * Projekto puslapis „Github“ svetainėje: https://github.com/IonutOjicaDE/ReadBibleDaily

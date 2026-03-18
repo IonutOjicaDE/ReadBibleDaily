@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: İncil Çalışması"
+title: "ReadBibleDaily: İncil Çalışması"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: Kutsal Kitap okuyup yorumları ve sözlükleri çevrimdışı inceleyin.
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -48,7 +48,7 @@ feature_13: >
   Vaazları dinlerken notlar ve Kutsal Kitap referansları eklemek için Çalışma Pedleri.
 subtitle_3: Birlikte en iyi Kutsal Kitap uygulamasını yapalım!
 paragraph_3_1: >
-  AndBible açık kaynaklı bir topluluk projesidir. Pratikte bu, uygun becerilere sahip herkesin
+  ReadBibleDaily açık kaynaklı bir topluluk projesidir. Pratikte bu, uygun becerilere sahip herkesin
 contr_1: "yeni özellikler geliştirerek,"
 contr_2: "henüz yayımlanmamış özellikleri test ederek,"
 contr_3: "kullanıcı arayüzü çevirilerini güncel tutarak, ve"
@@ -60,7 +60,7 @@ subtitle_4: Bağlantılar
 link_1: >
   Ana Sayfa: {{homepage_url}}
 link_2: >
-  AndBible’ı Facebook’ta Beğen: {{facebook_url}}
+  ReadBibleDaily’ı Facebook’ta Beğen: {{facebook_url}}
 link_3: >
   Youtube Kanalımız: {{youtube_url}}
 link_4: >

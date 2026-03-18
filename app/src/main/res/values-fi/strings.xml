@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Raamattu</string>
-  <string name="app_name_medium">Raamattu (AndBible)</string>
-  <string name="app_name_long">AndBible: Raamattu</string>
-  <string name="project">AndBible (vapaan lähdekoodin projekti)</string>
+  <string name="app_name_medium">Raamattu (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Raamattu</string>
+  <string name="project">ReadBibleDaily (vapaan lähdekoodin projekti)</string>
   <string name="version_text">Versio %s</string>
   <string name="no_sdcard_error">Ole hyvä ja aseta SD kortti sekä käynnistä ohjelma uudelleen.</string>
   <!--Main menu-->
