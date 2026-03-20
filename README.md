@@ -1,86 +1,142 @@
-<img align="right" width="250" height="250" src="https://raw.githubusercontent.com/AndBible/and-bible/develop/svg/logo.svg?sanitized=true">
+<img align="right" width="220" height="220" src="https://raw.githubusercontent.com/AndBible/and-bible/develop/svg/logo.svg?sanitized=true">
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/andbible/and-bible/run-tests.yml?branch=develop&label=Android%20CI)
-![GitHub License](https://img.shields.io/github/license/andbible/and-bible)
-<a href="https://matrix.to/#/#andbible:matrix.org">![Matrix](https://img.shields.io/matrix/andbible%3Amatrix.org?logo=Matrix&logoColor=green&logoSize=auto&label=Matrix%20Chat)</a>
-<a href="https://shop.andbible.org">![Static Badge](https://img.shields.io/badge/%E2%9D%A4%EF%B8%8F%20Sponsor%20AndBible%20-%20blue)</a>
+# ReadBibleDaily
 
-# AndBible: Bible Study
+An offline Android app for Bible reading, prayer, and study, based on **AndBible: Bible Study**.
 
-A powerful, yet easy to use, offline Bible study application for Android.
+ReadBibleDaily is an independent fork of AndBible, created to support a more structured daily reading and prayer life, with special attention to customized reading plans, Orthodox resources, scheduled devotional content, and a focused, distraction-free reading experience.
 
-[<img src="https://gitlab.com/fdroid/artwork/-/raw/45dae7c9f9b8762f4dc22e979f78542dcfd0ef8f/badge/get-it-on.svg"
-     alt="Get it on F-Droid"
-     height="80">](https://f-droid.org/packages/net.bible.android.activity)
-[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
-     alt="Get it on Google Play"
-     height="80">](https://play.google.com/store/apps/details?id=net.bible.android.activity)
-[<img src="https://images-na.ssl-images-amazon.com/images/G/01/mobile-apps/devportal2/res/images/amazon-appstore-badge-english-black.png"
-     alt="Get it on Amazon Appstore"
-     height="55"
-     style="border: 13px solid transparent;">](https://www.amazon.com/Martin-Denham-And-Bible/dp/B004Z2KKYK)
-[<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/refs/heads/main/assets/graphics/badge_obtainium.png"
-     alt="Get it on Github"
-     height="55"
-     style="border: 13px solid transparent;">](https://github.com/AndBible/and-bible/releases)
-[<img src="https://accrescent.app/badges/get-it-on.png"
-     alt="Get it on Accrescent"
-     height="80">](https://accrescent.app/app/org.andbible.andbible)
+## 🌿 About this project
 
-## 🎬 Promo Video
+ReadBibleDaily is built on top of the excellent foundation provided by **AndBible: Bible Study**.
 
-[![See promovideo in Youtube](https://img.youtube.com/vi/xf7m4rSuxGw/0.jpg)](https://www.youtube.com/watch?v=xf7m4rSuxGw)
+This fork is being developed to explore and implement features that are especially useful for daily reading and Orthodox devotional use. At the same time, I support contributing improvements back to **AndBible** whenever they are also relevant for the upstream project. Likewise, updates and improvements from AndBible will be merged into ReadBibleDaily from time to time whenever they are relevant for this fork.
+
+Documentation for the original app:
+- [AndBible documentation](https://docs.andbible.org/en/latest/)
+
+Original upstream project:
+- [AndBible on GitHub](https://github.com/AndBible/and-bible)
+
+Fork repository:
+- [ReadBibleDaily on GitHub](https://github.com/IonutOjicaDE/ReadBibleDaily)
+
+## ✨ Project focus
+
+ReadBibleDaily is being extended with the following functionality:
+
+1. **Customized reading plans**
+    - define exactly what to read
+    - define how much to read
+    - define the reading period
+    - define when during the day the content should be shown
+
+2. **Orthodox resources**
+    - include Orthodox Bible editions
+    - include prayer books
+    - include works of the Holy Fathers
+    - support content in different languages
+
+3. **Scheduled devotional events**
+    - when the app starts, specific content can be shown depending on the day and time
+    - examples include:
+        - **Monday to Saturday, between 6:00 and 9:00**: morning prayers, followed by the next Scripture chapters according to the reading plan
+        - **Monday to Friday and Sunday, between 19:00 and 23:00**: evening prayers
+        - **Saturday, between 19:00 and 23:00**: beginning of Communion prayers
+        - **Sunday, between 6:00 and 9:00**: continuation of Communion prayers
+
+4. **Distraction-free mode**
+    - distraction-free mode enabled by default
+
+## 🙏 Intended reading experience
+
+ReadBibleDaily is intended to help the user build a steady rhythm of prayer and Scripture reading throughout the day.
+
+The project emphasizes:
+- practical daily use
+- offline access
+- structured reading
+- devotional continuity
+- focused attention on the text
+
+## 👤 About the maintainer
+
+ReadBibleDaily is maintained by **Ionut Ojica**.
+
+I am a mechanical engineer, and I learned programming purely out of passion. At present, I use Codex to help implement new features for the application.
+
+I am deeply grateful for the effort of all those who contributed — and continue to contribute — to **AndBible**.
+
+## 🤝 Relationship with AndBible
+
+ReadBibleDaily would not exist without the work of the AndBible developers and contributors.
+
+I sincerely appreciate the original AndBible project and support the idea of contributing useful improvements upstream whenever they are relevant for AndBible as well.
+
+Special thanks to:
+- **Martin Denham**, original developer of AndBible
+- the AndBible maintainers
+- all contributors, testers, translators, and supporters of the upstream project
 
 ## 👥 Users
 
-Please see the [AndBible website](https://andbible.org/) for a list of features and additional user guides.
+ReadBibleDaily is intended for users who want:
+- offline Bible reading and study
+- a more structured devotional routine
+- customized reading plans
+- Orthodox Bible and prayer resources
+- a focused reading experience with fewer distractions
 
-For help, see the [wiki](https://github.com/andbible/and-bible/wiki) and [FAQ](https://github.com/andbible/and-bible/wiki/FAQ), or chat with us on [Matrix](https://matrix.to/#/#andbible:matrix.org).
+For original AndBible user documentation, see:
+- [AndBible documentation](https://docs.andbible.org/en/latest/)
 
 ## 🏗️ Developers
 
-Do you know Android development, Kotlin, Javascript, or Vue.js? These are the main technologies used in the project. If you are a developer, your skills would be of great use in this project. Pull requests are welcome! See [developer documentation](https://github.com/AndBible/and-bible/wiki/Developer-documentation) in the project wiki for details.
+ReadBibleDaily is based on the AndBible codebase and continues to benefit from the upstream project and its ecosystem.
 
-Current Developers:
+Developers interested in Android, Kotlin, JavaScript, or Vue.js are welcome to explore the code, suggest improvements, and submit pull requests.
 
-- [Tuomas Airaksinen](https://github.com/tuomas2) project lead, developer
-- [Timmy Braun](https://github.com/timbze), developer
-- [Jan-Jaap Korpershoek](https://github.com/JJK96), developer
-- [Matt Schlosser](https://github.com/mattschlosser), developer
-- [Ben Vahedy](https://github.com/bvahedy), QA, testing & reporting bugs
-- [Andrew Rogers](https://github.com/agrogers), UX/UI design, project management, email support
+If you are interested in contributing to this fork, especially in areas such as:
+- reading plans
+- Orthodox content support
+- scheduled devotional logic
+- UI simplification and focus mode
+- import and presentation of additional texts
+
+please open an issue or submit a pull request in this repository.
+
+For upstream technical background, see:
+- [AndBible developer documentation](https://github.com/AndBible/and-bible/wiki/Developer-documentation)
 
 ## 💬 Translators
 
-Everyone is welcome to help translate AndBible to different languages via easy to use web-based Transifex tool. Please see our [Wiki page](https://github.com/AndBible/and-bible/wiki/Translating-User-Interface) to get started.
+Support for Orthodox texts, prayer books, and related content in different languages is an important direction for ReadBibleDaily.
 
-## 🤝 All Contributors
+Contributions related to translation, localization, and multilingual content support are welcome.
 
-There are so many ways to contribute to AndBible! See our [contributor guide](https://github.com/AndBible/and-bible/wiki/How-to-contribute).
+## 🪙 Support this project
 
-## 🪙 Sponsor AndBible development
+If my work has been useful to you, feel free to offer me a strawberry milk.
 
-You can support the AndBible project financially by sponsoring professional software development work time.
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/ionutojica)
 
-For more information, see [WIKI page](https://github.com/AndBible/and-bible/wiki/Buy-development-work).
+## 🔗 Links
+
+- Repository: [github.com/IonutOjicaDE/ReadBibleDaily](https://github.com/IonutOjicaDE/ReadBibleDaily)
+- GitHub profile: [github.com/IonutOjicaDE](https://github.com/IonutOjicaDE)
+- Website: [ionutojica.ro](https://ionutojica.ro)
+- YouTube: [youtube.com/@IonutOjicaDE](https://youtube.com/@IonutOjicaDE)
 
 ## 📢 Acknowledgements
 
-AndBible was originally developed by [Martin Denham](https://github.com/mjdenham) (2010-2018)
+ReadBibleDaily is a fork of **AndBible: Bible Study**.
 
-## 📜 Terms of Service and Privacy Policy
+All credit and thanks are due to the original AndBible developers and contributors for creating and maintaining the foundation on which this project is built.
 
-- [Terms of Service](https://andbible.org/terms.html)
-- [Privacy Policy](https://andbible.org/privacy.html)
+## ⚖️ License
 
-## ⚖️ Licence
+ReadBibleDaily is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-AndBible is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+ReadBibleDaily is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-AndBible is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with AndBible. If not, see https://www.gnu.org/licenses/.
-
-## ⭐ Star history
-
-[![Star History Chart](https://api.star-history.com/svg?repos=AndBible/and-bible&type=date&legend=top-left)](https://www.star-history.com/#taigrr/spank&type=date&legend=top-left)
+You should have received a copy of the GNU General Public License along with this project. If not, see https://www.gnu.org/licenses/.
