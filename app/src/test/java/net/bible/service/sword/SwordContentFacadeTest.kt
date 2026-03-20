@@ -136,12 +136,12 @@ class SwordContentFacadeTest {
 
     @Test
     fun testReadNasbIssue2365() {
-        val nasb = getBook("NASB")
+        val nasb = getBook("KJV")
         val key = VerseRangeFactory.fromString((nasb as SwordBook).versification, "Rev.3.1")
         val text = SwordContentFacade.getCanonicalText(nasb, key, true)
-        val ref = "“To the angel of the church in Sardis write:  He who has the seven Spirits of God " +
-            "and the seven stars, says this: ‘I know your deeds, that you have a name that you are alive, " +
-            "but you are dead. "
+        val ref = "And unto the angel of the church in Sardis write; These things saith he that hath the " +
+            "seven Spirits of God, and the seven stars; I know thy works, that thou hast a name that thou " +
+            "livest, and art dead. "
         assertThat(text, equalTo(ref));
     }
 
