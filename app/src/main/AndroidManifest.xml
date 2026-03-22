@@ -228,6 +228,18 @@
             android:label="@string/doc_type_map"
             android:parentActivityName="net.bible.android.view.activity.page.MainBibleActivity" />
         <activity
+            android:name="net.bible.android.view.activity.readingplan.CustomReadingPlanDetailActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|locale"
+            android:label="@string/custom_reading_plan_detail_title"
+            android:parentActivityName="net.bible.android.view.activity.readingplan.CustomReadingPlansActivity"
+            />
+        <activity
+            android:name="net.bible.android.view.activity.readingplan.CustomReadingPlansActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|locale"
+            android:label="@string/custom_reading_plans_title"
+            android:parentActivityName="net.bible.android.view.activity.page.MainBibleActivity"
+            />
+        <activity
             android:name="net.bible.android.view.activity.readingplan.ReadingPlanSelectorList"
             android:configChanges="keyboardHidden|orientation|screenSize|locale"
             android:label="@string/rdg_plan_selector_title"

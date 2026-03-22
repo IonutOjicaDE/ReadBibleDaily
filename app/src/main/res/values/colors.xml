@@ -165,4 +165,9 @@
     <color name="status_success">#4CAF50</color>
     <color name="status_error">#F44336</color>
 
+    <color name="custom_reading_plan_active_background">#6635C46A</color>
+    <color name="custom_reading_plan_inactive_background">#D9E0E0E0</color>
+    <color name="custom_reading_plan_item_stroke">#4D616161</color>
+    <color name="custom_reading_plan_delete">#D32F2F</color>
+
 </resources>

@@ -1685,4 +1685,13 @@
     <string name="my_document_import_document">Import files as document</string>
     <string name="my_document_import_empty_selection">No importable files selected</string>
     <string name="my_document_export_success">Pages exported successfully</string>
+    <string name="custom_reading_plans_title">Custom Reading Plans</string>
+    <string name="custom_reading_plan_detail_title">Custom Reading Plan</string>
+    <string name="custom_reading_plan_new_testament">Noul Testament</string>
+    <string name="custom_reading_plan_old_testament">Vechiul Testament</string>
+    <string name="custom_reading_plan_default_summary">2 capitole, zilnic, Lu-Sa</string>
+    <string name="custom_reading_plan_create">Create your own Custom Reading Plan</string>
+    <string name="custom_reading_plan_new_title">New Custom Reading Plan</string>
+    <string name="custom_reading_plan_delete_confirmation">Ești sigur că vrei să ștergi %1$s?</string>
+    <string name="custom_reading_plan_delete_symbol">X</string>
 </resources>
