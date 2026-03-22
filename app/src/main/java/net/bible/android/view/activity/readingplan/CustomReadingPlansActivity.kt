@@ -17,14 +17,14 @@
 
 package net.bible.android.view.activity.readingplan
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.SwitchCompat
+import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import net.bible.android.activity.R
@@ -33,12 +33,13 @@ import net.bible.android.activity.databinding.CustomReadingPlansActivityBinding
 import net.bible.android.view.activity.base.ActivityBase
 
 private const val STATE_PLAN_TITLES = "plan_titles"
+private const val STATE_PLAN_ACTIVE = "plan_active"
 
 private data class CustomReadingPlanListItem(
     val title: String,
     val description: String? = null,
-    val isActive: Boolean = true,
-    val canDelete: Boolean = true,
+    var isActive: Boolean = true,
+    val hasToggle: Boolean = true,
     val opensAsCreate: Boolean = false,
 )
 
@@ -64,7 +65,6 @@ class CustomReadingPlansActivity : ActivityBase() {
         override fun getItemCount(): Int = planItems.size
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = CustomReadingPlansActivityBinding.inflate(layoutInflater)
@@ -77,9 +77,13 @@ class CustomReadingPlansActivity : ActivityBase() {
         planItems.addAll(buildInitialPlans(savedInstanceState))
 
         binding.recyclerView.apply {
-            layoutManager = LinearLayoutManager(this@CustomReadingPlansActivity)
+            val linearLayoutManager = LinearLayoutManager(this@CustomReadingPlansActivity)
+            layoutManager = linearLayoutManager
             adapter = this@CustomReadingPlansActivity.adapter
             setHasFixedSize(false)
+            if (itemDecorationCount == 0) {
+                addItemDecoration(DividerItemDecoration(context, linearLayoutManager.orientation))
+            }
         }
     }
 
@@ -87,7 +91,11 @@ class CustomReadingPlansActivity : ActivityBase() {
         super.onSaveInstanceState(outState)
         outState.putStringArrayList(
             STATE_PLAN_TITLES,
-            ArrayList(planItems.filter { it.canDelete }.map { it.title })
+            ArrayList(planItems.filter { it.hasToggle }.map { it.title })
+        )
+        outState.putBooleanArray(
+            STATE_PLAN_ACTIVE,
+            planItems.filter { it.hasToggle }.map { it.isActive }.toBooleanArray()
         )
     }
 
@@ -107,33 +115,45 @@ class CustomReadingPlansActivity : ActivityBase() {
         summary.text = item.description
         summary.visibility = if (item.description.isNullOrBlank()) View.GONE else View.VISIBLE
 
-        root.setBackgroundResource(
-            when {
-                item.opensAsCreate -> R.drawable.custom_reading_plan_item_active_background
-                item.isActive -> R.drawable.custom_reading_plan_item_active_background
-                else -> R.drawable.custom_reading_plan_item_inactive_background
-            }
-        )
-        deleteButton.visibility = if (item.canDelete) View.VISIBLE else View.GONE
+        configureToggle(toggle, item)
 
         root.setOnClickListener {
             openPlan(item)
         }
-        deleteButton.setOnClickListener {
-            confirmDelete(item)
+    }
+
+    private fun configureToggle(toggle: SwitchCompat, item: CustomReadingPlanListItem) {
+        if (!item.hasToggle) {
+            toggle.visibility = View.GONE
+            toggle.setOnCheckedChangeListener(null)
+            return
+        }
+
+        toggle.visibility = View.VISIBLE
+        toggle.setOnCheckedChangeListener(null)
+        toggle.isChecked = item.isActive
+        toggle.setOnCheckedChangeListener { _, isChecked ->
+            item.isActive = isChecked
+        }
+        toggle.setOnClickListener {
+            item.isActive = toggle.isChecked
         }
     }
 
     private fun buildInitialPlans(savedInstanceState: Bundle?): List<CustomReadingPlanListItem> {
         val storedTitles = savedInstanceState?.getStringArrayList(STATE_PLAN_TITLES)
-        val persistedPlans = (storedTitles ?: arrayListOf(
+        val storedActive = savedInstanceState?.getBooleanArray(STATE_PLAN_ACTIVE)
+        val defaultTitles = listOf(
             getString(R.string.custom_reading_plan_new_testament),
             getString(R.string.custom_reading_plan_old_testament),
-        )).map { title ->
+        )
+
+        val titles = storedTitles ?: ArrayList(defaultTitles)
+        val persistedPlans = titles.mapIndexed { index, title ->
             CustomReadingPlanListItem(
                 title = title,
                 description = getString(R.string.custom_reading_plan_default_summary),
-                isActive = true,
+                isActive = storedActive?.getOrNull(index) ?: true,
             )
         }
         return persistedPlans + createItem()
@@ -141,8 +161,7 @@ class CustomReadingPlansActivity : ActivityBase() {
 
     private fun createItem() = CustomReadingPlanListItem(
         title = getString(R.string.custom_reading_plan_create),
-        isActive = true,
-        canDelete = false,
+        hasToggle = false,
         opensAsCreate = true,
     )
 
@@ -158,24 +177,5 @@ class CustomReadingPlansActivity : ActivityBase() {
             )
         }
         startActivity(intent)
-    }
-
-    private fun confirmDelete(item: CustomReadingPlanListItem) {
-        AlertDialog.Builder(this)
-            .setMessage(getString(R.string.custom_reading_plan_delete_confirmation, item.title))
-            .setPositiveButton(R.string.delete) { _, _ ->
-                deletePlan(item)
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    @SuppressLint("NotifyDataSetChanged")
-    private fun deletePlan(item: CustomReadingPlanListItem) {
-        val index = planItems.indexOfFirst { it.title == item.title && it.canDelete }
-        if (index >= 0) {
-            planItems.removeAt(index)
-            adapter.notifyDataSetChanged()
-        }
     }
 }

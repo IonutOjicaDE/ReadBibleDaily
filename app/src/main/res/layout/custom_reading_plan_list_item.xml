@@ -2,53 +2,50 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
+    android:background="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true"
-    android:foreground="?attr/selectableItemBackground"
     android:gravity="center_vertical"
-    android:minHeight="88dp"
+    android:minHeight="?android:attr/listPreferredItemHeight"
     android:orientation="horizontal"
     android:paddingStart="16dp"
-    android:paddingTop="14dp"
-    android:paddingEnd="12dp"
-    android:paddingBottom="14dp">
+    android:paddingTop="8dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="8dp">
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:gravity="center_vertical"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:paddingEnd="16dp">
 
         <TextView
             android:id="@+id/title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textAppearance="@android:style/TextAppearance.Medium"
-            android:textColor="@color/grey_900"
-            android:textStyle="bold" />
+            android:singleLine="true"
+            android:textAppearance="?android:attr/textAppearanceListItem" />
 
         <TextView
             android:id="@+id/summary"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:textAppearance="@android:style/TextAppearance.Small"
-            android:textColor="@color/grey_900" />
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textAppearance="?android:attr/textAppearanceSmall" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/deleteButton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:clickable="true"
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/toggle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:focusable="true"
-        android:foreground="?attr/selectableItemBackgroundBorderless"
-        android:gravity="center"
-        android:text="@string/custom_reading_plan_delete_symbol"
-        android:textColor="@color/custom_reading_plan_delete"
-        android:textStyle="bold"
-        android:textSize="20sp" />
+        android:clickable="true"
+        android:minWidth="0dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="0dp"
+        android:splitTrack="false" />
 
 </LinearLayout>

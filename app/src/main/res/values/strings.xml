@@ -1692,6 +1692,4 @@
     <string name="custom_reading_plan_default_summary">2 capitole, zilnic, Lu-Sa</string>
     <string name="custom_reading_plan_create">Create your own Custom Reading Plan</string>
     <string name="custom_reading_plan_new_title">New Custom Reading Plan</string>
-    <string name="custom_reading_plan_delete_confirmation">Ești sigur că vrei să ștergi %1$s?</string>
-    <string name="custom_reading_plan_delete_symbol">X</string>
 </resources>
