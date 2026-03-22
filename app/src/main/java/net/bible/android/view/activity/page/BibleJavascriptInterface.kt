@@ -28,19 +28,20 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
 import net.bible.android.SharedConstants
 import net.bible.android.activity.R
 import net.bible.android.common.toV11n
 import net.bible.android.control.backup.BackupControl
+import net.bible.android.control.progress.ProgressControl
+import net.bible.android.database.progress.ReadingSource
 import net.bible.android.control.event.ABEventBus
 import net.bible.android.control.event.ToastEvent
 import net.bible.android.control.event.passage.CurrentVerseChangedEvent
 import net.bible.android.control.page.BibleDocument
 import net.bible.android.control.page.CurrentGeneralBookPage
 import net.bible.android.control.page.CurrentPageManager
-import net.bible.android.control.page.ErrorDocument
-import net.bible.android.control.page.ErrorSeverity
 import net.bible.android.control.page.MultiFragmentDocument
 import net.bible.android.control.page.MyNotesDocument
 import net.bible.android.control.page.OrdinalRange
@@ -70,6 +71,7 @@ import net.bible.service.sword.mydocument.MyDocumentBookManager
 import net.bible.service.sword.mybible.myBibleIntToBibleBook
 import net.bible.service.sword.mysword.mySwordIntToBibleBook
 import org.crosswire.jsword.book.Books
+import org.crosswire.jsword.book.basic.AbstractPassageBook
 import org.crosswire.jsword.book.sword.SwordBook
 import org.crosswire.jsword.book.sword.SwordGenBook
 import org.crosswire.jsword.passage.KeyUtil
@@ -77,8 +79,10 @@ import org.crosswire.jsword.passage.NoSuchKeyException
 import org.crosswire.jsword.passage.RangedPassage
 import org.crosswire.jsword.passage.Verse
 import org.crosswire.jsword.passage.VerseFactory
+import org.crosswire.jsword.passage.VerseRange
 import org.crosswire.jsword.versification.BookName
 import org.crosswire.jsword.versification.system.Versifications
+import net.bible.service.llm.PromptContext
 import java.io.File
 import java.lang.ClassCastException
 
@@ -311,6 +315,25 @@ class BibleJavascriptInterface(
                     linkControl.loadApplicationUrl(bibleLink)
                 }
             }
+            link.startsWith("strongs://") -> {
+                // Document-independent Strong's links (e.g. strongs://G2316, strongs://H430)
+                val ref = link.removePrefix("strongs://")
+                val bibleLink = BibleView.BibleLink("strong", target=ref)
+                scope.launch(Dispatchers.Main) {
+                    linkControl.loadApplicationUrl(bibleLink)
+                }
+            }
+            link.startsWith("morphology://") -> {
+                // Document-independent morphology links (e.g. morphology://robinson/V-PAI-3S)
+                val rest = link.removePrefix("morphology://")
+                val slashIdx = rest.indexOf('/')
+                val morphType = if (slashIdx >= 0) rest.substring(0, slashIdx) else rest
+                val code = if (slashIdx >= 0) rest.substring(slashIdx + 1) else ""
+                val bibleLink = BibleView.BibleLink(morphType, target=code)
+                scope.launch(Dispatchers.Main) {
+                    linkControl.loadApplicationUrl(bibleLink)
+                }
+            }
             else -> {
                 CommonUtils.openLink(link, forceAsk=true)
             }
@@ -469,6 +492,55 @@ class BibleJavascriptInterface(
         scope.launch(Dispatchers.Main) {
             bibleView.memorizeSelection(Selection(bookInitials, verseOrdinal, positiveOrNull(endOrdinal)))
         }
+    }
+
+    private fun verseRangeFromOrdinals(bookInitials: String, startOrdinal: Int, endOrdinal: Int): VerseRange? {
+        val book = Books.installed().getBook(bookInitials) ?: return null
+        val v11n = (book as? AbstractPassageBook)?.versification ?: return null
+        val effectiveEnd = if (endOrdinal > 0) endOrdinal else startOrdinal
+        return VerseRange(v11n, Verse(v11n, startOrdinal), Verse(v11n, effectiveEnd))
+    }
+
+    @JavascriptInterface
+    fun memorizeCompleted(bookInitials: String, startOrdinal: Int, endOrdinal: Int) {
+        if (!ProgressControl.autoMarkMemorized) return
+        val verseRange = verseRangeFromOrdinals(bookInitials, startOrdinal, endOrdinal) ?: return
+        ProgressControl.markVerseMemorized(verseRange)
+    }
+
+    @JavascriptInterface
+    fun addMemorizationTarget(bookInitials: String, startOrdinal: Int, endOrdinal: Int) {
+        val verseRange = verseRangeFromOrdinals(bookInitials, startOrdinal, endOrdinal) ?: return
+        ProgressControl.addMemorizationTarget(verseRange)
+    }
+
+    @JavascriptInterface
+    fun unmarkMemorized(bookInitials: String, startOrdinal: Int, endOrdinal: Int) {
+        val verseRange = verseRangeFromOrdinals(bookInitials, startOrdinal, endOrdinal) ?: return
+        ProgressControl.unmarkVerseMemorized(verseRange)
+    }
+
+    @JavascriptInterface
+    fun removeMemorizationTarget(bookInitials: String, startOrdinal: Int, endOrdinal: Int) {
+        val verseRange = verseRangeFromOrdinals(bookInitials, startOrdinal, endOrdinal) ?: return
+        ProgressControl.removeMemorizationTargetByRange(verseRange)
+    }
+
+    @JavascriptInterface
+    fun markChapterRead(bookInitials: String, startOrdinal: Int, chapter: Int, source: String) {
+        val book = Books.installed().getBook(bookInitials) ?: return
+        val v11n = (book as? AbstractPassageBook)?.versification ?: return
+        val verse = Verse(v11n, startOrdinal)
+        val readingSource = try { ReadingSource.valueOf(source) } catch (_: Exception) { ReadingSource.MANUAL }
+        ProgressControl.markChapterRead(v11n, verse.book, chapter, readingSource)
+    }
+
+    @JavascriptInterface
+    fun unmarkChapterRead(bookInitials: String, startOrdinal: Int, chapter: Int) {
+        val book = Books.installed().getBook(bookInitials) ?: return
+        val v11n = (book as? AbstractPassageBook)?.versification ?: return
+        val verse = Verse(v11n, startOrdinal)
+        ProgressControl.unmarkChapterRead(v11n, verse.book, chapter)
     }
 
     @JavascriptInterface
@@ -723,6 +795,52 @@ class BibleJavascriptInterface(
         }
     }
 
+    @Serializable
+    data class NoteEditorLlmContext(
+        val entityType: String,
+        val entityId: String,
+        val currentText: String,
+        val contentType: String
+    )
+
+    /**
+     * Trigger LLM prompt selector for the note editor context.
+     * Called from Vue.js MarkdownEditor/HtmlEditor AI button.
+     */
+    @JavascriptInterface
+    fun noteEditorLlmAction(contextJson: String) {
+        scope.launch(Dispatchers.Main) {
+            val ctx = json.decodeFromString<NoteEditorLlmContext>(serializer(), contextJson)
+
+            // Try to get verse context from the bookmark for better AI context
+            var bookInitials: String? = null
+            var startOrdinal = 0
+            var endOrdinal = 0
+            if (ctx.entityType == "BOOKMARK_NOTE") {
+                val bookmark = bookmarkControl.bibleBookmarkById(IdType(ctx.entityId))
+                if (bookmark != null) {
+                    bookInitials = bookmark.book?.initials
+                    startOrdinal = bookmark.ordinalStart
+                    endOrdinal = bookmark.ordinalEnd
+                }
+            }
+
+            val selection = Selection(
+                bookInitials = bookInitials,
+                startOrdinal = startOrdinal,
+                startOffset = null,
+                endOrdinal = endOrdinal,
+                endOffset = null,
+                bookmarks = emptyList(),
+                noteEditorEntityType = ctx.entityType,
+                noteEditorEntityId = ctx.entityId,
+                noteEditorContent = ctx.currentText,
+                noteEditorContentType = ctx.contentType,
+            )
+            mainBibleActivity.showLlmPromptSelector(selection, PromptContext.NOTE_EDITOR)
+        }
+    }
+
     private val windowControl get() = bibleView.windowControl
 
     @JavascriptInterface
@@ -763,17 +881,16 @@ class BibleJavascriptInterface(
     @JavascriptInterface
     fun deleteMyDocumentPage(pageId: String) {
         val id = IdType(pageId)
-        scope.launch {
+        scope.launch(Dispatchers.Main) {
             AlertDialog.Builder(mainBibleActivity)
                 .setMessage(R.string.ai_document_delete_confirmation)
                 .setPositiveButton(R.string.yes) { _, _ ->
                     MyDocumentBookManager.deleteAIDocumentPage(id)
-                    val errorDoc = ErrorDocument(
-                        mainBibleActivity.getString(R.string.ai_document_deleted),
-                        ErrorSeverity.NORMAL
-                    )
-                    scope.launch {
-                        bibleView.loadDocument(errorDoc)
+                    val window = bibleView.window
+                    if (windowControl.isWindowRemovable(window)) {
+                        windowControl.closeWindow(window)
+                    } else {
+                        window.pageManager.setCurrentDocument(window.pageManager.currentBible.currentDocument)
                     }
                 }
                 .setNegativeButton(R.string.no, null)

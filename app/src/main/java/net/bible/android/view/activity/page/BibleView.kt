@@ -73,6 +73,8 @@ import net.bible.android.control.bookmark.BookmarkControl
 import net.bible.android.control.bookmark.BookmarkNoteModifiedEvent
 import net.bible.android.control.bookmark.BookmarkToLabelAddedOrUpdatedEvent
 import net.bible.android.control.bookmark.BookmarksAddedOrUpdatedEvent
+import net.bible.android.control.progress.ChapterReadStatusChangedEvent
+import net.bible.android.control.progress.MemorizationDataChangedEvent
 import net.bible.android.control.bookmark.BookmarksDeletedEvent
 import net.bible.android.control.bookmark.LabelAddedOrUpdatedEvent
 import net.bible.android.control.bookmark.LabelsDeletedEvent
@@ -87,6 +89,7 @@ import net.bible.android.control.event.window.WindowSizeChangedEvent
 import net.bible.android.control.link.LinkControl
 import net.bible.android.control.link.WindowMode
 import net.bible.android.control.page.BibleDocument
+import net.bible.android.control.page.MemorizeDocument
 import net.bible.android.control.page.ClientBibleBookmark
 import net.bible.android.control.page.ClientBookmarkLabel
 import net.bible.android.control.page.ClientGenericBookmark
@@ -133,6 +136,7 @@ import net.bible.service.common.AndBibleAddons.fontsByModule
 import net.bible.service.common.CommonUtils
 import net.bible.service.common.CommonUtils.buildActivityComponent
 import net.bible.service.common.CommonUtils.parseAndBibleReference
+import net.bible.service.common.ReadingProgressSettings
 import net.bible.service.common.ReloadAddonsEvent
 import net.bible.service.db.DatabaseContainer
 import net.bible.service.device.ScreenSettings
@@ -188,6 +192,14 @@ class Selection(
     val notes: String? = null,
     val text: String = "",
     val osisRef: String? = null,
+    /** Note editor entity type: "BOOKMARK_NOTE", "STUDYPAD_TEXT", or "MY_DOCUMENT_PAGE" */
+    val noteEditorEntityType: String? = null,
+    /** Note editor entity ID (bookmark UUID, studypad entry UUID, or MyDocument page ID) */
+    val noteEditorEntityId: String? = null,
+    /** Current text content in the note editor */
+    val noteEditorContent: String? = null,
+    /** Content type of the editor: "MARKDOWN" or "HTML" */
+    val noteEditorContentType: String? = null,
 )
 {
     constructor(bookmark: BookmarkEntities.BibleBookmarkWithNotes):
@@ -955,6 +967,8 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
         const val SCHEME_STUDYPAD = "journal"
         const val SCHEME_FIND_ALL_OCCURRENCES = "ab-find-all"
         const val SCHEME_SWORD = "sword"
+        const val SCHEME_STRONGS = "strongs"
+        const val SCHEME_MORPHOLOGY = "morphology"
     }
 
     class ModuleAssetHandler: PathHandler {
@@ -1205,6 +1219,25 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
             // URI like sword://KJV/Matt.5.3 or sword://MHC/Matt.5.3
             val url = uri.toString()
             linkControl.loadApplicationUrl(BibleLink("sword", url), null)
+            true
+        }
+        UriConstants.SCHEME_STRONGS -> {
+            // Document-independent Strong's links: strongs://G2316, strongs://H430
+            // Resolves to user's configured default Strong's dictionary via UriAnalyzer
+            val ref = uri.authority ?: uri.schemeSpecificPart
+            linkControl.loadApplicationUrl(BibleLink("strong", ref), null)
+            true
+        }
+        UriConstants.SCHEME_MORPHOLOGY -> {
+            // Document-independent morphology links: morphology://robinson/V-PAI-3S
+            // Resolves to user's configured default morphology dictionary via UriAnalyzer
+            val morphType = uri.authority ?: ""
+            val code = uri.path?.trimStart('/') ?: ""
+            linkControl.loadApplicationUrl(BibleLink(morphType, code), null)
+            true
+        }
+        "http", "https" -> {
+            CommonUtils.openLink(uri.toString())
             true
         }
         else -> {
@@ -1725,6 +1758,39 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
 
         val bookmarkStr = clientBookmarks.joinToString(",", "[", "]")
         executeJavascriptOnUiThread("""bibleView.emit("add_or_update_bookmarks",  $bookmarkStr);""")
+    }
+
+    fun onEvent(event: MemorizationDataChangedEvent) {
+        val doc = firstDocument
+        if (doc !is BibleDocument && doc !is MemorizeDocument) return
+
+        // Convert KJV ordinals to document versification for BibleDocument
+        val v11n = if (doc is BibleDocument) doc.swordBook.versification else null
+        fun convertOrdinals(kjvOrdinals: List<Int>): String {
+            val converted = if (v11n != null) {
+                kjvOrdinals.map { Verse(KJVA, it).toV11n(v11n).ordinal }
+            } else {
+                kjvOrdinals
+            }
+            return json.encodeToString(serializer(), converted)
+        }
+
+        val addedMemorized = convertOrdinals(event.addedMemorized)
+        val removedMemorized = convertOrdinals(event.removedMemorized)
+        val addedTargets = convertOrdinals(event.addedTargets)
+        val removedTargets = convertOrdinals(event.removedTargets)
+        executeJavascriptOnUiThread("""bibleView.emit("update_memorization_data", {
+            addedMemorized: $addedMemorized, removedMemorized: $removedMemorized,
+            addedTargets: $addedTargets, removedTargets: $removedTargets
+        });""")
+    }
+
+    fun onEvent(event: ChapterReadStatusChangedEvent) {
+        val doc = firstDocument
+        if (doc !is BibleDocument) return
+        executeJavascriptOnUiThread("""bibleView.emit("update_chapter_read_status", {
+            kjvBookOrdinal: ${event.kjvBookOrdinal}, chapter: ${event.chapter}, isRead: ${event.isRead}
+        });""")
     }
 
     fun onEvent(event: BookmarkNoteModifiedEvent) {

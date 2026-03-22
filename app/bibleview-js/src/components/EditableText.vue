@@ -18,8 +18,8 @@
 <template>
   <div :style="parentStyle" class="editable-text">
     <div class="editor-container" :class="{constraintDisplayHeight}" v-if="editMode">
-      <MarkdownEditor v-if="isMarkdown" :text="editText || ''" @save="textChanged" @close="editMode = false"/>
-      <HtmlEditor v-else :text="editText || ''" @save="textChanged" @close="editMode = false"/>
+      <MarkdownEditor v-if="isMarkdown" :text="editText || ''" :note-editor-context="noteEditorContext" :content-type-name="isMarkdown ? 'MARKDOWN' : 'HTML'" @save="textChanged" @close="editMode = false"/>
+      <HtmlEditor v-else :text="editText || ''" :note-editor-context="noteEditorContext" :content-type-name="isMarkdown ? 'MARKDOWN' : 'HTML'" @save="textChanged" @close="editMode = false"/>
     </div>
     <template v-else>
       <div v-if="editText" class="notes-display" :class="[{constraintDisplayHeight}, isMarkdown ? 'markdown-notes' : '']" @click="handleClicks">
@@ -35,6 +35,11 @@
 </template>
 
 <script lang="ts">
+export interface NoteEditorContext {
+    entityType: string
+    entityId: string
+}
+
 let cancelOpen = () => {}
 </script>
 
@@ -48,6 +53,7 @@ import {Nullable} from "@/types/common";
 import {TextContentType} from "@/types/client-objects";
 import {Marked} from "marked";
 import DOMPurify from "dompurify";
+import {PURIFY_CONFIG} from "@/composables/slot-html-content";
 
 const markdownParser = new Marked({breaks: true, gfm: true});
 
@@ -60,6 +66,7 @@ const props = withDefaults(defineProps<{
     maxEditorHeight?: string
     constraintDisplayHeight?: boolean
     disableClickToEdit?: boolean
+    noteEditorContext?: NoteEditorContext | null
 }>(), {
     editDirectly: false,
     showPlaceholder: false,
@@ -67,7 +74,8 @@ const props = withDefaults(defineProps<{
     contentType: null,
     maxEditorHeight: "inherit",
     constraintDisplayHeight: false,
-    disableClickToEdit: false
+    disableClickToEdit: false,
+    noteEditorContext: null
 })
 
 const appSettings = inject(appSettingsKey)!;
@@ -79,7 +87,7 @@ const isMarkdown = computed(() =>
 const displayHtml = computed(() => {
     if (!editText.value) return "";
     if (isMarkdown.value) {
-        return DOMPurify.sanitize(markdownParser.parse(editText.value) as string);
+        return DOMPurify.sanitize(markdownParser.parse(editText.value) as string, PURIFY_CONFIG);
     }
     return editText.value;
 });
@@ -121,7 +129,16 @@ function textChanged(newText: string) {
 }
 
 function handleClicks(event: MouseEvent) {
-    if (!props.disableClickToEdit && (event.target! as HTMLElement).nodeName !== "A") {
+    const link = (event.target as HTMLElement).closest("a") as HTMLAnchorElement | null;
+    if (link) {
+        event.preventDefault();
+        const href = link.getAttribute("href");
+        if (href) {
+            window.android.openExternalLink(href);
+        }
+        return;
+    }
+    if (!props.disableClickToEdit) {
         editMode.value = true;
     }
 }

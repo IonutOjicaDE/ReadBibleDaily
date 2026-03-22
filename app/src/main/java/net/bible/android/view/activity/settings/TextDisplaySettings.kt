@@ -136,7 +136,10 @@ fun getPrefItem(settings: SettingsBundle, type: Types): OptionsMenuItemInterface
         Types.PAGENUMBER -> ItemPreference(settings, Types.PAGENUMBER)
         Types.INFINITE_SCROLL -> InfiniteScrollPreference(settings)
         Types.NON_STRONGS_WORD_ITALIC -> NonStrongsWordItalicPreference(settings)
+        Types.MARK_AS_READ_BUTTON -> ItemPreference(settings, Types.MARK_AS_READ_BUTTON)
         Types.TITLE_SCROLL_BUTTON -> ItemPreference(settings, Types.TITLE_SCROLL_BUTTON)
+        Types.MEMORIZATION_INDICATORS -> ItemPreference(settings, Types.MEMORIZATION_INDICATORS)
+        Types.AUTO_TRACK_READING -> ItemPreference(settings, Types.AUTO_TRACK_READING)
     }
 
 class TextDisplaySettingsFragment: PreferenceFragmentCompat() {
@@ -146,7 +149,16 @@ class TextDisplaySettingsFragment: PreferenceFragmentCompat() {
         preferenceManager.preferenceDataStore = TextDisplaySettingsDataStore(activity, settingsBundle)
         setPreferencesFromResource(R.xml.text_display_settings, rootKey)
         setupParentSettingsLinks()
+        setupExperimentalFeatureVisibility()
         updateItems()
+    }
+
+    private fun setupExperimentalFeatureVisibility() {
+        if (!CommonUtils.settings.readingAndMemorizationEnabled) {
+            findPreference<Preference>(Types.MARK_AS_READ_BUTTON.name)?.isVisible = false
+            findPreference<Preference>(Types.MEMORIZATION_INDICATORS.name)?.isVisible = false
+            findPreference<Preference>(Types.AUTO_TRACK_READING.name)?.isVisible = false
+        }
     }
 
     private fun setupParentSettingsLinks() {

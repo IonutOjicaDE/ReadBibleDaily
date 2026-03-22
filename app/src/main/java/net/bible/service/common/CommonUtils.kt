@@ -127,8 +127,6 @@ import net.bible.service.cloudsync.SyncableDatabaseDefinition
 import net.bible.service.db.DatabaseContainer
 import net.bible.service.device.speak.TextToSpeechNotificationManager
 import net.bible.service.download.DownloadManager
-import net.bible.service.llm.AgentTool
-import net.bible.service.llm.agent.PermissionMode
 import net.bible.service.sword.BookAndKey
 import net.bible.service.sword.SwordContentFacade
 import net.bible.service.sword.epub.addManuallyInstalledEpubBooks
@@ -259,6 +257,7 @@ val BookmarkEntities.Label.displayName get() =
         isSpeakLabel -> application.getString(R.string.speak)
         isUnlabeledLabel -> application.getString(R.string.label_unlabelled)
         isParagraphBreakLabel -> application.getString(R.string.add_paragraph_break)
+        isAiLabel -> application.getString(R.string.ai_label)
         else -> name
     }
 
@@ -462,8 +461,8 @@ object CommonUtils : CommonUtilsBase() {
         val bookmarkEditActionsEnabled: Boolean get() = isExperimentalFeatureEnabled("bookmark_edit_actions")
         val addParagraphBreakEnabled: Boolean get() = isExperimentalFeatureEnabled("add_paragraph_break")
         val aiTextProcessingEnabled: Boolean get() = isExperimentalFeatureEnabled("ai_text_processing")
-        val aiDebugToolsEnabled: Boolean get() = isExperimentalFeatureEnabled("ai_debug_tools")
         val myDocumentsEnabled: Boolean get() = aiTextProcessingEnabled
+        val readingAndMemorizationEnabled: Boolean get() = isExperimentalFeatureEnabled("reading_and_memorization")
 
 
         /** Check if any LlmProviderConfig exists in the database. */
@@ -472,24 +471,6 @@ object CommonUtils : CommonUtilsBase() {
                 DatabaseContainer.instance.aiSettingsDb.llmProviderConfigDao().getCount() > 0
             } catch (_: Exception) { false }
 
-        // Agent Permission Settings
-        var agentPermissionMode: PermissionMode
-            get() = try {
-                PermissionMode.valueOf(
-                    getString("agent_permission_mode", "ALWAYS_ASK") ?: "ALWAYS_ASK"
-                )
-            } catch (e: IllegalArgumentException) {
-                PermissionMode.ALWAYS_ASK
-            }
-            set(value) = setString("agent_permission_mode", value.name)
-
-        var permanentlyAllowedTools: Set<AgentTool>
-            get() = getEnumSet("agent_permanently_allowed_tools")
-            set(value) = setEnumSet("agent_permanently_allowed_tools", value)
-
-        var permanentlyDeniedTools: Set<AgentTool>
-            get() = getEnumSet("agent_permanently_denied_tools")
-            set(value) = setEnumSet("agent_permanently_denied_tools", value)
     }
 
     private var _settings: AndBibleSettings? = null
@@ -498,6 +479,12 @@ object CommonUtils : CommonUtilsBase() {
         if(s != null) return s
         return AndBibleSettings().apply { _settings = this }
     }
+
+    /**
+     * Global AI settings stored in the syncable AiSettingsDatabase.
+     * Use this for agent permissions, excluded documents, commentary token limit, etc.
+     */
+    val aiSettings: AiSettings get() = AiSettings
 
     var globalTextDisplaySettings: WorkspaceEntities.TextDisplaySettings
         get() = DatabaseContainer.instance.workspaceDb

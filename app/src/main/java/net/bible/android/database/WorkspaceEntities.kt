@@ -171,7 +171,10 @@ class WorkspaceEntities {
         @ColumnInfo(defaultValue = "NULL") var showPageNumber: Boolean? = null,
         @ColumnInfo(defaultValue = "NULL") var infiniteScroll: Boolean? = null,
         @ColumnInfo(defaultValue = "NULL") var nonStrongsWordItalic: Boolean? = null,
+        @ColumnInfo(defaultValue = "NULL") var showMarkAsReadButton: Boolean? = null,
         @ColumnInfo(defaultValue = "NULL") var showTitleScrollButton: Boolean? = null,
+        @ColumnInfo(defaultValue = "NULL") var showMemorizationIndicators: Boolean? = null,
+        @ColumnInfo(defaultValue = "NULL") var autoTrackReading: Boolean? = null,
     ) {
         enum class Types {
             FONTSIZE,
@@ -198,7 +201,10 @@ class WorkspaceEntities {
             PAGENUMBER,
             INFINITE_SCROLL,
             NON_STRONGS_WORD_ITALIC,
+            MARK_AS_READ_BUTTON,
             TITLE_SCROLL_BUTTON,
+            MEMORIZATION_INDICATORS,
+            AUTO_TRACK_READING,
         }
 
         fun getValue(type: Types): Any? = when(type) {
@@ -226,7 +232,10 @@ class WorkspaceEntities {
             Types.PAGENUMBER -> showPageNumber
             Types.INFINITE_SCROLL -> infiniteScroll
             Types.NON_STRONGS_WORD_ITALIC -> nonStrongsWordItalic
+            Types.MARK_AS_READ_BUTTON -> showMarkAsReadButton
             Types.TITLE_SCROLL_BUTTON -> showTitleScrollButton
+            Types.MEMORIZATION_INDICATORS -> showMemorizationIndicators
+            Types.AUTO_TRACK_READING -> autoTrackReading
         }
 
         fun setValue(type: Types, value: Any?) {
@@ -255,7 +264,10 @@ class WorkspaceEntities {
                 Types.PAGENUMBER -> showPageNumber = value as Boolean?
                 Types.INFINITE_SCROLL -> infiniteScroll = value as Boolean?
                 Types.NON_STRONGS_WORD_ITALIC -> nonStrongsWordItalic = value as Boolean?
+                Types.MARK_AS_READ_BUTTON -> showMarkAsReadButton = value as Boolean?
                 Types.TITLE_SCROLL_BUTTON -> showTitleScrollButton = value as Boolean?
+                Types.MEMORIZATION_INDICATORS -> showMemorizationIndicators = value as Boolean?
+                Types.AUTO_TRACK_READING -> autoTrackReading = value as Boolean?
             }
         }
 
@@ -316,7 +328,10 @@ class WorkspaceEntities {
                 showPageNumber = false,
                 infiniteScroll = true,
                 nonStrongsWordItalic = false,
-                showTitleScrollButton = false
+                showMarkAsReadButton = true,
+                showTitleScrollButton = false,
+                showMemorizationIndicators = true,
+                autoTrackReading = false
             )
 
             fun actual(

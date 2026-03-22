@@ -90,12 +90,17 @@ export type Config = {
     showPageNumber: boolean,
     infiniteScroll: boolean,
     nonStrongsWordItalic: boolean,
+    showMarkAsReadButton: boolean,
     showTitleScrollButton: boolean,
+    showMemorizationIndicators: boolean,
+    autoTrackReading: boolean,
 }
 
-export type BibleModalButtonId = "BOOKMARK"|"BOOKMARK_NOTES"|"MY_NOTES"|"SHARE"|"COMPARE"|"SPEAK"|"MEMORIZE"|"ADD_PARAGRAPH_BREAK"|"LLM_ACTION"
+export type BibleModalButtonId = "BOOKMARK"|"BOOKMARK_NOTES"|"MY_NOTES"|"SHARE"|"COMPARE"|"SPEAK"|"MEMORIZE"|"ADD_MEMORIZATION_TARGET"|"REMOVE_MEMORIZATION_TARGET"|"ADD_PARAGRAPH_BREAK"|"LLM_ACTION"
 export type GenericModalButtonId = "BOOKMARK"|"BOOKMARK_NOTES"|"SPEAK"|"ADD_PARAGRAPH_BREAK"|"LLM_ACTION"
 export type ModalButtonId = BibleModalButtonId | GenericModalButtonId
+
+export type Feature = "add_paragraph_break" | "bookmark_edit_actions" | "reading_and_memorization"
 
 export type AppSettings = {
     isBottomWindow: boolean,
@@ -187,7 +192,10 @@ export function useConfig(documentType: Ref<BibleViewDocumentType>) {
         showPageNumber: false,
         infiniteScroll: true,
         nonStrongsWordItalic: false,
+        showMarkAsReadButton: true,
         showTitleScrollButton: false,
+        showMemorizationIndicators: false,
+        autoTrackReading: false,
     });
     const rtl = new URLSearchParams(window.location.search).get("rtl") === "true";
     const nightMode = new URLSearchParams(window.location.search).get("night") === "true";
@@ -370,10 +378,4 @@ export function useConfig(documentType: Ref<BibleViewDocumentType>) {
         })
 
     return {config, appSettings, calculatedConfig};
-}
-
-type Feature = "add_paragraph_break" | "bookmark_edit_actions"
-
-export function isExperimentalFeatureEnabled(appSettings: AppSettings, feature: Feature): boolean {
-    return appSettings.enabledExperimentalFeatures.includes(feature);
 }

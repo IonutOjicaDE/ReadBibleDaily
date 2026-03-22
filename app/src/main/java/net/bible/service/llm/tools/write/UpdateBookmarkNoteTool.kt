@@ -22,12 +22,14 @@ import net.bible.android.activity.R
 import net.bible.android.database.IdType
 import net.bible.android.database.bookmarks.TextContentType
 import net.bible.service.llm.AgentTool
+import net.bible.service.llm.ToolCategory
 import net.bible.service.llm.agent.AgentContext
 import net.bible.service.llm.tools.Tool
 import net.bible.service.llm.tools.ToolResult
 import net.bible.service.llm.tools.decodeArgs
 import net.bible.service.llm.tools.normalizeLlmText
 import net.bible.service.llm.tools.shortId
+import net.bible.service.llm.tools.typedSuccess
 import net.bible.service.llm.tools.yamlToJson
 import kotlinx.serialization.Serializable
 import org.json.JSONObject
@@ -42,7 +44,11 @@ object UpdateBookmarkNoteTool : Tool {
         val note: String = ""
     )
 
+    @Serializable
+    data class Result(val bookmarkId: IdType, val noteLength: Int, val previousNoteLength: Int)
+
     override val agentTool = AgentTool.UPDATE_BOOKMARK_NOTE
+    override val category = ToolCategory.BOOKMARKS
 
     override val description = """
         Update the note text of an existing bookmark.
@@ -104,13 +110,19 @@ object UpdateBookmarkNoteTool : Tool {
             bookmark.notes = note
             bookmark.notesContentType = TextContentType.MARKDOWN
             bookmark.notesSourcePromptId = context.promptId
-            bookmarkControl.addOrUpdateBibleBookmark(bookmark, updateNotes = true)
 
-            ToolResult.success {
-                put("bookmarkId", args.bookmarkId.toString())
-                put("noteLength", note.length)
-                put("previousNoteLength", previousNoteLength)
-            }
+            // Ensure AI label is present on the bookmark
+            val existingLabelIds = bookmarkControl.labelsForBookmark(bookmark).map { it.id }.toSet()
+            val aiLabelId = bookmarkControl.aiLabel.id
+            val labels = if (aiLabelId !in existingLabelIds) existingLabelIds + aiLabelId else null
+
+            bookmarkControl.addOrUpdateBibleBookmark(bookmark, labels = labels, updateNotes = true)
+
+            typedSuccess(Result(
+                bookmarkId = args.bookmarkId,
+                noteLength = note.length,
+                previousNoteLength = previousNoteLength
+            ))
         } catch (e: Exception) {
             ToolResult.error("Failed to update note: ${e.message}", "UPDATE_ERROR")
         }

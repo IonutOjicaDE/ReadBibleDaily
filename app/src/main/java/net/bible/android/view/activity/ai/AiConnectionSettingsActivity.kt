@@ -89,7 +89,7 @@ class AiConnectionSettingsActivity : ActivityBase() {
 
 class AiConnectionSettingsFragment : PreferenceFragmentCompat() {
 
-    private val settings get() = CommonUtils.settings
+    private val settings get() = CommonUtils.aiSettings
     private val dao get() = DatabaseContainer.instance.aiSettingsDb.llmProviderConfigDao()
 
     private lateinit var gettingStartedPref: Preference
@@ -97,6 +97,9 @@ class AiConnectionSettingsFragment : PreferenceFragmentCompat() {
     private lateinit var addProviderPref: Preference
     private lateinit var behaviorCategory: PreferenceCategory
     private lateinit var manageToolPermissionsPref: Preference
+    private lateinit var manageAiDocumentsPref: Preference
+    private lateinit var commentaryMaxResponsePref: Preference
+    private lateinit var maxIterationsPref: Preference
     private lateinit var usageCategory: PreferenceCategory
     private lateinit var usageSummaryPref: Preference
     private lateinit var resetUsagePref: Preference
@@ -110,6 +113,9 @@ class AiConnectionSettingsFragment : PreferenceFragmentCompat() {
         addProviderPref = preferenceScreen.findPreference("ai_add_provider")!!
         behaviorCategory = preferenceScreen.findPreference("ai_behavior_category")!!
         manageToolPermissionsPref = preferenceScreen.findPreference("manage_tool_permissions")!!
+        manageAiDocumentsPref = preferenceScreen.findPreference("manage_ai_documents")!!
+        commentaryMaxResponsePref = preferenceScreen.findPreference("commentary_max_response_chars")!!
+        maxIterationsPref = preferenceScreen.findPreference("agent_max_iterations")!!
         usageCategory = preferenceScreen.findPreference("ai_usage_category")!!
         usageSummaryPref = preferenceScreen.findPreference("llm_usage_summary")!!
         resetUsagePref = preferenceScreen.findPreference("llm_reset_usage")!!
@@ -117,6 +123,9 @@ class AiConnectionSettingsFragment : PreferenceFragmentCompat() {
         setupGettingStarted()
         setupAddProvider()
         setupToolPermissions()
+        setupDocumentFilter()
+        setupCommentaryMaxResponse()
+        setupMaxIterations()
         setupUsage()
         refreshProviderList()
         updateVisibility()
@@ -126,6 +135,7 @@ class AiConnectionSettingsFragment : PreferenceFragmentCompat() {
         super.onResume()
         refreshProviderList()
         updateToolPermissionsSummary()
+        updateDocumentFilterSummary()
     }
 
     private fun hasAnyProvider(): Boolean = dao.getCount() > 0
@@ -657,6 +667,106 @@ class AiConnectionSettingsFragment : PreferenceFragmentCompat() {
         }
     }
 
+    private fun setupDocumentFilter() {
+        updateDocumentFilterSummary()
+        manageAiDocumentsPref.setOnPreferenceClickListener {
+            startActivity(Intent(requireContext(), AiDocumentFilterActivity::class.java))
+            true
+        }
+    }
+
+    private fun updateDocumentFilterSummary() {
+        val excludedCount = settings.aiExcludedDocuments.size
+        manageAiDocumentsPref.summary = if (excludedCount > 0) {
+            getString(R.string.ai_document_filter_summary_count, excludedCount)
+        } else {
+            getString(R.string.ai_document_filter_summary)
+        }
+    }
+
+    private fun setupCommentaryMaxResponse() {
+        updateCommentaryMaxResponseSummary()
+        commentaryMaxResponsePref.setOnPreferenceClickListener {
+            val ctx = requireContext()
+            val input = EditText(ctx).apply {
+                inputType = InputType.TYPE_CLASS_NUMBER
+                setText(settings.commentaryMaxResponseTokens.toString())
+                selectAll()
+            }
+            val container = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                val pad = (16 * resources.displayMetrics.density).toInt()
+                setPadding(pad, pad / 2, pad, 0)
+                addView(TextView(ctx).apply {
+                    text = getString(R.string.commentary_max_response_dialog_message)
+                    setPadding(0, 0, 0, pad / 2)
+                })
+                addView(input)
+            }
+            AlertDialog.Builder(ctx)
+                .setTitle(R.string.commentary_max_response_dialog_title)
+                .setView(container)
+                .setPositiveButton(R.string.okay) { _, _ ->
+                    val value = input.text.toString().toIntOrNull() ?: 0
+                    settings.commentaryMaxResponseTokens = maxOf(0, value)
+                    updateCommentaryMaxResponseSummary()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+            true
+        }
+    }
+
+    private fun updateCommentaryMaxResponseSummary() {
+        val value = settings.commentaryMaxResponseTokens
+        commentaryMaxResponsePref.summary = if (value <= 0) {
+            getString(R.string.commentary_max_response_no_limit)
+        } else {
+            getString(R.string.commentary_max_response_value, "%,d".format(value))
+        }
+    }
+
+    private fun setupMaxIterations() {
+        updateMaxIterationsSummary()
+        maxIterationsPref.setOnPreferenceClickListener {
+            val ctx = requireContext()
+            val input = EditText(ctx).apply {
+                inputType = InputType.TYPE_CLASS_NUMBER
+                setText(settings.maxIterations.toString())
+                selectAll()
+            }
+            val container = LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                val pad = (16 * resources.displayMetrics.density).toInt()
+                setPadding(pad, pad / 2, pad, 0)
+                addView(TextView(ctx).apply {
+                    text = getString(R.string.agent_max_iterations_summary)
+                    setPadding(0, 0, 0, pad / 2)
+                })
+                addView(input)
+            }
+            AlertDialog.Builder(ctx)
+                .setTitle(R.string.agent_max_iterations_title)
+                .setView(container)
+                .setPositiveButton(R.string.okay) { _, _ ->
+                    val value = input.text.toString().toIntOrNull() ?: 10
+                    settings.maxIterations = maxOf(0, value)
+                    updateMaxIterationsSummary()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+            true
+        }
+    }
+
+    private fun updateMaxIterationsSummary() {
+        val value = settings.maxIterations
+        maxIterationsPref.summary = if (value <= 0) {
+            getString(R.string.agent_max_iterations_summary) + " (unlimited)"
+        } else {
+            getString(R.string.agent_max_iterations_summary) + " ($value)"
+        }
+    }
 
     private fun setupUsage() {
         updateUsageSummary()

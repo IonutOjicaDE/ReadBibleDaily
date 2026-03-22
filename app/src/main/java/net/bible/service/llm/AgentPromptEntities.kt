@@ -17,6 +17,7 @@
 
 package net.bible.service.llm
 
+import net.bible.android.activity.R
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Delete
@@ -24,6 +25,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Update
@@ -31,6 +33,16 @@ import kotlinx.serialization.Serializable
 import net.bible.android.database.IdType
 import net.bible.service.common.CommonUtils
 import net.bible.service.llm.agent.PermissionMode
+
+/** UI-only grouping for tool permission screens. Does not affect database storage or agent logic. */
+enum class ToolCategory(val displayNameResId: Int) {
+    BIBLE_SEARCH(R.string.tool_category_bible_search),
+    BOOKMARKS(R.string.tool_category_bookmarks),
+    LABELS(R.string.tool_category_labels),
+    STUDY_PADS(R.string.tool_category_study_pads),
+    MY_DOCUMENTS(R.string.tool_category_my_documents),
+    WINDOWS(R.string.tool_category_windows),
+}
 
 /** All agent tools. Enum names are converted to camelCase for ToolRegistry / LLM function calling. */
 @Serializable
@@ -47,6 +59,9 @@ enum class AgentTool {
     GET_STUDY_PAD_CONTENT,
     SEARCH_STUDY_PADS,
     GET_INSTALLED_DOCUMENTS,
+    GET_MY_DOCUMENTS,
+    GET_MY_DOCUMENT_PAGES,
+    GET_WINDOWS,
 
     // Write tools
     CREATE_BOOKMARK,
@@ -54,9 +69,21 @@ enum class AgentTool {
     UPDATE_BOOKMARK_NOTE,
     CREATE_LABEL,
     ADD_LABEL_TO_BOOKMARK,
+    DELETE_BOOKMARK,
+    DELETE_LABEL,
+    REMOVE_LABEL_FROM_BOOKMARK,
     ADD_STUDY_PAD_ENTRY,
+    UPDATE_STUDYPAD_TEXT_ENTRY,
+    CREATE_MY_DOCUMENT,
+    ADD_MY_DOCUMENT_PAGE,
+    EDIT_MY_DOCUMENT_PAGE,
+    DELETE_MY_DOCUMENT_PAGE,
+    CREATE_WINDOW,
+    MANAGE_WINDOW,
+    SET_WINDOW_DOCUMENT,
     SET_DOCUMENT_TITLE,
     FINISH_WITH_STUDY_PAD,
+    FINISH_WITH_MY_DOCUMENT_PAGE,
     FINISH_WITHOUT_DOCUMENT;
 
     /** camelCase name used in LLM function calling (e.g. GET_VERSE_CONTENT -> "getVerseContent") */
@@ -110,6 +137,10 @@ data class LlmProviderConfig(
     @ColumnInfo(defaultValue = "0") val isDefault: Boolean = false,
     /** Display ordering */
     @ColumnInfo(defaultValue = "0") val orderNumber: Int = 0,
+    /** Custom pricing: input cost per million tokens (0.0 = use built-in pricing) */
+    @ColumnInfo(defaultValue = "0.0") val customInputPrice: Double = 0.0,
+    /** Custom pricing: output cost per million tokens (0.0 = use built-in pricing) */
+    @ColumnInfo(defaultValue = "0.0") val customOutputPrice: Double = 0.0,
 ) {
     fun resolveProvider(): LlmProvider = try {
         LlmProvider.valueOf(providerType)
@@ -225,8 +256,12 @@ data class AgentPrompt(
     @ColumnInfo(defaultValue = "NULL") var modelOverride: String? = null,
     /** FK → LlmProviderConfig. null = use default provider. ON DELETE SET_NULL. */
     @ColumnInfo(defaultValue = "NULL") var providerConfigId: IdType? = null,
-    /** When true, show an edit dialog for the prompt text before sending it to the LLM. */
-    @ColumnInfo(defaultValue = "0") var editBeforeRun: Boolean = false,
+    /** When true, show a text field for the user to specify the task before running the prompt. */
+    @ColumnInfo(name = "editBeforeRun", defaultValue = "0") var specifyBeforeRun: Boolean = false,
+    /** When true, the prompt does not create a document — results appear only in the agent log. */
+    @ColumnInfo(defaultValue = "0") var noDocumentCreation: Boolean = false,
+    /** Per-prompt max iterations override. null = use global default, 0 = unlimited. */
+    @ColumnInfo(defaultValue = "NULL") var maxIterations: Int? = null,
 )
 
 @Dao
@@ -254,4 +289,80 @@ interface AgentPromptDao {
 
     @Query("DELETE FROM AgentPrompt WHERE id = :id")
     fun deleteById(id: IdType)
+}
+
+/**
+ * Singleton entity for global AI settings that are synced across devices.
+ * Uses a fixed ID so sync recognizes it as the same row on all devices.
+ */
+@Entity
+data class GlobalAiSettings(
+    @PrimaryKey val id: IdType = SINGLETON_ID,
+    @ColumnInfo(defaultValue = "NULL") val agentPermissionMode: PermissionMode? = null,
+    @ColumnInfo(defaultValue = "NULL") val permanentlyAllowedTools: Set<AgentTool>? = null,
+    @ColumnInfo(defaultValue = "NULL") val permanentlyDeniedTools: Set<AgentTool>? = null,
+    val aiExcludedDocuments: Set<String> = emptySet(),
+    @ColumnInfo(defaultValue = "4000") val commentaryMaxResponseTokens: Int = 4000,
+    val hiddenBuiltInPrompts: Set<IdType> = emptySet(),
+    @ColumnInfo(defaultValue = "10") val maxIterations: Int = 10,
+) {
+    companion object {
+        /** Distinct from GlobalTextDisplaySettings SINGLETON_ID (…0001) in WorkspaceDB. */
+        val SINGLETON_ID = IdType.fromString("a1000000-0000-0000-0000-000000000001")
+    }
+}
+
+@Dao
+interface GlobalAiSettingsDao {
+    @Query("SELECT * FROM GlobalAiSettings LIMIT 1")
+    fun get(): GlobalAiSettings?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun set(settings: GlobalAiSettings)
+}
+
+/**
+ * Per-device cumulative LLM usage record. Each device writes only its own row
+ * (keyed by providerConfigId + deviceId), and the UI sums across all devices for totals.
+ * This avoids data loss with last-writer-wins sync for cumulative counters.
+ *
+ * Uses a standard IdType PK for sync compatibility (LogEntry expects IdType entity IDs).
+ * The unique index on (providerConfigId, deviceId) ensures one row per device per provider.
+ */
+@Entity(
+    foreignKeys = [ForeignKey(
+        entity = LlmProviderConfig::class,
+        parentColumns = ["id"],
+        childColumns = ["providerConfigId"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [
+        Index("providerConfigId"),
+        Index(value = ["providerConfigId", "deviceId"], unique = true),
+    ]
+)
+data class LlmUsageRecord(
+    @PrimaryKey val id: IdType = IdType(),
+    val providerConfigId: IdType,
+    val deviceId: String,
+    @ColumnInfo(defaultValue = "0") val inputTokens: Long = 0,
+    @ColumnInfo(defaultValue = "0") val outputTokens: Long = 0,
+    @ColumnInfo(defaultValue = "0") val cacheCreationTokens: Long = 0,
+    @ColumnInfo(defaultValue = "0") val cacheReadTokens: Long = 0,
+    @ColumnInfo(defaultValue = "0.0") val estimatedCostUsd: Double = 0.0,
+)
+
+@Dao
+interface LlmUsageRecordDao {
+    @Query("SELECT * FROM LlmUsageRecord WHERE providerConfigId = :configId")
+    fun getByConfig(configId: IdType): List<LlmUsageRecord>
+
+    @Query("SELECT * FROM LlmUsageRecord WHERE providerConfigId = :configId AND deviceId = :deviceId")
+    fun get(configId: IdType, deviceId: String): LlmUsageRecord?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsert(record: LlmUsageRecord)
+
+    @Query("DELETE FROM LlmUsageRecord WHERE providerConfigId = :configId")
+    fun deleteByConfig(configId: IdType)
 }

@@ -21,11 +21,13 @@ import net.bible.android.BibleApplication
 import net.bible.android.activity.R
 import net.bible.android.database.IdType
 import net.bible.service.llm.AgentTool
+import net.bible.service.llm.ToolCategory
 import net.bible.service.llm.agent.AgentContext
 import net.bible.service.llm.tools.Tool
 import net.bible.service.llm.tools.ToolResult
 import net.bible.service.llm.tools.decodeArgs
 import net.bible.service.llm.tools.shortId
+import net.bible.service.llm.tools.typedSuccess
 import net.bible.service.llm.tools.yamlToJson
 import kotlinx.serialization.Serializable
 import org.json.JSONObject
@@ -42,7 +44,11 @@ object AddLabelToBookmarkTool : Tool {
         val labelId: IdType = IdType.empty()
     )
 
+    @Serializable
+    data class Result(val bookmarkId: IdType, val labelId: IdType, val labelName: String)
+
     override val agentTool = AgentTool.ADD_LABEL_TO_BOOKMARK
+    override val category = ToolCategory.LABELS
 
     override val description = """
         Add a label to an existing bookmark.
@@ -117,11 +123,11 @@ object AddLabelToBookmarkTool : Tool {
             currentLabelIds.add(args.labelId)
             bookmarkControl.addOrUpdateBibleBookmark(bookmark, labels = currentLabelIds)
 
-            ToolResult.success {
-                put("bookmarkId", args.bookmarkId.toString())
-                put("labelId", args.labelId.toString())
-                put("labelName", label.name)
-            }
+            typedSuccess(Result(
+                bookmarkId = args.bookmarkId,
+                labelId = args.labelId,
+                labelName = label.name
+            ))
         } catch (e: Exception) {
             ToolResult.error("Failed to add label: ${e.message}", "ADD_ERROR")
         }

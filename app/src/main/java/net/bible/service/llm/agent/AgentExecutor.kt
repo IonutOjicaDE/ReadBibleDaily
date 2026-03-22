@@ -33,6 +33,7 @@ import net.bible.android.view.activity.base.CurrentActivityHolder
 import net.bible.android.view.activity.base.Dialogs
 import net.bible.service.common.CommonUtils
 import net.bible.service.common.useSaxBuilder
+import net.bible.service.llm.tools.AiDocumentFilter
 import net.bible.service.llm.tools.OsisToPlainText
 import net.bible.service.llm.AgentPrompt
 import net.bible.service.llm.ChatMessage
@@ -48,6 +49,7 @@ import net.bible.service.llm.tools.ToolRegistry
 import net.bible.service.llm.tools.ToolResult
 import net.bible.service.llm.tools.normalizeLlmText
 import net.bible.service.llm.tools.write.SetDocumentTitleTool
+import net.bible.service.llm.tools.write.FinishWithMyDocumentPageTool
 import net.bible.service.llm.tools.write.FinishWithStudyPadTool
 import net.bible.service.llm.tools.write.FinishWithoutDocumentTool
 import net.bible.service.llm.tools.ToolDefinition
@@ -61,8 +63,14 @@ private const val DEFAULT_MAX_ITERATIONS = 10
 /**
  * Computes the set of tools to exclude from LLM tool definitions.
  *
- * Priority: globally denied + per-prompt denied, minus per-prompt allowed (override).
- * This allows per-prompt settings to re-enable globally disabled tools.
+ * When [promptAllowedTools] is set (non-null), only those tools are available to the prompt —
+ * all others are excluded. This prevents new tools from automatically becoming available to
+ * existing prompts. When [promptAllowedTools] is null, all tools are available (minus denied).
+ *
+ * [promptAllowedTools] also overrides [permanentlyDeniedTools] for the tools it contains,
+ * allowing built-in prompts to use tools that the user has globally disabled.
+ *
+ * Structural tools (setDocumentTitle, finishWithStudyPad, etc.) are never excluded.
  */
 fun computeExcludedTools(
     permanentlyDeniedTools: Set<AgentTool>,
@@ -71,8 +79,13 @@ fun computeExcludedTools(
 ): Set<AgentTool> {
     val excluded = mutableSetOf<AgentTool>()
     excluded.addAll(permanentlyDeniedTools)
+    if (promptAllowedTools != null) {
+        excluded.addAll(AgentTool.entries.toSet() - promptAllowedTools)
+    }
     promptDeniedTools?.let { excluded.addAll(it) }
+    // Prompt-level allow overrides global deny for tools in the allowlist
     promptAllowedTools?.let { excluded.removeAll(it) }
+    excluded.removeAll(ToolRegistry.STRUCTURAL_TOOLS)
     return excluded
 }
 
@@ -92,6 +105,12 @@ private sealed class ProcessToolsResult {
     data class FinishWithStudyPad(
         val labelId: IdType,
         val scrollToEntryId: IdType?,
+        val message: String,
+        val context: AgentContext
+    ) : ProcessToolsResult()
+    data class FinishWithMyDocumentPage(
+        val documentInitials: String,
+        val pageKey: String,
         val message: String,
         val context: AgentContext
     ) : ProcessToolsResult()
@@ -149,88 +168,110 @@ class AgentExecutor(
         rawLlmLog: RawLlmLog? = null
     ) {
         var iteration = 0
+        var iterationLimit = if (maxIterations > 0) maxIterations else Int.MAX_VALUE
         var currentContext = context  // Mutable context for session permission tracking
         var totalUsage = LlmUsage()
         val resolved = LlmProcessingService.resolveFromConfig(llmConfig)
         val loopHeaders = LlmProcessingService.buildProviderExtraHeaders(resolved.providerConfig)
 
-        while (iteration < maxIterations) {
-            iteration++
-            emit(AgentEvent.Iteration(iteration))
-            currentCoroutineContext().ensureActive()
+        loop@ while (true) {
+            while (iteration < iterationLimit) {
+                iteration++
+                emit(AgentEvent.Iteration(iteration))
+                currentCoroutineContext().ensureActive()
 
-            val (parsed, callUsage) = callLlmAndParse(adapter, messages, tools, iteration, llmConfig, loopHeaders, rawLlmLog)
-            totalUsage += callUsage
+                val (parsed, callUsage) = callLlmAndParse(adapter, messages, tools, iteration, llmConfig, loopHeaders, rawLlmLog)
+                totalUsage += callUsage
+                rawLlmLog?.addUsageForIteration(iteration, callUsage, resolved.model)
 
-            // Emit per-operation usage
-            if (callUsage.totalTokens > 0) {
-                emit(AgentEvent.ApiCallCompleted(callUsage, resolved.model))
-            }
+                // Emit per-operation usage
+                if (callUsage.totalTokens > 0) {
+                    emit(AgentEvent.ApiCallCompleted(callUsage, resolved.model))
+                }
 
-            when (parsed) {
-                is ParsedResponse.ToolCalls -> {
-                    when (val result = processToolCalls(adapter, parsed, messages, currentContext, rawLlmLog)) {
-                        is ProcessToolsResult.Continue -> {
-                            currentContext = result.context
-                        }
-                        is ProcessToolsResult.FinishWithDocument -> {
-                            Log.d(TAG, "Agent finished with document: ${result.title}")
-                            emit(AgentEvent.CompletedWithDocument(
-                                title = result.title,
-                                content = result.content,
-                                totalIterations = iteration,
-                                usage = totalUsage,
-                                model = resolved.model
-                            ))
-                            return
-                        }
-                        is ProcessToolsResult.FinishWithoutDocument -> {
-                            Log.d(TAG, "Agent finished without document: ${result.message}")
-                            emit(AgentEvent.CompletedWithoutDocument(
-                                message = result.message,
-                                totalIterations = iteration,
-                                usage = totalUsage,
-                                model = resolved.model
-                            ))
-                            return
-                        }
-                        is ProcessToolsResult.FinishWithStudyPad -> {
-                            Log.d(TAG, "Agent finished with StudyPad: ${result.labelId}")
-                            emit(AgentEvent.CompletedWithStudyPad(
-                                labelId = result.labelId,
-                                scrollToEntryId = result.scrollToEntryId,
-                                message = result.message,
-                                totalIterations = iteration,
-                                usage = totalUsage,
-                                model = resolved.model
-                            ))
-                            return
+                when (parsed) {
+                    is ParsedResponse.ToolCalls -> {
+                        when (val result = processToolCalls(adapter, parsed, messages, currentContext, rawLlmLog)) {
+                            is ProcessToolsResult.Continue -> {
+                                currentContext = result.context
+                            }
+                            is ProcessToolsResult.FinishWithDocument -> {
+                                Log.d(TAG, "Agent finished with document: ${result.title}")
+                                emit(AgentEvent.CompletedWithDocument(
+                                    title = result.title,
+                                    content = result.content,
+                                    totalIterations = iteration,
+                                    usage = totalUsage,
+                                    model = resolved.model
+                                ))
+                                return
+                            }
+                            is ProcessToolsResult.FinishWithoutDocument -> {
+                                Log.d(TAG, "Agent finished without document: ${result.message}")
+                                emit(AgentEvent.CompletedWithoutDocument(
+                                    message = result.message,
+                                    totalIterations = iteration,
+                                    usage = totalUsage,
+                                    model = resolved.model
+                                ))
+                                return
+                            }
+                            is ProcessToolsResult.FinishWithStudyPad -> {
+                                Log.d(TAG, "Agent finished with StudyPad: ${result.labelId}")
+                                emit(AgentEvent.CompletedWithStudyPad(
+                                    labelId = result.labelId,
+                                    scrollToEntryId = result.scrollToEntryId,
+                                    message = result.message,
+                                    totalIterations = iteration,
+                                    usage = totalUsage,
+                                    model = resolved.model
+                                ))
+                                return
+                            }
+                            is ProcessToolsResult.FinishWithMyDocumentPage -> {
+                                Log.d(TAG, "Agent finished with My Document page: ${result.documentInitials}/${result.pageKey}")
+                                emit(AgentEvent.CompletedWithMyDocumentPage(
+                                    documentInitials = result.documentInitials,
+                                    pageKey = result.pageKey,
+                                    message = result.message,
+                                    totalIterations = iteration,
+                                    usage = totalUsage,
+                                    model = resolved.model
+                                ))
+                                return
+                            }
                         }
                     }
-                }
-                is ParsedResponse.TextResponse -> {
-                    Log.d(TAG, "LLM returned final text response without tool call")
-                    val normalizedContent = normalizeLlmText(parsed.content)
-                    emit(AgentEvent.TextResponse(
-                        text = normalizedContent,
-                        isFinal = true
-                    ))
-                    emit(AgentEvent.Completed(
-                        response = normalizedContent,
-                        totalIterations = iteration,
-                        usage = totalUsage,
-                        model = resolved.model
-                    ))
-                    return
-                }
-                is ParsedResponse.ParseError -> {
-                    emit(AgentEvent.Error(application.getString(R.string.llm_parse_error, parsed.error)))
-                    return
+                    is ParsedResponse.TextResponse -> {
+                        Log.d(TAG, "LLM returned final text response without tool call")
+                        val normalizedContent = normalizeLlmText(parsed.content)
+                        emit(AgentEvent.TextResponse(
+                            text = normalizedContent,
+                            isFinal = true
+                        ))
+                        emit(AgentEvent.Completed(
+                            response = normalizedContent,
+                            totalIterations = iteration,
+                            usage = totalUsage,
+                            model = resolved.model
+                        ))
+                        return
+                    }
+                    is ParsedResponse.ParseError -> {
+                        emit(AgentEvent.Error(application.getString(R.string.llm_parse_error, parsed.error)))
+                        return
+                    }
                 }
             }
-        }
 
-        emit(AgentEvent.Error(application.getString(R.string.llm_error_max_iterations, maxIterations)))
+            // Max iterations reached — ask user if they want to continue
+            if (maxIterations > 0 && showContinueDialog(iteration, maxIterations)) {
+                iterationLimit += maxIterations
+                continue@loop
+            }
+            break
+        }
+        emit(AgentEvent.Error(application.getString(R.string.llm_error_max_iterations, iterationLimit)))
     }
 
     private suspend fun callLlmAndParse(
@@ -291,7 +332,7 @@ class AgentExecutor(
             if (execResult.grantAllToolsPermission) {
                 currentContext = currentContext.withAllToolsPermissionGranted()
             } else if (execResult.grantSessionPermission ||
-                ((currentContext.promptPermissionMode ?: CommonUtils.settings.agentPermissionMode) != PermissionMode.ALWAYS_ASK &&
+                ((currentContext.promptPermissionMode ?: CommonUtils.aiSettings.agentPermissionMode) != PermissionMode.ALWAYS_ASK &&
                  result is ToolResult.Success && ToolRegistry.get(toolCall.tool)?.requiresPermission == true)) {
                 currentContext = currentContext.withWritePermissionGranted()
             }
@@ -304,25 +345,34 @@ class AgentExecutor(
             if (finishResult == null && result is ToolResult.Success) {
                 when (toolCall.tool) {
                     AgentTool.SET_DOCUMENT_TITLE -> {
-                        val data = result.data as? SetDocumentTitleTool.Result
-                        val title = data?.title ?: application.getString(R.string.llm_default_document_title)
-                        val content = parsed.content?.takeIf { it.isNotBlank() }
-
-                        if (content == null) {
-                            Log.w(TAG, "setDocumentTitle called but no text content provided alongside the tool call")
-                            toolResults[toolResults.lastIndex] = ToolResultBlock(
-                                toolCallId = toolCall.id, content = ToolResult.error(
-                                    "Content is required. Output your markdown content as text alongside the setDocumentTitle tool call.",
-                                    "MISSING_CONTENT"
-                                ).toJson()
-                            )
-                        } else {
-                            Log.d(TAG, "Agent finished with document: $title (content from text response, ${content.length} chars)")
-                            finishResult = ProcessToolsResult.FinishWithDocument(
-                                title = title,
-                                content = normalizeLlmText(content),
+                        if (currentContext.noDocumentCreation) {
+                            // Enforce: block document creation, finish immediately without new iteration
+                            Log.i(TAG, "setDocumentTitle blocked: noDocumentCreation is enabled")
+                            finishResult = ProcessToolsResult.FinishWithoutDocument(
+                                message = application.getString(R.string.llm_no_document_creation_intercepted),
                                 context = currentContext
                             )
+                        } else {
+                            val data = result.data as? SetDocumentTitleTool.Result
+                            val title = data?.title ?: application.getString(R.string.llm_default_document_title)
+                            val content = parsed.content?.takeIf { it.isNotBlank() }
+
+                            if (content == null) {
+                                Log.w(TAG, "setDocumentTitle called but no text content provided alongside the tool call")
+                                toolResults[toolResults.lastIndex] = ToolResultBlock(
+                                    toolCallId = toolCall.id, content = ToolResult.error(
+                                        "Content is required. Output your markdown content as text alongside the setDocumentTitle tool call.",
+                                        "MISSING_CONTENT"
+                                    ).toJson()
+                                )
+                            } else {
+                                Log.d(TAG, "Agent finished with document: $title (content from text response, ${content.length} chars)")
+                                finishResult = ProcessToolsResult.FinishWithDocument(
+                                    title = title,
+                                    content = normalizeLlmText(content),
+                                    context = currentContext
+                                )
+                            }
                         }
                     }
                     AgentTool.FINISH_WITHOUT_DOCUMENT -> {
@@ -345,7 +395,28 @@ class AgentExecutor(
                             context = currentContext
                         )
                     }
-                    else -> { /* Not a finish tool — no special handling */ }
+                    AgentTool.FINISH_WITH_MY_DOCUMENT_PAGE -> {
+                        val data = result.data as? FinishWithMyDocumentPageTool.Result
+                        finishResult = ProcessToolsResult.FinishWithMyDocumentPage(
+                            documentInitials = data?.documentInitials ?: "",
+                            pageKey = data?.pageKey ?: "",
+                            message = data?.message ?: application.getString(R.string.llm_default_task_completed),
+                            context = currentContext
+                        )
+                    }
+                    else -> {
+                        // Check for taskComplete flag on non-structural tools
+                        val rawArgs = try { JSONObject(toolCall.arguments) } catch (_: Exception) { null }
+                        if (rawArgs?.optBoolean("taskComplete", false) == true) {
+                            val message = rawArgs.optString("taskCompleteMessage", "").ifBlank {
+                                application.getString(R.string.llm_default_task_completed)
+                            }
+                            finishResult = ProcessToolsResult.FinishWithoutDocument(
+                                message = message,
+                                context = currentContext
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -380,8 +451,43 @@ class AgentExecutor(
             if (context.verseRefString != null) {
                 append("Selected verse reference: ${context.verseRefString}\n")
             }
+            if (context.selectionStartOffset != null && context.selectionEndOffset != null) {
+                append("The user has highlighted specific text within a verse. " +
+                    "Character offsets (startOffset/endOffset) are provided — these are character positions " +
+                    "from the start of the verse text in the current translation (${context.activeDocumentInitials}). " +
+                    "Use createBookmark with startOffset, endOffset, and bookInitials to create a sub-verse bookmark " +
+                    "covering exactly the highlighted text, or adjust the offsets as needed.\n")
+            }
             if (context.activeLabelId != null) {
                 append("Active label/StudyPad ID: ${context.activeLabelId}\n")
+            }
+
+            if (context.noDocumentCreation) {
+                append("\nIMPORTANT: This prompt is configured for action-only mode (no document creation). ")
+                append("Do NOT call setDocumentTitle. When you are done, call finishWithoutDocument ")
+                append("with a brief summary of what you did. Any text output will appear only in the activity log.\n")
+            }
+
+            if (context.noteEditorEntityType != null) {
+                append("\n--- Note Editor Context ---\n")
+                append("Entity type: ${context.noteEditorEntityType}\n")
+                append("Entity ID: ${context.noteEditorEntityId}\n")
+                append("Content type: ${context.noteEditorContentType}\n")
+                when (context.noteEditorEntityType) {
+                    "BOOKMARK_NOTE" -> append("Use updateBookmarkNote with this bookmark ID to save changes.\n")
+                    "STUDYPAD_TEXT" -> append("Use updateStudyPadTextEntry with this entry ID to save changes.\n")
+                    "MY_DOCUMENT_PAGE" -> append("Use editMyDocumentPage with this page ID to save changes.\n")
+                }
+            }
+
+            val prefGreek = AiDocumentFilter.preferredStrongsGreek()
+            val prefHebrew = AiDocumentFilter.preferredStrongsHebrew()
+            val prefMorph = AiDocumentFilter.preferredRobinsonMorphology()
+            if (prefGreek != null || prefHebrew != null || prefMorph != null) {
+                append("\nPreferred reference dictionaries:\n")
+                prefHebrew?.let { append("- Strong's Hebrew: $it\n") }
+                prefGreek?.let { append("- Strong's Greek: $it\n") }
+                prefMorph?.let { append("- Greek morphology: $it\n") }
             }
         }
     }
@@ -391,10 +497,19 @@ class AgentExecutor(
             // The prompt template
             append(prompt.promptTemplate)
 
+            // Add user's task specification from "Specify before run" dialog
+            if (context.userSpecification != null) {
+                append("\n\n--- User's Task Specification ---\n")
+                append(context.userSpecification)
+            }
+
             // Add highlighted text if user selected specific words/phrases
             if (context.highlightedText != null) {
                 append("\n\n--- User's Highlighted Text (FOCUS ON THIS) ---\n")
                 append(context.highlightedText)
+                if (context.selectionStartOffset != null && context.selectionEndOffset != null) {
+                    append("\n(Text offsets within verse: startOffset=${context.selectionStartOffset}, endOffset=${context.selectionEndOffset})")
+                }
             }
 
             // Add selected content if available (converted from OSIS XML to plain text)
@@ -410,6 +525,12 @@ class AgentExecutor(
             } else if (context.selectedText != null) {
                 append("\n\n--- Context ---\n")
                 append(context.selectedText)
+            }
+
+            // Add note editor content if editing a note
+            if (context.noteEditorContent != null) {
+                append("\n\n--- Current Note Content ---\n")
+                append(context.noteEditorContent)
             }
 
             // For regeneration: include previous response and additional instructions
@@ -452,10 +573,10 @@ class AgentExecutor(
             ))
         }
 
-        // Permission check for write tools
+        // Permission check for write tools (dynamic per-invocation check)
         var grantSession = false
         var grantAllTools = false
-        if (tool.requiresPermission) {
+        if (tool.requiresPermissionForCall(arguments, context)) {
             when (checkWritePermission(tool, arguments, context)) {
                 DialogResult.Allowed -> { /* proceed */ }
                 DialogResult.AllowedForSession -> { grantSession = true }
@@ -497,9 +618,9 @@ class AgentExecutor(
         return when (checkPermission(
             tool = tool.agentTool,
             settings = PermissionSettings(
-                globalMode = CommonUtils.settings.agentPermissionMode,
-                permanentlyAllowedTools = CommonUtils.settings.permanentlyAllowedTools,
-                permanentlyDeniedTools = CommonUtils.settings.permanentlyDeniedTools,
+                globalMode = CommonUtils.aiSettings.agentPermissionMode,
+                permanentlyAllowedTools = CommonUtils.aiSettings.permanentlyAllowedTools,
+                permanentlyDeniedTools = CommonUtils.aiSettings.permanentlyDeniedTools,
             ),
             promptAllowedTools = context.promptAllowedTools,
             promptDeniedTools = context.promptDeniedTools,
@@ -521,7 +642,7 @@ class AgentExecutor(
      */
     private fun computeExcludedTools(context: AgentContext): Set<AgentTool> =
         computeExcludedTools(
-            permanentlyDeniedTools = CommonUtils.settings.permanentlyDeniedTools,
+            permanentlyDeniedTools = CommonUtils.aiSettings.permanentlyDeniedTools,
             promptDeniedTools = context.promptDeniedTools,
             promptAllowedTools = context.promptAllowedTools,
         )
@@ -557,15 +678,35 @@ class AgentExecutor(
                     title = activity.getString(R.string.permission_always_allow_confirm_title)
                 )
                 if (confirmed) {
-                    val settings = CommonUtils.settings
-                    settings.permanentlyAllowedTools += tool.agentTool
+                    val aiSettings = CommonUtils.aiSettings
+                    aiSettings.permanentlyAllowedTools += tool.agentTool
                     // Also remove from denied set if present
-                    settings.permanentlyDeniedTools -= tool.agentTool
+                    aiSettings.permanentlyDeniedTools -= tool.agentTool
                 }
                 // Allow this operation regardless of confirmation
                 DialogResult.Allowed
             }
             Dialogs.AgentPermissionResult.DENY -> DialogResult.Denied
         }
+    }
+
+    /**
+     * Shows a dialog asking the user whether to continue execution after reaching the iteration limit.
+     * Follows the same activity-lookup pattern as [showPermissionDialog].
+     */
+    private suspend fun showContinueDialog(currentIteration: Int, increment: Int): Boolean {
+        var activity = CurrentActivityHolder.currentActivity
+        if (activity == null) {
+            Log.d(TAG, "No current activity for continue dialog, waiting...")
+            while (activity == null) {
+                delay(500)
+                activity = CurrentActivityHolder.currentActivity
+            }
+        }
+        return Dialogs.simpleQuestion(
+            activity,
+            message = application.getString(R.string.llm_continue_iterations_message, currentIteration, increment),
+            title = application.getString(R.string.llm_continue_iterations_title)
+        )
     }
 }

@@ -19,14 +19,18 @@ package net.bible.service.llm.tools.read
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.bible.android.BibleApplication.Companion.application
 import net.bible.android.activity.R
 import net.bible.service.llm.AgentTool
+import net.bible.service.llm.ToolCategory
 import net.bible.service.llm.agent.AgentContext
 import net.bible.service.llm.tools.Tool
 import net.bible.service.llm.tools.ToolResult
 import net.bible.service.llm.tools.decodeArgs
+import net.bible.service.llm.tools.typedSuccess
 import net.bible.service.llm.tools.yamlToJson
 import kotlinx.serialization.Serializable
+import net.bible.service.llm.tools.AiDocumentFilter
 import net.bible.service.sword.SwordContentFacade
 import org.crosswire.jsword.book.Books
 import org.crosswire.jsword.book.sword.SwordBook
@@ -48,7 +52,25 @@ object SearchBibleTool : Tool {
         val offset: Int = 0,
     )
 
+    @Serializable
+    data class SearchResultEntry(
+        val book: String,
+        val verseRef: String,
+        val verseName: String
+    )
+
+    @Serializable
+    data class Result(
+        val query: String,
+        val totalResults: Int,
+        val returnedResults: Int,
+        val offset: Int,
+        val hasMore: Boolean,
+        val results: List<SearchResultEntry>
+    )
+
     override val agentTool = AgentTool.SEARCH_BIBLE
+    override val category = ToolCategory.BIBLE_SEARCH
     override val displayNameResId = R.string.tool_search_bible
 
     private data class VerseResult(val book: String, val osisRef: String, val verseName: String)
@@ -57,11 +79,16 @@ object SearchBibleTool : Tool {
     private var cachedSearch: CachedSearch? = null
 
     override val description = """
-        Search for words or phrases in Bible translations.
-        Returns a list of verses that match the search query.
-        The search uses a full-text index and supports basic search operations.
-        Note: Only indexed books can be searched.
+        Search for words or phrases in Bible translations using a Lucene full-text index.
+        Returns a list of verses matching the query. Only indexed books can be searched.
         Supports pagination via offset parameter.
+
+        Query syntax:
+        - Single word: love
+        - Exact phrase: "the Lord is my shepherd"
+        - Boolean: love AND truth, mercy OR grace, love NOT hate
+        - Prefix wildcard: redeem* (matches redeem, redeemed, redeemer, etc.)
+        - Required/excluded: +faith -works
     """.trimIndent()
 
     override val parametersSchema = yamlToJson("""
@@ -69,7 +96,7 @@ object SearchBibleTool : Tool {
         properties:
           query:
             type: string
-            description: Search query - a word or phrase to search for
+            description: "Search query. Supports Lucene syntax: single words, \"exact phrases\" in quotes, boolean operators (AND, OR, NOT), prefix wildcards (redeem*), and required/excluded terms (+word, -word)."
           books:
             type: array
             items:
@@ -99,11 +126,9 @@ object SearchBibleTool : Tool {
     }
 
     override fun formatResultForLog(result: ToolResult): String? {
-        if (result !is ToolResult.Success || result.data !is JSONObject) return null
-        val data = result.data as JSONObject
-        val returned = data.optInt("returnedResults", -1)
-        val total = data.optInt("totalResults", -1)
-        return if (returned >= 0 && total >= 0) "$returned/$total results" else null
+        if (result !is ToolResult.Success || result.data !is Result) return null
+        val data = result.data as Result
+        return application.getString(R.string.tool_log_search_results, data.returnedResults, data.totalResults)
     }
 
     override suspend fun execute(arguments: JSONObject, context: AgentContext): ToolResult {
@@ -123,9 +148,9 @@ object SearchBibleTool : Tool {
         // Get books to search
         val bookInitials = args.books.ifEmpty {
             // Find first indexed Bible
-            val indexedBible = Books.installed().books
-                .filterIsInstance<SwordBook>()
-                .firstOrNull { it.indexStatus == IndexStatus.DONE }
+            val indexedBible = AiDocumentFilter.filterAllowed(
+                Books.installed().books.filterIsInstance<SwordBook>()
+            ).firstOrNull { it.indexStatus == IndexStatus.DONE }
 
             if (indexedBible == null) {
                 return ToolResult.error("No indexed Bible found. Please index a Bible first.", "NO_INDEX")
@@ -141,24 +166,15 @@ object SearchBibleTool : Tool {
                     }
 
                 val page = allResults.drop(offset).take(maxResults)
-                val results = JSONArray().apply {
-                    for (r in page) {
-                        put(JSONObject().apply {
-                            put("book", r.book)
-                            put("verseRef", r.osisRef)
-                            put("verseName", r.verseName)
-                        })
-                    }
-                }
 
-                ToolResult.success {
-                    put("query", query)
-                    put("totalResults", allResults.size)
-                    put("returnedResults", page.size)
-                    put("offset", offset)
-                    put("hasMore", offset + page.size < allResults.size)
-                    put("results", results)
-                }
+                typedSuccess(Result(
+                    query = query,
+                    totalResults = allResults.size,
+                    returnedResults = page.size,
+                    offset = offset,
+                    hasMore = offset + page.size < allResults.size,
+                    results = page.map { SearchResultEntry(it.book, it.osisRef, it.verseName) }
+                ))
             }
         } catch (e: Exception) {
             ToolResult.error("Search failed: ${e.message}", "SEARCH_ERROR")

@@ -17,19 +17,23 @@
 
 package net.bible.service.llm.tools.read
 
+import android.net.Uri
 import net.bible.android.BibleApplication
 import net.bible.android.control.link.isGreekDef
 import net.bible.android.control.link.isHebrewDef
 import net.bible.android.activity.R
 import net.bible.service.llm.AgentTool
+import net.bible.service.llm.ToolCategory
 import net.bible.service.llm.agent.AgentContext
 import net.bible.service.llm.tools.Tool
 import net.bible.service.llm.tools.ToolResult
 import net.bible.service.llm.tools.decodeArgs
 import net.bible.service.llm.tools.ContentFormat
 import net.bible.service.llm.tools.OsisToPlainText
+import net.bible.service.llm.tools.typedSuccess
 import net.bible.service.llm.tools.yamlToJson
 import kotlinx.serialization.Serializable
+import net.bible.service.llm.tools.AiDocumentFilter
 import net.bible.service.sword.SwordContentFacade
 import net.bible.service.sword.SwordDocumentFacade
 import org.crosswire.jsword.book.BookCategory
@@ -50,7 +54,11 @@ object GetDictionaryEntryTool : Tool {
         val format: ContentFormat = ContentFormat.TEXT
     )
 
+    @Serializable
+    data class Result(val dictionary: String, val dictionaryName: String, val key: String, val linkUrl: String, val text: String? = null, val osisXml: String? = null)
+
     override val agentTool = AgentTool.GET_DICTIONARY_ENTRY
+    override val category = ToolCategory.BIBLE_SEARCH
     override val displayNameResId = R.string.tool_get_dictionary_entry
 
     override val description = """
@@ -60,14 +68,14 @@ object GetDictionaryEntryTool : Tool {
         For Strong's numbers, use H prefix for Hebrew (e.g., 'H430' for Elohim) or G prefix for Greek (e.g., 'G2316' for Theos).
 
         IMPORTANT: The result includes a 'linkUrl' field. When referencing dictionary entries in your response,
-        ALWAYS create clickable links using this URL. Example: [G2316](sword://StrongsGreek/G2316)
+        ALWAYS create clickable links using this URL. Example: [G2316](strongs://G2316)
 
         CRITICAL: Convert ALL Strong's number references to clickable links in your response:
-        - With prefix: G1234 → [G1234](sword://StrongsGreek/G1234), H5678 → [H5678](sword://StrongsHebrew/H5678)
-        - Without prefix (in dictionary content): If you're working with Greek dictionary (StrongsGreek),
-          bare numbers like "575" or "4724" refer to Greek entries → [G575](sword://StrongsGreek/G575)
-          Similarly for Hebrew dictionary (StrongsHebrew) → [H575](sword://StrongsHebrew/H575)
-        - Example: "Derived from 575 and 4724" → "Derived from [G575](sword://StrongsGreek/G575) and [G4724](sword://StrongsGreek/G4724)"
+        - With prefix: G1234 → [G1234](strongs://G1234), H5678 → [H5678](strongs://H5678)
+        - Without prefix (in dictionary content): If you're working with a Greek dictionary,
+          bare numbers like "575" or "4724" refer to Greek entries → [G575](strongs://G575)
+          Similarly for Hebrew dictionary → [H575](strongs://H575)
+        - Example: "Derived from 575 and 4724" → "Derived from [G575](strongs://G575) and [G4724](strongs://G4724)"
     """.trimIndent()
 
     override val parametersSchema = yamlToJson("""
@@ -114,6 +122,10 @@ object GetDictionaryEntryTool : Tool {
         val dictionary = SwordDocumentFacade.getDocumentByInitials(dictionaryInitials)
             ?: return ToolResult.error("Dictionary not found: $dictionaryInitials", "DICT_NOT_FOUND")
 
+        if (!AiDocumentFilter.isAllowed(dictionaryInitials)) {
+            return ToolResult.error("Document excluded by user settings: $dictionaryInitials", "DOCUMENT_EXCLUDED")
+        }
+
         if (dictionary.bookCategory != BookCategory.DICTIONARY) {
             return ToolResult.error("Book is not a dictionary: $dictionaryInitials", "INVALID_BOOK_TYPE")
         }
@@ -129,19 +141,28 @@ object GetDictionaryEntryTool : Tool {
             }
 
             val fragment = SwordContentFacade.readOsisFragment(dictionary, dictKey)
-            val linkUrl = "sword://$dictionaryInitials/$key"
+            val linkUrl = when {
+                dictionary.isGreekDef || dictionary.isHebrewDef -> "strongs://$key"
+                else -> "sword://$dictionaryInitials/${Uri.encode(key)}"
+            }
 
-            ToolResult.success {
-                put("dictionary", dictionaryInitials)
-                put("dictionaryName", dictionary.name)
-                put("key", key)
-                put("linkUrl", linkUrl)
-                if (args.format == ContentFormat.XML) {
-                    val outputter = XMLOutputter(Format.getRawFormat())
-                    put("osisXml", outputter.outputString(fragment))
-                } else {
-                    put("text", OsisToPlainText.convert(fragment))
-                }
+            if (args.format == ContentFormat.XML) {
+                val outputter = XMLOutputter(Format.getRawFormat())
+                typedSuccess(Result(
+                    dictionary = dictionaryInitials,
+                    dictionaryName = dictionary.name,
+                    key = key,
+                    linkUrl = linkUrl,
+                    osisXml = outputter.outputString(fragment)
+                ))
+            } else {
+                typedSuccess(Result(
+                    dictionary = dictionaryInitials,
+                    dictionaryName = dictionary.name,
+                    key = key,
+                    linkUrl = linkUrl,
+                    text = OsisToPlainText.convert(fragment)
+                ))
             }
         } catch (e: Exception) {
             ToolResult.error("Failed to read dictionary entry: ${e.message}", "READ_ERROR")

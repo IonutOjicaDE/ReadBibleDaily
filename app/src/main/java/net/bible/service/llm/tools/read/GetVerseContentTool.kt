@@ -19,6 +19,7 @@ package net.bible.service.llm.tools.read
 
 import net.bible.android.activity.R
 import net.bible.service.llm.AgentTool
+import net.bible.service.llm.ToolCategory
 import net.bible.service.llm.agent.AgentContext
 import net.bible.service.llm.tools.Tool
 import net.bible.service.llm.tools.ToolResult
@@ -26,8 +27,10 @@ import net.bible.service.llm.tools.decodeArgs
 import net.bible.service.llm.tools.localizeVerseRef
 import net.bible.service.llm.tools.ContentFormat
 import net.bible.service.llm.tools.OsisToPlainText
+import net.bible.service.llm.tools.typedSuccess
 import net.bible.service.llm.tools.yamlToJson
 import kotlinx.serialization.Serializable
+import net.bible.service.llm.tools.AiDocumentFilter
 import net.bible.service.sword.SwordContentFacade
 import org.crosswire.jsword.book.Books
 import org.crosswire.jsword.book.sword.SwordBook
@@ -49,7 +52,11 @@ object GetVerseContentTool : Tool {
         val format: ContentFormat = ContentFormat.TEXT
     )
 
+    @Serializable
+    data class Result(val book: String, val verseRef: String, val text: String? = null, val osisXml: String? = null)
+
     override val agentTool = AgentTool.GET_VERSE_CONTENT
+    override val category = ToolCategory.BIBLE_SEARCH
     override val displayNameResId = R.string.tool_get_verse_content
 
     override val description = """
@@ -103,6 +110,10 @@ object GetVerseContentTool : Tool {
             "BOOK_NOT_FOUND"
         )
 
+        if (!AiDocumentFilter.isAllowed(bookInitials)) {
+            return ToolResult.error("Document excluded by user settings: $bookInitials", "DOCUMENT_EXCLUDED")
+        }
+
         if (book !is SwordBook) {
             return ToolResult.error("Book is not a Bible: $bookInitials", "INVALID_BOOK_TYPE")
         }
@@ -112,15 +123,19 @@ object GetVerseContentTool : Tool {
             val key = PassageKeyFactory.instance().getKey(v11n, verseRef)
             val fragment = SwordContentFacade.readOsisFragment(book, key)
 
-            ToolResult.success {
-                put("book", bookInitials)
-                put("verseRef", verseRef)
-                if (args.format == ContentFormat.XML) {
-                    val outputter = XMLOutputter(Format.getRawFormat())
-                    put("osisXml", outputter.outputString(fragment))
-                } else {
-                    put("text", OsisToPlainText.convert(fragment))
-                }
+            if (args.format == ContentFormat.XML) {
+                val outputter = XMLOutputter(Format.getRawFormat())
+                typedSuccess(Result(
+                    book = bookInitials,
+                    verseRef = verseRef,
+                    osisXml = outputter.outputString(fragment)
+                ))
+            } else {
+                typedSuccess(Result(
+                    book = bookInitials,
+                    verseRef = verseRef,
+                    text = OsisToPlainText.convert(fragment)
+                ))
             }
         } catch (e: Exception) {
             ToolResult.error("Failed to read verse content: ${e.message}", "READ_ERROR")

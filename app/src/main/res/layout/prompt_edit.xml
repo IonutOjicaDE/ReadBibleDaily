@@ -87,7 +87,7 @@
             android:inputType="textMultiLine"
             android:minLines="5" />
 
-        <!-- Edit before run -->
+        <!-- Specify before run -->
         <CheckBox
             android:id="@+id/checkEditBeforeRun"
             android:layout_width="match_parent"
@@ -100,6 +100,22 @@
             android:layout_marginStart="32dp"
             android:layout_marginBottom="16dp"
             android:text="@string/prompt_edit_before_run_description"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:textColor="?android:attr/textColorSecondary" />
+
+        <!-- No document creation -->
+        <CheckBox
+            android:id="@+id/checkNoDocumentCreation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/prompt_no_document_creation" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="32dp"
+            android:layout_marginBottom="16dp"
+            android:text="@string/prompt_no_document_creation_description"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:textColor="?android:attr/textColorSecondary" />
 
@@ -228,6 +244,31 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="32dp"
             android:text="@string/prompt_strict_context_matching_description"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:textColor="?android:attr/textColorSecondary" />
+
+        <!-- Max iterations override -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="4dp"
+            android:text="@string/prompt_max_iterations"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/maxIterationsInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/prompt_max_iterations_hint"
+            android:inputType="number"
+            android:singleLine="true" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/prompt_max_iterations_description"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:textColor="?android:attr/textColorSecondary" />
 
