@@ -46,6 +46,7 @@ import net.bible.android.view.activity.download.DownloadActivity
 import net.bible.android.view.activity.mydocuments.MyDocumentsActivity
 import net.bible.android.view.activity.navigation.ChooseDocument
 import net.bible.android.view.activity.navigation.History
+import net.bible.android.view.activity.readingplan.CustomReadingPlansActivity
 import net.bible.android.view.activity.readingplan.DailyReading
 import net.bible.android.view.activity.progress.ReadingProgressActivity
 import net.bible.android.view.activity.ai.AiSettingsActivity
@@ -196,6 +197,10 @@ class MenuCommandHandler(val mainBibleActivity: MainBibleActivity) {
                     if(currentPage.isSpeakable) {
                         handlerIntent = Intent(mainBibleActivity, BibleSpeakActivity::class.java)
                     }
+                }
+                R.id.customReadingPlansButton -> {
+                    handlerIntent = Intent(mainBibleActivity, CustomReadingPlansActivity::class.java)
+                    isHandled = true
                 }
                 R.id.dailyReadingPlanButton -> {
                     handlerIntent = Intent(mainBibleActivity, DailyReading::class.java)
