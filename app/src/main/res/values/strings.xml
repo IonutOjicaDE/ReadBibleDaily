@@ -1857,7 +1857,10 @@
     <string name="custom_reading_plan_title_hint">Enter a title</string>
     <string name="custom_reading_plan_selected_books_label">Books and chapters</string>
     <string name="custom_reading_plan_minutes_label">Reading time in minutes</string>
-    <string name="custom_reading_plan_minutes_summary">Approximately %1$d pages at the current reading speed.</string>
+    <string name="custom_reading_plan_minutes_label_with_value">Reading time in minutes: %1$d</string>
+    <string name="custom_reading_plan_minutes_min_label">5</string>
+    <string name="custom_reading_plan_minutes_max_label">60</string>
+    <string name="custom_reading_plan_minutes_summary">Approximately %1$d minutes, about %2$d pages at the current reading speed.</string>
     <string name="custom_reading_plan_period_label">Reading cadence</string>
     <string name="custom_reading_plan_days_label">Days of the week</string>
     <string name="custom_reading_plan_additional_info_label">Additional information</string>

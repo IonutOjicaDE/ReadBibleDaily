@@ -70,9 +70,13 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         outState.putSerializable(STATE_DRAFT_PLAN, draftPlan)
     }
 
+    override fun onBackPressed() {
+        confirmEditing()
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
         android.R.id.home -> {
-            cancelEditing()
+            confirmEditing()
             true
         }
         else -> super.onOptionsItemSelected(item)
@@ -163,10 +167,10 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         }
 
         val estimatedPages = CustomReadingPlanUiFormatter.estimatePages(draftPlan.minutesPerSession)
+        titleReadingTime.text = getString(R.string.custom_reading_plan_minutes_label_with_value, draftPlan.minutesPerSession)
         selectedBooksValue.text = draftPlan.selectionSummary
-        minutesSummary.text = getString(R.string.custom_reading_plan_minutes_summary, estimatedPages)
+        minutesSummary.text = getString(R.string.custom_reading_plan_minutes_summary, draftPlan.minutesPerSession, estimatedPages)
         periodSummary.text = CustomReadingPlanUiFormatter.periodLabel(this@CustomReadingPlanDetailActivity, draftPlan.periodInDays)
-        daysSummary.text = CustomReadingPlanUiFormatter.selectedDaysSummary(this@CustomReadingPlanDetailActivity, draftPlan.selectedDays)
         futureReadingSpeedSettingValue.text = getString(R.string.custom_reading_plan_reading_speed_setting_placeholder, FUTURE_READING_SPEED_SETTING_KEY)
 
         val hasSelectedDays = draftPlan.selectedDays.isNotEmpty()
