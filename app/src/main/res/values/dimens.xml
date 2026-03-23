@@ -47,4 +47,5 @@
 	<dimen name="row_divider_padding">10dip</dimen>
     <dimen name="toolbar_height">56dip</dimen>
     <dimen name="toolbar_height_monochrome">40dip</dimen>
+    <dimen name="custom_reading_plan_tree_indent_step">20dp</dimen>
 </resources>

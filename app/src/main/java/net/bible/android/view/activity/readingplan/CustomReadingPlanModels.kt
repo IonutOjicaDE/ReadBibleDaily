@@ -47,6 +47,7 @@ data class CustomReadingPlan(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
     val selectionSummary: String,
+    val selection: CustomReadingPlanSelection = CustomReadingPlanSelection(),
     val minutesPerSession: Int = 10,
     val periodInDays: Int = 1,
     val selectedDays: LinkedHashSet<ReadingWeekDay> = linkedSetOf(
