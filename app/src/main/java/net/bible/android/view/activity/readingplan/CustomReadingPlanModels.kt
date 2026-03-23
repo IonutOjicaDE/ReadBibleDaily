@@ -26,7 +26,6 @@ import java.util.UUID
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
-private const val DEFAULT_SELECTION_SUMMARY = "Orthodox Bible X: New Testament: The Gospels (Matthew, Mark, Luke, John)."
 private const val MOCK_TOTAL_WORDS = 18000
 const val APPROX_WORDS_PER_PAGE = 200
 const val FUTURE_READING_SPEED_SETTING_KEY = "reading_speed_words_per_minute"
@@ -47,7 +46,7 @@ enum class ReadingWeekDay(
 data class CustomReadingPlan(
     val id: String = UUID.randomUUID().toString(),
     val title: String,
-    val selectionSummary: String = DEFAULT_SELECTION_SUMMARY,
+    val selectionSummary: String,
     val minutesPerSession: Int = 10,
     val periodInDays: Int = 1,
     val selectedDays: LinkedHashSet<ReadingWeekDay> = linkedSetOf(
@@ -75,12 +74,15 @@ data class CustomReadingPlan(
 
 object CustomReadingPlanInMemoryRepository {
     private val plans = mutableListOf<CustomReadingPlan>()
+    private var isInitialized = false
 
     fun initialize(context: Context) {
-        if (plans.isNotEmpty()) return
+        if (isInitialized) return
+        isInitialized = true
 
         plans += CustomReadingPlan(
             title = context.getString(R.string.custom_reading_plan_new_testament),
+            selectionSummary = defaultSelectionSummary(context),
             selectedDays = linkedSetOf(
                 ReadingWeekDay.MONDAY,
                 ReadingWeekDay.TUESDAY,
@@ -92,6 +94,7 @@ object CustomReadingPlanInMemoryRepository {
         )
         plans += CustomReadingPlan(
             title = context.getString(R.string.custom_reading_plan_old_testament),
+            selectionSummary = defaultSelectionSummary(context),
             minutesPerSession = 15,
             periodInDays = 2,
             selectedDays = linkedSetOf(
@@ -126,7 +129,15 @@ object CustomReadingPlanInMemoryRepository {
     fun delete(planId: String) {
         plans.removeAll { it.id == planId }
     }
+
+    internal fun resetForTesting() {
+        plans.clear()
+        isInitialized = false
+    }
 }
+
+fun defaultSelectionSummary(context: Context): String =
+    context.getString(R.string.custom_reading_plan_default_selection_summary)
 
 object CustomReadingPlanUiFormatter {
     fun estimatePages(minutesPerSession: Int): Int {
@@ -191,7 +202,12 @@ object CustomReadingPlanUiFormatter {
     }
 
     fun buildAdditionalInfo(context: Context, plan: CustomReadingPlan): Pair<String, String> {
-        val readingDaysCount = plan.selectedDays.size.coerceAtLeast(1)
+        if (plan.selectedDays.isEmpty()) {
+            return context.getString(R.string.custom_reading_plan_info_select_weekday) to
+                context.getString(R.string.custom_reading_plan_info_select_weekday_secondary, plan.title)
+        }
+
+        val readingDaysCount = plan.selectedDays.size
         val sessionsNeeded = ceil(MOCK_TOTAL_WORDS.toDouble() / (plan.minutesPerSession * DEFAULT_READING_SPEED_WORDS_PER_MINUTE)).toInt()
         val approximateCalendarDays = ((sessionsNeeded * plan.periodInDays) / (readingDaysCount / 7.0)).roundToInt().coerceAtLeast(1)
         val completionDuration = completionDurationText(context, approximateCalendarDays)

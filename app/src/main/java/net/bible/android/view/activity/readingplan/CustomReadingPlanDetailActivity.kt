@@ -26,6 +26,7 @@ import android.text.TextWatcher
 import android.view.MenuItem
 import android.widget.CheckBox
 import android.widget.SeekBar
+import android.widget.Toast
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanDetailActivityBinding
 import net.bible.android.view.activity.base.ActivityBase
@@ -89,6 +90,7 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
 
     private fun defaultPlan(): CustomReadingPlan = CustomReadingPlan(
         title = getString(R.string.custom_reading_plan_new_title),
+        selectionSummary = defaultSelectionSummary(this),
     )
 
     private fun setupViews() = binding.apply {
@@ -167,12 +169,15 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         daysSummary.text = CustomReadingPlanUiFormatter.selectedDaysSummary(this@CustomReadingPlanDetailActivity, draftPlan.selectedDays)
         futureReadingSpeedSettingValue.text = getString(R.string.custom_reading_plan_reading_speed_setting_placeholder, FUTURE_READING_SPEED_SETTING_KEY)
 
+        val hasSelectedDays = draftPlan.selectedDays.isNotEmpty()
+
         val (completionInfo, progressInfo) = CustomReadingPlanUiFormatter.buildAdditionalInfo(
             this@CustomReadingPlanDetailActivity,
             draftPlan,
         )
         additionalInfoPrimary.text = completionInfo
         additionalInfoSecondary.text = progressInfo
+        confirmButton.isEnabled = hasSelectedDays
         deleteButton.isEnabled = !isNewPlan
     }
 
@@ -198,6 +203,11 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
     )
 
     private fun confirmEditing() {
+        if (draftPlan.selectedDays.isEmpty()) {
+            Toast.makeText(this, R.string.custom_reading_plan_select_weekday_error, Toast.LENGTH_SHORT).show()
+            return
+        }
+
         CustomReadingPlanInMemoryRepository.upsert(draftPlan)
         setResult(RESULT_OK, Intent().apply {
             putExtra(EXTRA_RESULT_ACTION, RESULT_ACTION_SAVED)

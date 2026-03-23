@@ -1851,6 +1851,7 @@
     <string name="custom_reading_plan_default_summary">2 capitole, zilnic, Lu-Sa</string>
     <string name="custom_reading_plan_create">Create your own Custom Reading Plan</string>
     <string name="custom_reading_plan_new_title">New Custom Reading Plan</string>
+    <string name="custom_reading_plan_default_selection_summary">Orthodox Bible X: New Testament: The Gospels (Matthew, Mark, Luke, John).</string>
     <string name="custom_reading_plan_detail_create_title">Create Custom Reading Plan</string>
     <string name="custom_reading_plan_title_label">Plan title</string>
     <string name="custom_reading_plan_title_hint">Enter a title</string>
@@ -1860,6 +1861,9 @@
     <string name="custom_reading_plan_period_label">Reading cadence</string>
     <string name="custom_reading_plan_days_label">Days of the week</string>
     <string name="custom_reading_plan_additional_info_label">Additional information</string>
+    <string name="custom_reading_plan_info_select_weekday">Select at least one weekday to calculate the schedule.</string>
+    <string name="custom_reading_plan_info_select_weekday_secondary">&quot;%1$s&quot; cannot be saved until at least one weekday is selected.</string>
+    <string name="custom_reading_plan_select_weekday_error">Select at least one weekday.</string>
     <string name="custom_reading_plan_info_completion">Read completely in %1$s when you read %2$d minutes %3$s.</string>
     <string name="custom_reading_plan_info_progress">&quot;%1$s&quot;: You have read %2$d%% and will finish on %3$s.</string>
     <string name="custom_reading_plan_delete_confirmation">Are you sure you want to delete %1$s?</string>
