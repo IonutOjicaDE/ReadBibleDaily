@@ -72,14 +72,12 @@
                 android:layout_marginTop="8dp"
                 android:textAppearance="?android:attr/textAppearanceSmall" />
 
-            <com.google.android.material.slider.Slider
+            <SeekBar
                 android:id="@+id/minutesSlider"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:stepSize="1"
-                android:value="10"
-                android:valueFrom="5"
-                android:valueTo="60" />
+                android:max="55"
+                android:progress="5" />
 
             <TextView
                 android:id="@+id/futureReadingSpeedSettingValue"
@@ -103,14 +101,12 @@
                 android:layout_marginTop="8dp"
                 android:textAppearance="?android:attr/textAppearanceSmall" />
 
-            <com.google.android.material.slider.Slider
+            <SeekBar
                 android:id="@+id/periodSlider"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:stepSize="1"
-                android:value="1"
-                android:valueFrom="1"
-                android:valueTo="7" />
+                android:max="6"
+                android:progress="0" />
 
             <TextView
                 android:layout_width="match_parent"

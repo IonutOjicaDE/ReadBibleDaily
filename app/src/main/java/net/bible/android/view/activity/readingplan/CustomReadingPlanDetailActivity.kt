@@ -25,11 +25,16 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.MenuItem
 import android.widget.CheckBox
+import android.widget.SeekBar
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanDetailActivityBinding
 import net.bible.android.view.activity.base.ActivityBase
 
 private const val STATE_DRAFT_PLAN = "draft_plan"
+private const val MIN_MINUTES = 5
+private const val MAX_MINUTES = 60
+private const val MIN_PERIOD_DAYS = 1
+private const val MAX_PERIOD_DAYS = 7
 
 class CustomReadingPlanDetailActivity : ActivityBase() {
     private lateinit var binding: CustomReadingPlanDetailActivityBinding
@@ -106,16 +111,16 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
             })
         }
 
-        minutesSlider.addOnChangeListener { _, value, fromUser ->
-            if (!fromUser || bindingState) return@addOnChangeListener
-            draftPlan = draftPlan.copy(minutesPerSession = value.toInt())
+        minutesSlider.max = MAX_MINUTES - MIN_MINUTES
+        periodSlider.max = MAX_PERIOD_DAYS - MIN_PERIOD_DAYS
+        minutesSlider.setOnSeekBarChangeListener(createSeekBarListener { progress ->
+            draftPlan = draftPlan.copy(minutesPerSession = progress + MIN_MINUTES)
             renderDraft()
-        }
-        periodSlider.addOnChangeListener { _, value, fromUser ->
-            if (!fromUser || bindingState) return@addOnChangeListener
-            draftPlan = draftPlan.copy(periodInDays = value.toInt())
+        })
+        periodSlider.setOnSeekBarChangeListener(createSeekBarListener { progress ->
+            draftPlan = draftPlan.copy(periodInDays = progress + MIN_PERIOD_DAYS)
             renderDraft()
-        }
+        })
 
         weekDayCheckboxes().forEach { (day, checkbox) ->
             checkbox.setOnCheckedChangeListener { _, isChecked ->
@@ -140,8 +145,8 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         bindingState = true
         titleInput.setText(draftPlan.title)
         titleInput.setSelection(titleInput.text?.length ?: 0)
-        minutesSlider.value = draftPlan.minutesPerSession.toFloat()
-        periodSlider.value = draftPlan.periodInDays.toFloat()
+        minutesSlider.progress = draftPlan.minutesPerSession - MIN_MINUTES
+        periodSlider.progress = draftPlan.periodInDays - MIN_PERIOD_DAYS
         weekDayCheckboxes().forEach { (day, checkbox) ->
             checkbox.isChecked = day in draftPlan.selectedDays
         }
@@ -169,6 +174,17 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         additionalInfoPrimary.text = completionInfo
         additionalInfoSecondary.text = progressInfo
         deleteButton.isEnabled = !isNewPlan
+    }
+
+    private fun createSeekBarListener(onProgressChanged: (Int) -> Unit) = object : SeekBar.OnSeekBarChangeListener {
+        override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+            if (!fromUser || bindingState) return
+            onProgressChanged(progress)
+        }
+
+        override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+        override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
     }
 
     private fun weekDayCheckboxes(): List<Pair<ReadingWeekDay, CheckBox>> = listOf(
