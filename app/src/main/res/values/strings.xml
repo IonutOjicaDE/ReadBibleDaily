@@ -784,6 +784,7 @@
     <!-- General -->
     <string name="okay">OK</string>
     <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
     <string name="discard_changes_confirmation">Discard unsaved changes?</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
@@ -1850,4 +1851,36 @@
     <string name="custom_reading_plan_default_summary">2 capitole, zilnic, Lu-Sa</string>
     <string name="custom_reading_plan_create">Create your own Custom Reading Plan</string>
     <string name="custom_reading_plan_new_title">New Custom Reading Plan</string>
+    <string name="custom_reading_plan_detail_create_title">Create Custom Reading Plan</string>
+    <string name="custom_reading_plan_title_label">Plan title</string>
+    <string name="custom_reading_plan_title_hint">Enter a title</string>
+    <string name="custom_reading_plan_selected_books_label">Books and chapters</string>
+    <string name="custom_reading_plan_minutes_label">Reading time in minutes</string>
+    <string name="custom_reading_plan_minutes_summary">Approximately %1$d pages at the current reading speed.</string>
+    <string name="custom_reading_plan_period_label">Reading cadence</string>
+    <string name="custom_reading_plan_days_label">Days of the week</string>
+    <string name="custom_reading_plan_additional_info_label">Additional information</string>
+    <string name="custom_reading_plan_info_completion">Read completely in %1$s when you read %2$d minutes %3$s.</string>
+    <string name="custom_reading_plan_info_progress">&quot;%1$s&quot;: You have read %2$d%% and will finish on %3$s.</string>
+    <string name="custom_reading_plan_delete_confirmation">Are you sure you want to delete %1$s?</string>
+    <string name="custom_reading_plan_reading_speed_setting_placeholder">Future setting key: %1$s</string>
+    <string name="custom_reading_plan_selection_title">Choose books and chapters</string>
+    <string name="custom_reading_plan_selection_placeholder_title">Selection placeholder for %1$s</string>
+    <string name="custom_reading_plan_selection_placeholder_summary">The selection UI will be implemented in a later step. Current mock selection: %1$s</string>
+    <string name="custom_reading_plan_list_summary">%1$d minutes, %2$s, %3$s</string>
+    <string name="custom_reading_plan_cadence_daily">daily</string>
+    <string name="custom_reading_plan_cadence_every_two_days">every two days</string>
+    <string name="custom_reading_plan_cadence_every_three_days">every three days</string>
+    <string name="custom_reading_plan_cadence_every_x_days">every %1$d days</string>
+    <string name="custom_reading_plan_cadence_weekly">weekly</string>
+    <string name="custom_reading_plan_days_none">No days selected</string>
+    <string name="custom_reading_plan_days_all">Every day</string>
+    <string name="custom_reading_plan_day_monday">Monday</string>
+    <string name="custom_reading_plan_day_tuesday">Tuesday</string>
+    <string name="custom_reading_plan_day_wednesday">Wednesday</string>
+    <string name="custom_reading_plan_day_thursday">Thursday</string>
+    <string name="custom_reading_plan_day_friday">Friday</string>
+    <string name="custom_reading_plan_day_saturday">Saturday</string>
+    <string name="custom_reading_plan_day_sunday">Sunday</string>
+    <string name="custom_reading_plan_duration_months_days">%1$d months and %2$d days</string>
 </resources>

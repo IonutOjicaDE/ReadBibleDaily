@@ -240,6 +240,12 @@
             android:parentActivityName="net.bible.android.view.activity.readingplan.CustomReadingPlansActivity"
             />
         <activity
+            android:name="net.bible.android.view.activity.readingplan.CustomReadingPlanSelectionPlaceholderActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|locale"
+            android:label="@string/custom_reading_plan_selection_title"
+            android:parentActivityName="net.bible.android.view.activity.readingplan.CustomReadingPlanDetailActivity"
+            />
+        <activity
             android:name="net.bible.android.view.activity.readingplan.CustomReadingPlansActivity"
             android:configChanges="keyboardHidden|orientation|screenSize|locale"
             android:label="@string/custom_reading_plans_title"

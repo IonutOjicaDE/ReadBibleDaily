@@ -23,6 +23,7 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SwitchCompat
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -32,13 +33,10 @@ import net.bible.android.activity.databinding.CustomReadingPlanListItemBinding
 import net.bible.android.activity.databinding.CustomReadingPlansActivityBinding
 import net.bible.android.view.activity.base.ActivityBase
 
-private const val STATE_PLAN_TITLES = "plan_titles"
-private const val STATE_PLAN_ACTIVE = "plan_active"
-
-private data class CustomReadingPlanListItem(
+private data class CustomReadingPlanListRow(
+    val plan: CustomReadingPlan?,
     val title: String,
     val description: String? = null,
-    var isActive: Boolean = true,
     val hasToggle: Boolean = true,
     val opensAsCreate: Boolean = false,
 )
@@ -49,8 +47,12 @@ private class CustomReadingPlanViewHolder(
 
 class CustomReadingPlansActivity : ActivityBase() {
     private lateinit var binding: CustomReadingPlansActivityBinding
-    private val planItems = mutableListOf<CustomReadingPlanListItem>()
+    private val planItems = mutableListOf<CustomReadingPlanListRow>()
     private lateinit var adapter: CustomReadingPlanAdapter
+
+    private val editPlanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        refreshPlanItems()
+    }
 
     private inner class CustomReadingPlanAdapter : RecyclerView.Adapter<CustomReadingPlanViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CustomReadingPlanViewHolder {
@@ -71,11 +73,9 @@ class CustomReadingPlansActivity : ActivityBase() {
         setContentView(binding.root)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        CustomReadingPlanInMemoryRepository.initialize(this)
 
         adapter = CustomReadingPlanAdapter()
-        planItems.clear()
-        planItems.addAll(buildInitialPlans(savedInstanceState))
-
         binding.recyclerView.apply {
             val linearLayoutManager = LinearLayoutManager(this@CustomReadingPlansActivity)
             layoutManager = linearLayoutManager
@@ -85,18 +85,7 @@ class CustomReadingPlansActivity : ActivityBase() {
                 addItemDecoration(DividerItemDecoration(context, linearLayoutManager.orientation))
             }
         }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putStringArrayList(
-            STATE_PLAN_TITLES,
-            ArrayList(planItems.filter { it.hasToggle }.map { it.title })
-        )
-        outState.putBooleanArray(
-            STATE_PLAN_ACTIVE,
-            planItems.filter { it.hasToggle }.map { it.isActive }.toBooleanArray()
-        )
+        refreshPlanItems()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
@@ -107,75 +96,65 @@ class CustomReadingPlansActivity : ActivityBase() {
         else -> super.onOptionsItemSelected(item)
     }
 
+    private fun refreshPlanItems() {
+        planItems.clear()
+        planItems += CustomReadingPlanInMemoryRepository.getPlans().map { plan ->
+            CustomReadingPlanListRow(
+                plan = plan,
+                title = plan.title,
+                description = plan.listSummary(this),
+            )
+        }
+        planItems += createItem()
+        adapter.notifyDataSetChanged()
+    }
+
     private fun bindItem(
         itemBinding: CustomReadingPlanListItemBinding,
-        item: CustomReadingPlanListItem,
+        item: CustomReadingPlanListRow,
     ) = itemBinding.run {
         title.text = item.title
         summary.text = item.description
         summary.visibility = if (item.description.isNullOrBlank()) View.GONE else View.VISIBLE
 
         configureToggle(toggle, item)
-
-        root.setOnClickListener {
-            openPlan(item)
-        }
+        root.setOnClickListener { openPlan(item) }
     }
 
-    private fun configureToggle(toggle: SwitchCompat, item: CustomReadingPlanListItem) {
+    private fun configureToggle(toggle: SwitchCompat, item: CustomReadingPlanListRow) {
         if (!item.hasToggle) {
             toggle.visibility = View.GONE
             toggle.setOnCheckedChangeListener(null)
             return
         }
 
+        val plan = item.plan ?: return
         toggle.visibility = View.VISIBLE
         toggle.setOnCheckedChangeListener(null)
-        toggle.isChecked = item.isActive
+        toggle.isChecked = plan.isActive
         toggle.setOnCheckedChangeListener { _, isChecked ->
-            item.isActive = isChecked
+            CustomReadingPlanInMemoryRepository.updateActive(plan.id, isChecked)
         }
         toggle.setOnClickListener {
-            item.isActive = toggle.isChecked
+            CustomReadingPlanInMemoryRepository.updateActive(plan.id, toggle.isChecked)
         }
     }
 
-    private fun buildInitialPlans(savedInstanceState: Bundle?): List<CustomReadingPlanListItem> {
-        val storedTitles = savedInstanceState?.getStringArrayList(STATE_PLAN_TITLES)
-        val storedActive = savedInstanceState?.getBooleanArray(STATE_PLAN_ACTIVE)
-        val defaultTitles = listOf(
-            getString(R.string.custom_reading_plan_new_testament),
-            getString(R.string.custom_reading_plan_old_testament),
-        )
-
-        val titles = storedTitles ?: ArrayList(defaultTitles)
-        val persistedPlans = titles.mapIndexed { index, title ->
-            CustomReadingPlanListItem(
-                title = title,
-                description = getString(R.string.custom_reading_plan_default_summary),
-                isActive = storedActive?.getOrNull(index) ?: true,
-            )
-        }
-        return persistedPlans + createItem()
-    }
-
-    private fun createItem() = CustomReadingPlanListItem(
+    private fun createItem() = CustomReadingPlanListRow(
+        plan = null,
         title = getString(R.string.custom_reading_plan_create),
         hasToggle = false,
         opensAsCreate = true,
     )
 
-    private fun openPlan(item: CustomReadingPlanListItem) {
+    private fun openPlan(item: CustomReadingPlanListRow) {
         val intent = Intent(this, CustomReadingPlanDetailActivity::class.java).apply {
-            putExtra(
-                CustomReadingPlanDetailActivity.EXTRA_PLAN_TITLE,
-                if (item.opensAsCreate) {
-                    getString(R.string.custom_reading_plan_new_title)
-                } else {
-                    item.title
-                }
-            )
+            if (item.opensAsCreate) {
+                putExtra(CustomReadingPlanDetailActivity.EXTRA_IS_NEW_PLAN, true)
+            } else {
+                putExtra(CustomReadingPlanDetailActivity.EXTRA_PLAN_ID, item.plan?.id)
+            }
         }
-        startActivity(intent)
+        editPlanLauncher.launch(intent)
     }
 }

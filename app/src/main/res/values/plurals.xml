@@ -1,0 +1,14 @@
+<resources>
+    <plurals name="custom_reading_plan_period_every_x_days">
+        <item quantity="one">I will read every day.</item>
+        <item quantity="other">I will read every %d days.</item>
+    </plurals>
+    <plurals name="custom_reading_plan_duration_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="custom_reading_plan_duration_months">
+        <item quantity="one">%d month</item>
+        <item quantity="other">%d months</item>
+    </plurals>
+</resources>

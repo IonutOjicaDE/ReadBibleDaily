@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:baselineAligned="false"
+    android:orientation="horizontal"
+    android:padding="16dp">
 
     <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
         android:layout_weight="1"
         android:fillViewport="true">
 
@@ -15,7 +16,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="4dp">
 
             <TextView
                 android:layout_width="match_parent"
@@ -54,8 +55,7 @@
                 android:focusable="true"
                 android:maxLines="3"
                 android:padding="12dp"
-                android:textAppearance="?android:attr/textAppearanceMedium"
-                android:textColorLink="?android:attr/textColorLink" />
+                android:textAppearance="?android:attr/textAppearanceMedium" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -76,10 +76,10 @@
                 android:id="@+id/minutesSlider"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:stepSize="1"
                 android:value="10"
                 android:valueFrom="5"
-                android:valueTo="60"
-                android:stepSize="1" />
+                android:valueTo="60" />
 
             <TextView
                 android:id="@+id/futureReadingSpeedSettingValue"
@@ -107,10 +107,10 @@
                 android:id="@+id/periodSlider"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:stepSize="1"
                 android:value="1"
                 android:valueFrom="1"
-                android:valueTo="7"
-                android:stepSize="1" />
+                android:valueTo="7" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -138,10 +138,12 @@
     </ScrollView>
 
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="16dp"
+        android:layout_weight="1"
         android:background="?android:attr/windowBackground"
-        android:elevation="8dp"
+        android:elevation="4dp"
         android:orientation="vertical"
         android:padding="20dp">
 
@@ -156,28 +158,32 @@
             android:id="@+id/additionalInfoPrimary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="12dp"
             android:textAppearance="?android:attr/textAppearanceMedium" />
 
         <TextView
             android:id="@+id/additionalInfoSecondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="12dp"
             android:textAppearance="?android:attr/textAppearanceSmall" />
 
         <TextView
             android:id="@+id/daysSummary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="12dp"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:textStyle="italic" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
             android:gravity="end"
             android:orientation="horizontal">
 
