@@ -22,6 +22,7 @@ import net.bible.android.activity.R
 import net.bible.service.common.CommonUtils
 import net.bible.service.sword.SwordDocumentFacade
 import org.crosswire.jsword.book.Book
+import org.crosswire.jsword.book.basic.AbstractPassageBook
 import org.crosswire.jsword.versification.BibleBook
 import org.crosswire.jsword.versification.Versification
 import java.io.Serializable
@@ -98,17 +99,17 @@ class BibleTreeSource(
         }
 
     private fun buildBibleSections(context: Context, bible: Book): List<CustomReadingPlanTreeNode> {
-        val versification = bible.versification
+        val versification = (bible as? AbstractPassageBook)?.versification ?: return emptyList()
         return listOf(
             CustomReadingPlanTreeNode(
                 key = "bible:${bible.initials}:$BIBLE_SECTION_OT",
-                label = context.getString(R.string.old_testament),
+                label = context.getString(R.string.custom_reading_plan_old_testament),
                 type = CustomReadingPlanNodeType.BIBLE_TESTAMENT,
                 children = subsectionProvider.oldTestament(context).map { it.toTreeNode(bible, versification) },
             ),
             CustomReadingPlanTreeNode(
                 key = "bible:${bible.initials}:$BIBLE_SECTION_NT",
-                label = context.getString(R.string.new_testament),
+                label = context.getString(R.string.custom_reading_plan_new_testament),
                 type = CustomReadingPlanNodeType.BIBLE_TESTAMENT,
                 children = subsectionProvider.newTestament(context).map { it.toTreeNode(bible, versification) },
             ),
