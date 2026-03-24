@@ -26,7 +26,6 @@ import java.util.UUID
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 
-private const val MOCK_TOTAL_WORDS = 18000
 const val APPROX_WORDS_PER_PAGE = 200
 const val FUTURE_READING_SPEED_SETTING_KEY = "reading_speed_words_per_minute"
 private const val DEFAULT_READING_SPEED_WORDS_PER_MINUTE = 180
@@ -224,12 +223,15 @@ object CustomReadingPlanUiFormatter {
         }
 
         val readingDaysCount = plan.selectedDays.size
-        val sessionsNeeded = ceil(MOCK_TOTAL_WORDS.toDouble() / (plan.minutesPerSession * DEFAULT_READING_SPEED_WORDS_PER_MINUTE)).toInt()
+        val treeNodes = CustomReadingPlanTreeFactory.build(context)
+        val wordEstimate = CustomReadingPlanProgressService.estimatePlanWords(plan, treeNodes)
+        val totalWords = wordEstimate.totalWords.coerceAtLeast(plan.minutesPerSession * DEFAULT_READING_SPEED_WORDS_PER_MINUTE)
+        val sessionsNeeded = ceil(totalWords.toDouble() / (plan.minutesPerSession * DEFAULT_READING_SPEED_WORDS_PER_MINUTE)).toInt()
         val approximateCalendarDays = ((sessionsNeeded * plan.periodInDays) / (readingDaysCount / 7.0)).roundToInt().coerceAtLeast(1)
         val completionDuration = completionDurationText(context, approximateCalendarDays)
         val cadence = cadenceText(context, plan.periodInDays, lowercase = true)
-        val progress = (plan.minutesPerSession * 3 + plan.selectedDays.size * 4 + plan.title.length)
-            .coerceIn(5, 87)
+        val progress = (CustomReadingPlanProgressService.getPlanCompletion(plan.id, plan, treeNodes) * 100).roundToInt()
+            .coerceIn(0, 100)
         val finishDate = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_YEAR, approximateCalendarDays)
         }.time

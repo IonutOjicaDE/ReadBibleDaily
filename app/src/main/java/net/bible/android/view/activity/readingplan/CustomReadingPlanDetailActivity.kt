@@ -30,6 +30,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanDetailActivityBinding
+import net.bible.android.control.event.ABEventBus
 import net.bible.android.view.activity.base.ActivityBase
 
 private const val STATE_DRAFT_PLAN = "draft_plan"
@@ -59,6 +60,7 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ABEventBus.register(this)
         binding = CustomReadingPlanDetailActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -76,6 +78,11 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         recreate()
+    }
+
+    override fun onDestroy() {
+        ABEventBus.unregister(this)
+        super.onDestroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -259,6 +266,13 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    @Suppress("unused")
+    fun onEventMainThread(event: CustomReadingPlanWordIndexUpdatedEvent) {
+        if (draftPlan.selection.selectedNodeKeys.any { it.startsWith("bible:${event.moduleInitials}:") }) {
+            renderDraft()
+        }
     }
 
     companion object {

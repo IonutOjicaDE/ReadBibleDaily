@@ -28,6 +28,14 @@ data class DailyReadingCount(
     val count: Int,
 )
 
+data class ReadCountAggregate(
+    val readCount: Int?,
+)
+
+data class ChapterReadCountResult(
+    val readCount: Int,
+)
+
 @Dao
 interface ProgressDao {
     // Memorization queries
@@ -110,6 +118,45 @@ interface ProgressDao {
 
     @Query("SELECT (readAt / 86400000) * 86400000 AS dayTimestamp, COUNT(*) AS count FROM ChapterReadingRecord WHERE readAt >= :startMs AND readAt <= :endMs GROUP BY readAt / 86400000 ORDER BY dayTimestamp")
     fun getReadingCalendar(startMs: Long, endMs: Long): List<DailyReadingCount>
+
+    // Canonical read counters
+    @Query("SELECT * FROM ChapterReadCounter WHERE bookOrdinal = :bookOrdinal AND chapter = :chapter LIMIT 1")
+    fun getChapterReadCounter(bookOrdinal: Int, chapter: Int): ChapterReadCounter?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertChapterReadCounter(counter: ChapterReadCounter)
+
+    @Query("SELECT COALESCE(SUM(readCount), 0) FROM ChapterReadCounter WHERE bookOrdinal = :bookOrdinal")
+    fun getBookReadCount(bookOrdinal: Int): Int
+
+    @Query("SELECT COALESCE(SUM(readCount), 0) FROM ChapterReadCounter WHERE bookOrdinal IN (:bookOrdinals)")
+    fun getSectionReadCount(bookOrdinals: List<Int>): Int
+
+    @Query("SELECT * FROM ChapterReadCounter WHERE bookOrdinal = :bookOrdinal ORDER BY chapter")
+    fun getChapterCountersForBook(bookOrdinal: Int): List<ChapterReadCounter>
+
+    // Word index
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertWordIndex(records: List<WordCountIndexRecord>)
+
+    @Query("DELETE FROM WordCountIndexRecord WHERE moduleInitials = :moduleInitials")
+    fun deleteWordIndexByModule(moduleInitials: String)
+
+    @Query("SELECT * FROM WordCountIndexRecord WHERE moduleInitials = :moduleInitials AND versification = :versification")
+    fun getWordIndex(moduleInitials: String, versification: String): List<WordCountIndexRecord>
+
+    @Query("SELECT DISTINCT moduleVersion FROM WordCountIndexRecord WHERE moduleInitials = :moduleInitials LIMIT 1")
+    fun getWordIndexVersion(moduleInitials: String): String?
+
+    // Plan progress
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertReadingPlanChapterProgress(progress: ReadingPlanChapterProgress)
+
+    @Query("SELECT * FROM ReadingPlanChapterProgress WHERE planId = :planId AND moduleInitials = :moduleInitials AND bookOrdinal = :bookOrdinal AND chapter = :chapter LIMIT 1")
+    fun loadReadingPlanChapterProgress(planId: String, moduleInitials: String, bookOrdinal: Int, chapter: Int): ReadingPlanChapterProgress?
+
+    @Query("SELECT * FROM ReadingPlanChapterProgress WHERE planId = :planId")
+    fun loadReadingPlanChapterProgressForPlan(planId: String): List<ReadingPlanChapterProgress>
 }
 
 @Dao

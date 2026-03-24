@@ -29,6 +29,7 @@ import net.bible.android.database.progress.MemorizationTarget
 import net.bible.android.database.progress.MemorizedVerse
 import net.bible.android.database.progress.ReadingSource
 import net.bible.service.db.DatabaseContainer
+import net.bible.android.view.activity.readingplan.CustomReadingPlanProgressService
 import org.crosswire.jsword.passage.Verse
 import org.crosswire.jsword.passage.VerseRange
 import org.crosswire.jsword.versification.BibleBook
@@ -149,6 +150,7 @@ object ProgressControl {
                     source = source,
                 )
             )
+            CustomReadingPlanProgressService.incrementChapterReadCount(kjvBook.ordinal, chapter, source)
             ABEventBus.post(ChapterReadStatusChangedEvent(kjvBook.ordinal, chapter, true))
         }
     }
