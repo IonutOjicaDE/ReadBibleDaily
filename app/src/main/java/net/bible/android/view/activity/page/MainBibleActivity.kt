@@ -125,6 +125,9 @@ import net.bible.android.view.activity.navigation.ChooseDictionaryWord
 import net.bible.android.view.activity.navigation.ChooseDocument
 import net.bible.android.view.activity.navigation.GridChoosePassageBook
 import net.bible.android.view.activity.progress.ReadingProgressActivity
+import net.bible.android.view.activity.readingplan.CustomReadingPlanInMemoryRepository
+import net.bible.android.view.activity.readingplan.CustomReadingPlanQueueBuilder
+import net.bible.android.view.activity.readingplan.CustomReadingPlanTreeFactory
 import net.bible.android.view.activity.navigation.History
 import net.bible.android.view.activity.navigation.genbookmap.ChooseGeneralBookKey
 import net.bible.android.view.activity.navigation.genbookmap.ChooseMapKey
@@ -162,6 +165,7 @@ import net.bible.service.sword.mydocument.MyDocumentBookManager
 import org.crosswire.jsword.book.Book
 import org.crosswire.jsword.book.BookCategory
 import org.crosswire.jsword.book.Books
+import org.crosswire.jsword.book.basic.AbstractPassageBook
 import org.crosswire.jsword.book.sword.SwordBook
 import org.crosswire.jsword.passage.NoSuchVerseException
 import org.crosswire.jsword.passage.PassageKeyFactory
@@ -333,6 +337,7 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
         setupToolbarButtons()
         setupToolbarFlingDetection()
         setSoftKeyboardMode()
+        maybeStartInCustomPlanMode(savedInstanceState)
 
         // First launched activity is not having proper night mode if we are using manual mode.
         // This hack fixes it. See also ActivityBase.fixNightMode.
@@ -388,6 +393,25 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
     }
 
     override fun fixNightMode() {} // handle this manually here
+
+    private fun maybeStartInCustomPlanMode(savedInstanceState: Bundle?) {
+        if (savedInstanceState != null || intent.hasExtra("openLink")) return
+
+        CustomReadingPlanInMemoryRepository.initialize(this)
+        val plans = CustomReadingPlanInMemoryRepository.getPlans()
+        val treeNodes = CustomReadingPlanTreeFactory.build(this)
+        val decision = CustomReadingPlanQueueBuilder().decideStartup(plans, treeNodes)
+        if (!decision.shouldEnterMode) return
+
+        fullScreen = true
+        decision.queue.firstOrNull()?.chapter?.let { chapter ->
+            val document = SwordDocumentFacade.getDocumentByInitials(chapter.moduleInitials) as? AbstractPassageBook ?: return@let
+            val bibleBook = document.versification.bookIterator.asSequence().firstOrNull { it.ordinal == chapter.bookOrdinal }
+                ?: return@let
+            val verse = Verse(document.versification, bibleBook, chapter.chapter, 1)
+            windowControl.showLink(document, verse)
+        }
+    }
 
     private fun setupUi() {
         documentViewManager.buildView()
@@ -2227,4 +2251,3 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
         private const val REQUEST_SDCARD_PERMISSION_PREF = "request_sdcard_permission_pref"
     }
 }
-

@@ -55,6 +55,7 @@ data class ChapterIdentity(
 data class ChapterResumePosition(
     val lastReadOrdinal: Int?,
     val chapterAnchor: String?,
+    val resumeContextOrdinal: Int? = null,
 )
 
 data class PlanScopeProgress(
@@ -159,10 +160,12 @@ object CustomReadingPlanProgressService {
                 completionPercent = normalizedCompletion,
                 lastReadOrdinal = position.lastReadOrdinal,
                 chapterAnchor = position.chapterAnchor,
+                resumeContextOrdinal = position.resumeContextOrdinal,
             )).copy(
                 completionPercent = normalizedCompletion,
                 lastReadOrdinal = position.lastReadOrdinal,
                 chapterAnchor = position.chapterAnchor,
+                resumeContextOrdinal = position.resumeContextOrdinal,
                 updatedAt = System.currentTimeMillis(),
             )
         )

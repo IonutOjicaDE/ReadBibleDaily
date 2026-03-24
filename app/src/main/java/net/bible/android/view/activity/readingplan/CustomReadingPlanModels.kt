@@ -19,6 +19,8 @@ package net.bible.android.view.activity.readingplan
 
 import android.content.Context
 import net.bible.android.activity.R
+import net.bible.android.database.progress.CustomReadingPlanRecord
+import net.bible.service.db.DatabaseContainer
 import java.io.Serializable
 import java.text.DateFormat
 import java.util.Calendar
@@ -75,10 +77,17 @@ data class CustomReadingPlan(
 object CustomReadingPlanInMemoryRepository {
     private val plans = mutableListOf<CustomReadingPlan>()
     private var isInitialized = false
+    private val dao get() = DatabaseContainer.instance.progressDb.progressDao()
 
     fun initialize(context: Context) {
         if (isInitialized) return
         isInitialized = true
+
+        val persisted = dao.loadCustomReadingPlans().map { it.toModel() }
+        if (persisted.isNotEmpty()) {
+            plans += persisted
+            return
+        }
 
         val newTestamentSeed = seededSelection(context, "new_testament")
         val oldTestamentSeed = seededSelection(context, "old_testament")
@@ -109,6 +118,7 @@ object CustomReadingPlanInMemoryRepository {
                 ReadingWeekDay.SUNDAY,
             ),
         )
+        persistAll()
     }
 
     fun getPlans(): List<CustomReadingPlan> = plans.toList()
@@ -119,8 +129,10 @@ object CustomReadingPlanInMemoryRepository {
         val index = plans.indexOfFirst { it.id == plan.id }
         if (index >= 0) {
             plans[index] = plan
+            dao.upsertCustomReadingPlan(plan.toRecord(index))
         } else {
             plans += plan
+            dao.upsertCustomReadingPlan(plan.toRecord(plans.lastIndex))
         }
     }
 
@@ -128,14 +140,27 @@ object CustomReadingPlanInMemoryRepository {
         val index = plans.indexOfFirst { it.id == planId }
         if (index >= 0) {
             plans[index] = plans[index].copy(isActive = isActive)
+            dao.upsertCustomReadingPlan(plans[index].toRecord(index))
         }
     }
 
     fun delete(planId: String) {
-        plans.removeAll { it.id == planId }
+        val removed = plans.removeAll { it.id == planId }
+        if (removed) {
+            dao.deleteCustomReadingPlan(planId)
+            persistAll()
+        }
     }
 
     internal fun resetForTesting() {
+        plans.clear()
+        isInitialized = false
+        runCatching {
+            dao.loadCustomReadingPlans().forEach { dao.deleteCustomReadingPlan(it.id) }
+        }
+    }
+
+    internal fun clearCacheForTesting() {
         plans.clear()
         isInitialized = false
     }
@@ -148,6 +173,42 @@ object CustomReadingPlanInMemoryRepository {
         val selection = CustomReadingPlanSelection(selectedKeys)
         val summary = CustomReadingPlanSelectionSummaryFormatter.format(context, selection, treeNodes)
         return selection to summary
+    }
+
+    private fun persistAll() {
+        plans.forEachIndexed { index, plan ->
+            dao.upsertCustomReadingPlan(plan.toRecord(index))
+        }
+    }
+
+    private fun CustomReadingPlan.toRecord(positionInList: Int): CustomReadingPlanRecord = CustomReadingPlanRecord(
+        id = id,
+        title = title,
+        selectionSummary = selectionSummary,
+        selectionNodeKeys = selection.selectedNodeKeys.joinToString(","),
+        minutesPerSession = minutesPerSession,
+        periodInDays = periodInDays,
+        selectedDays = ReadingWeekDay.entries.filter { it in selectedDays }.joinToString(",") { it.name },
+        isActive = isActive,
+        positionInList = positionInList,
+    )
+
+    private fun CustomReadingPlanRecord.toModel(): CustomReadingPlan {
+        val selectedNodeKeys = selectionNodeKeys.split(',').mapNotNull { it.takeIf(String::isNotBlank) }.toSet()
+        val selectedDaysSet = selectedDays.split(',').mapNotNull {
+            runCatching { ReadingWeekDay.valueOf(it) }.getOrNull()
+        }.toCollection(linkedSetOf())
+        val normalizedDays = if (selectedDaysSet.isEmpty()) linkedSetOf<ReadingWeekDay>() else selectedDaysSet
+        return CustomReadingPlan(
+            id = id,
+            title = title,
+            selectionSummary = selectionSummary,
+            selection = CustomReadingPlanSelection(selectedNodeKeys),
+            minutesPerSession = minutesPerSession,
+            periodInDays = periodInDays,
+            selectedDays = normalizedDays,
+            isActive = isActive,
+        )
     }
 }
 

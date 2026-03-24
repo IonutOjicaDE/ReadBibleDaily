@@ -157,6 +157,19 @@ interface ProgressDao {
 
     @Query("SELECT * FROM ReadingPlanChapterProgress WHERE planId = :planId")
     fun loadReadingPlanChapterProgressForPlan(planId: String): List<ReadingPlanChapterProgress>
+
+    // Custom plan definitions
+    @Query("SELECT * FROM CustomReadingPlanRecord ORDER BY positionInList, id")
+    fun loadCustomReadingPlans(): List<CustomReadingPlanRecord>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertCustomReadingPlan(record: CustomReadingPlanRecord)
+
+    @Query("DELETE FROM CustomReadingPlanRecord WHERE id = :planId")
+    fun deleteCustomReadingPlan(planId: String)
+
+    @Query("SELECT COALESCE(MAX(positionInList), -1) FROM CustomReadingPlanRecord")
+    fun getMaxCustomReadingPlanPosition(): Int
 }
 
 @Dao

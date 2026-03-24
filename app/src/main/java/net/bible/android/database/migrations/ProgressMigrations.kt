@@ -114,9 +114,29 @@ private val addModuleIdentityToPlanProgress = makeMigration(4..5) { db ->
     db.execSQL("CREATE INDEX IF NOT EXISTS index_ReadingPlanChapterProgress_planId_updatedAt ON ReadingPlanChapterProgress(planId, updatedAt)")
 }
 
+private val addCustomReadingPlanPersistence = makeMigration(5..6) { db ->
+    db.execSQL("""
+        CREATE TABLE IF NOT EXISTS CustomReadingPlanRecord (
+            id TEXT NOT NULL PRIMARY KEY,
+            title TEXT NOT NULL,
+            selectionSummary TEXT NOT NULL,
+            selectionNodeKeys TEXT NOT NULL,
+            minutesPerSession INTEGER NOT NULL,
+            periodInDays INTEGER NOT NULL,
+            selectedDays TEXT NOT NULL,
+            isActive INTEGER NOT NULL,
+            positionInList INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL
+        )
+    """)
+    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_CustomReadingPlanRecord_positionInList ON CustomReadingPlanRecord(positionInList)")
+    db.execSQL("ALTER TABLE ReadingPlanChapterProgress ADD COLUMN resumeContextOrdinal INTEGER")
+}
+
 val progressMigrations: Array<Migration> = arrayOf(
     addMemorizationTarget,
     addGlobalReadingProgressSettings,
     addCustomReadingPlanProgress,
     addModuleIdentityToPlanProgress,
+    addCustomReadingPlanPersistence,
 )

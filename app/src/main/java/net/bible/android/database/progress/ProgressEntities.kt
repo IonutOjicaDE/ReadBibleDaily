@@ -128,6 +128,25 @@ data class ReadingPlanChapterProgress(
     val completionPercent: Float,
     val lastReadOrdinal: Int? = null,
     val chapterAnchor: String? = null,
+    val resumeContextOrdinal: Int? = null,
+    val updatedAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(
+    indices = [
+        Index(value = ["positionInList"], unique = true),
+    ]
+)
+data class CustomReadingPlanRecord(
+    @PrimaryKey var id: String,
+    val title: String,
+    val selectionSummary: String,
+    val selectionNodeKeys: String,
+    val minutesPerSession: Int,
+    val periodInDays: Int,
+    val selectedDays: String,
+    val isActive: Boolean,
+    val positionInList: Int,
     val updatedAt: Long = System.currentTimeMillis(),
 )
 
