@@ -32,8 +32,6 @@ import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanDetailActivityBinding
 import net.bible.android.control.event.ABEventBus
 import net.bible.android.view.activity.base.ActivityBase
-import org.greenrobot.eventbus.Subscribe
-import org.greenrobot.eventbus.ThreadMode
 
 private const val STATE_DRAFT_PLAN = "draft_plan"
 private const val MIN_MINUTES = 5
@@ -270,8 +268,8 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
             .show()
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onWordIndexUpdated(event: CustomReadingPlanWordIndexUpdatedEvent) {
+    @Suppress("unused")
+    fun onEventMainThread(event: CustomReadingPlanWordIndexUpdatedEvent) {
         if (draftPlan.selection.selectedNodeKeys.any { it.startsWith("bible:${event.moduleInitials}:") }) {
             renderDraft()
         }

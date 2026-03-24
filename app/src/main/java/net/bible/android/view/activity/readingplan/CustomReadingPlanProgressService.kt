@@ -318,8 +318,8 @@ object CustomReadingPlanProgressService {
     internal fun weightedProgress(chapterWeights: Map<ChapterIdentity, Int>, completionByChapter: Map<ChapterIdentity, Float>): Float {
         val total = chapterWeights.values.sum().toFloat()
         if (total <= 0f) return 0f
-        val done = chapterWeights.entries.sumOf { (chapter, weight) ->
-            (completionByChapter[chapter] ?: 0f).coerceIn(0f, 1f) * weight
+        val done = chapterWeights.entries.fold(0f) { acc, (chapter, weight) ->
+            acc + (completionByChapter[chapter] ?: 0f).coerceIn(0f, 1f) * weight
         }
         return (done / total).coerceIn(0f, 1f)
     }
