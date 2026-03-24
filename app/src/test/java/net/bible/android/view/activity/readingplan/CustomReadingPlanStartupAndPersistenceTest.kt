@@ -83,6 +83,27 @@ class CustomReadingPlanStartupAndPersistenceTest {
     }
 
     @Test
+    fun queueBuilder_treatsDuplicateChapterAsReadWhenAnyActivePlanCompletedIt() {
+        val chapterGen1 = ChapterIdentity("KJV", 0, 1)
+        val planA = CustomReadingPlan(id = "a", title = "A", selectionSummary = "x")
+        val planB = CustomReadingPlan(id = "b", title = "B", selectionSummary = "x")
+
+        val builder = FakeQueueBuilder(
+            chapterMap = mapOf(
+                "a" to listOf(chapterGen1),
+                "b" to listOf(chapterGen1),
+            ),
+            completion = mapOf(
+                "a:${chapterGen1.bookOrdinal}:${chapterGen1.chapter}" to 1f,
+                "b:${chapterGen1.bookOrdinal}:${chapterGen1.chapter}" to 0f,
+            ),
+        )
+
+        val queue = builder.buildTodayUnreadQueue(listOf(planA, planB), emptyList())
+        assertTrue(queue.isEmpty())
+    }
+
+    @Test
     fun startupDecision_falseWhenNoUnreadToday() {
         val plan = CustomReadingPlan(
             id = "a",
@@ -163,9 +184,13 @@ private class FakeQueueBuilder(
 ) {
     override fun buildTodayUnreadQueue(plans: List<CustomReadingPlan>, treeNodes: List<CustomReadingPlanTreeNode>): List<CustomPlanQueueItem> {
         val dedup = linkedMapOf<ChapterIdentity, CustomPlanQueueItem>()
+        val activePlanIds = plans.map { it.id }
         plans.forEachIndexed { index, plan ->
             chapterMap[plan.id].orEmpty().forEach { chapter ->
-                if ((completion["${plan.id}:${chapter.bookOrdinal}:${chapter.chapter}"] ?: 0f) < 1f) {
+                val completionAcrossPlans = activePlanIds.maxOfOrNull { planId ->
+                    completion["$planId:${chapter.bookOrdinal}:${chapter.chapter}"] ?: 0f
+                } ?: 0f
+                if (completionAcrossPlans < 1f) {
                     dedup.putIfAbsent(chapter, CustomPlanQueueItem(chapter, plan.id, index))
                 }
             }

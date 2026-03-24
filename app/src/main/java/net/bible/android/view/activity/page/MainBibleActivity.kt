@@ -128,7 +128,9 @@ import net.bible.android.view.activity.navigation.ChooseDocument
 import net.bible.android.view.activity.navigation.GridChoosePassageBook
 import net.bible.android.view.activity.progress.ReadingProgressActivity
 import net.bible.android.view.activity.readingplan.ChapterIdentity
+import net.bible.android.view.activity.readingplan.ChapterResumePosition
 import net.bible.android.view.activity.readingplan.CustomReadingPlanInMemoryRepository
+import net.bible.android.view.activity.readingplan.CustomReadingPlanProgressBatchWriter
 import net.bible.android.view.activity.readingplan.CustomReadingPlanQueueBuilder
 import net.bible.android.view.activity.readingplan.CustomReadingPlanStickyTitleFormatter
 import net.bible.android.view.activity.readingplan.CustomReadingPlanTreeFactory
@@ -404,6 +406,14 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
     private var customStartupQueue: List<CustomPlanQueueItem> = emptyList()
     private var customPlanStickyTitle: TextView? = null
     private var customPlanStickyTitleLastUpdateMs: Long? = null
+    private val customPlanProgressBatchWriter = CustomReadingPlanProgressBatchWriter { pending ->
+        CustomReadingPlanProgressService.saveChapterResume(
+            planId = pending.planId,
+            chapter = pending.chapter,
+            completion = pending.completion,
+            position = pending.position,
+        )
+    }
 
     private fun maybeStartInCustomPlanMode(savedInstanceState: Bundle?) {
         if (savedInstanceState != null || intent.hasExtra("openLink")) return
@@ -437,16 +447,29 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
         if (!CustomReadingPlanStickyTitleFormatter.shouldEmit(now, customPlanStickyTitleLastUpdateMs)) return
         customPlanStickyTitleLastUpdateMs = now
 
-        val verse = runCatching { Verse(KJVA, ordinal) }.getOrNull() ?: return
         val activeDoc = windowControl.activeWindowPageManager.currentBible.currentDocument as? AbstractPassageBook ?: return
+        val verse = runCatching { Verse(activeDoc.versification, ordinal) }.getOrNull() ?: return
         val currentChapter = ChapterIdentity(activeDoc.initials, verse.book.ordinal, verse.chapter)
         val currentIndex = customStartupQueue.indexOfFirst { it.chapter == currentChapter }
         if (currentIndex < 0) return
 
         val current = customStartupQueue[currentIndex]
         val next = customStartupQueue.getOrNull(currentIndex + 1)
+        val chapterCompletion = chapterCompletionFromOrdinal(activeDoc, verse)
+        customPlanProgressBatchWriter.enqueue(
+            CustomReadingPlanProgressBatchWriter.PendingProgress(
+                planId = current.planId,
+                chapter = current.chapter,
+                completion = chapterCompletion,
+                position = ChapterResumePosition(
+                    lastReadOrdinal = ordinal,
+                    chapterAnchor = "o-$ordinal",
+                    resumeContextOrdinal = ordinal,
+                ),
+            )
+        )
         val labels = mutableListOf(
-            stickyTitleItemFor(current, useCurrentVerse = true, currentVerse = verse)
+            stickyTitleItemFor(current, useCurrentVerse = true, currentVerse = verse, currentCompletion = chapterCompletion)
         )
         if (next != null) {
             labels += stickyTitleItemFor(next, useCurrentVerse = false, currentVerse = verse)
@@ -458,21 +481,31 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
         item: CustomPlanQueueItem,
         useCurrentVerse: Boolean,
         currentVerse: Verse,
+        currentCompletion: Float? = null,
     ): CustomReadingPlanStickyTitleFormatter.VisibleChapterProgress {
         val label = if (useCurrentVerse) {
-            "${resolveBookShortName(currentVerse.book.ordinal)} ${item.chapter.chapter}"
+            "${resolveBookShortName(currentVerse.versification, currentVerse.book.ordinal)} ${item.chapter.chapter}"
         } else {
-            "${resolveBookShortName(item.chapter.bookOrdinal)} ${item.chapter.chapter}"
+            "${resolveBookShortName(currentVerse.versification, item.chapter.bookOrdinal)} ${item.chapter.chapter}"
         }
-        val completionPercent = (CustomReadingPlanProgressService.loadChapterResume(item.planId, item.chapter)
-            ?.completionPercent
+        val completionPercent = ((currentCompletion
+            ?: CustomReadingPlanProgressService.loadChapterResume(item.planId, item.chapter)?.completionPercent)
             ?.times(100)
             ?.roundToInt() ?: 0).coerceIn(0, 100)
         return CustomReadingPlanStickyTitleFormatter.VisibleChapterProgress(label, completionPercent)
     }
 
-    private fun resolveBookShortName(bookOrdinal: Int): String =
-        KJVA.bookIterator.asSequence().firstOrNull { it.ordinal == bookOrdinal }?.let { KJVA.getShortName(it) } ?: ""
+    private fun chapterCompletionFromOrdinal(doc: AbstractPassageBook, verse: Verse): Float {
+        val lastVerse = doc.versification.getLastVerse(verse.book, verse.chapter).coerceAtLeast(1)
+        return (verse.verse.toFloat() / lastVerse.toFloat()).coerceIn(0f, 1f)
+    }
+
+    private fun resolveBookShortName(
+        versification: org.crosswire.jsword.versification.Versification,
+        bookOrdinal: Int,
+    ): String = versification.bookIterator.asSequence().firstOrNull { it.ordinal == bookOrdinal }?.let {
+        versification.getShortName(it)
+    } ?: ""
 
     private fun updateCustomPlanStickyTitle(text: String) {
         val view = customPlanStickyTitle ?: AppCompatTextView(this).apply {
@@ -1621,6 +1654,7 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
     class UpdateRestoreWindowButtons
 
     override fun onDestroy() {
+        customPlanProgressBatchWriter.flushAll()
         documentViewManager.removeView()
         bibleViewFactory.clear()
         super.onDestroy()
@@ -2235,6 +2269,7 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
 
     private var paused = false
     override fun onPause() {
+        customPlanProgressBatchWriter.flushAll()
         windowControl.windowRepository.saveIntoDb(false)
         paused = true
         fullScreen = false

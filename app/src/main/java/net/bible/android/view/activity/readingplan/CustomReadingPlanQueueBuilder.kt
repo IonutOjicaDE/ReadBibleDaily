@@ -35,13 +35,19 @@ open class CustomReadingPlanQueueBuilder(
         treeNodes: List<CustomReadingPlanTreeNode>,
     ): List<CustomPlanQueueItem> {
         val day = dateProvider().dayOfWeek
+        val activePlanIdsForToday = plans.filter { it.isActive && it.isScheduledFor(day) }.map { it.id }
         val dedup = linkedMapOf<ChapterIdentity, CustomPlanQueueItem>()
 
         plans.forEachIndexed { planOrder, plan ->
             if (!plan.isActive || !plan.isScheduledFor(day)) return@forEachIndexed
             val chapters = resolveSelectedChapters(plan, treeNodes)
             chapters.asSequence()
-                .filter { progressService.loadChapterResume(plan.id, it)?.completionPercent?.coerceIn(0f, 1f) ?: 0f < 1f }
+                .filter { chapter ->
+                    val completionAcrossPlans = activePlanIdsForToday.maxOfOrNull { planId ->
+                        progressService.loadChapterResume(planId, chapter)?.completionPercent?.coerceIn(0f, 1f) ?: 0f
+                    } ?: 0f
+                    completionAcrossPlans < 1f
+                }
                 .sortedWith(compareBy<ChapterIdentity>({ it.bookOrdinal }, { it.chapter }, { it.moduleInitials }))
                 .forEach { chapter ->
                     dedup.putIfAbsent(chapter, CustomPlanQueueItem(chapter = chapter, planId = plan.id, planOrder = planOrder))

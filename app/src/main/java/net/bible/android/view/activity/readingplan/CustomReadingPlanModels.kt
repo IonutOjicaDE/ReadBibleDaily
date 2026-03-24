@@ -20,6 +20,7 @@ package net.bible.android.view.activity.readingplan
 import android.content.Context
 import net.bible.android.activity.R
 import net.bible.android.database.progress.CustomReadingPlanRecord
+import net.bible.service.common.CommonUtils
 import net.bible.service.db.DatabaseContainer
 import java.io.Serializable
 import java.text.DateFormat
@@ -31,6 +32,7 @@ import kotlin.math.roundToInt
 const val APPROX_WORDS_PER_PAGE = 200
 const val FUTURE_READING_SPEED_SETTING_KEY = "reading_speed_words_per_minute"
 private const val DEFAULT_READING_SPEED_WORDS_PER_MINUTE = 180
+private const val CUSTOM_PLAN_SEEDED_ONCE_KEY = "custom_reading_plan.seeded_once"
 
 enum class ReadingWeekDay(
     val stringResId: Int,
@@ -88,6 +90,9 @@ object CustomReadingPlanInMemoryRepository {
             plans += persisted
             return
         }
+        if (CommonUtils.settings.getBoolean(CUSTOM_PLAN_SEEDED_ONCE_KEY, false)) {
+            return
+        }
 
         val newTestamentSeed = seededSelection(context, "new_testament")
         val oldTestamentSeed = seededSelection(context, "old_testament")
@@ -119,6 +124,7 @@ object CustomReadingPlanInMemoryRepository {
             ),
         )
         persistAll()
+        CommonUtils.settings.setBoolean(CUSTOM_PLAN_SEEDED_ONCE_KEY, true)
     }
 
     fun getPlans(): List<CustomReadingPlan> = plans.toList()
