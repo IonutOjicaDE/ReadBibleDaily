@@ -25,13 +25,16 @@ import net.bible.android.database.SyncConfiguration
 import net.bible.android.database.SyncStatus
 import net.bible.android.database.SyncableRoomDatabase
 
-const val PROGRESS_DATABASE_VERSION = 3
+const val PROGRESS_DATABASE_VERSION = 4
 
 @Database(
     entities = [
         MemorizedVerse::class,
         ChapterReadingRecord::class,
+        ChapterReadCounter::class,
         MemorizationTarget::class,
+        WordCountIndexRecord::class,
+        ReadingPlanChapterProgress::class,
         GlobalReadingProgressSettings::class,
         LogEntry::class,
         SyncConfiguration::class,

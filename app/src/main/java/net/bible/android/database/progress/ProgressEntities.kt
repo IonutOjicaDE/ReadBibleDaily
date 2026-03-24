@@ -31,6 +31,10 @@ enum class ReadingSource {
     MANUAL, AUTO_SCROLL, AUTO_TTS
 }
 
+enum class WordCountScope {
+    CHAPTER,
+}
+
 @Entity(
     indices = [
         Index(value = ["kjvOrdinal"], unique = true)
@@ -74,6 +78,56 @@ data class ChapterReadingRecord(
     val cycle: Int = 1,
     val readAt: Long = System.currentTimeMillis(),
     val source: ReadingSource = ReadingSource.MANUAL,
+)
+
+@Entity(
+    indices = [
+        Index(value = ["moduleInitials", "versification", "bookOrdinal", "chapter"], unique = true),
+        Index(value = ["moduleInitials", "updatedAt"]),
+    ]
+)
+data class WordCountIndexRecord(
+    @PrimaryKey var id: IdType = IdType(),
+    val moduleInitials: String,
+    val moduleVersion: String,
+    val versification: String,
+    val scope: WordCountScope = WordCountScope.CHAPTER,
+    val bookOrdinal: Int,
+    val chapter: Int,
+    val wordCount: Int,
+    val updatedAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(
+    indices = [
+        Index(value = ["bookOrdinal", "chapter"], unique = true),
+    ]
+)
+data class ChapterReadCounter(
+    @PrimaryKey var id: IdType = IdType(),
+    val bookOrdinal: Int,
+    val chapter: Int,
+    val readCount: Int = 0,
+    val firstReadAt: Long = System.currentTimeMillis(),
+    val lastReadAt: Long = System.currentTimeMillis(),
+    val source: ReadingSource = ReadingSource.MANUAL,
+)
+
+@Entity(
+    indices = [
+        Index(value = ["planId", "bookOrdinal", "chapter"], unique = true),
+        Index(value = ["planId", "updatedAt"]),
+    ]
+)
+data class ReadingPlanChapterProgress(
+    @PrimaryKey var id: IdType = IdType(),
+    val planId: String,
+    val bookOrdinal: Int,
+    val chapter: Int,
+    val completionPercent: Float,
+    val lastReadOrdinal: Int? = null,
+    val chapterAnchor: String? = null,
+    val updatedAt: Long = System.currentTimeMillis(),
 )
 
 @Entity

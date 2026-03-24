@@ -40,4 +40,54 @@ private val addGlobalReadingProgressSettings = makeMigration(2..3) { db ->
     """)
 }
 
-val progressMigrations: Array<Migration> = arrayOf(addMemorizationTarget, addGlobalReadingProgressSettings)
+private val addCustomReadingPlanProgress = makeMigration(3..4) { db ->
+    db.execSQL("""
+        CREATE TABLE IF NOT EXISTS ChapterReadCounter (
+            id BLOB NOT NULL PRIMARY KEY,
+            bookOrdinal INTEGER NOT NULL,
+            chapter INTEGER NOT NULL,
+            readCount INTEGER NOT NULL,
+            firstReadAt INTEGER NOT NULL,
+            lastReadAt INTEGER NOT NULL,
+            source TEXT NOT NULL
+        )
+    """)
+    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_ChapterReadCounter_bookOrdinal_chapter ON ChapterReadCounter(bookOrdinal, chapter)")
+
+    db.execSQL("""
+        CREATE TABLE IF NOT EXISTS WordCountIndexRecord (
+            id BLOB NOT NULL PRIMARY KEY,
+            moduleInitials TEXT NOT NULL,
+            moduleVersion TEXT NOT NULL,
+            versification TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            bookOrdinal INTEGER NOT NULL,
+            chapter INTEGER NOT NULL,
+            wordCount INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL
+        )
+    """)
+    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_WordCountIndexRecord_moduleInitials_versification_bookOrdinal_chapter ON WordCountIndexRecord(moduleInitials, versification, bookOrdinal, chapter)")
+    db.execSQL("CREATE INDEX IF NOT EXISTS index_WordCountIndexRecord_moduleInitials_updatedAt ON WordCountIndexRecord(moduleInitials, updatedAt)")
+
+    db.execSQL("""
+        CREATE TABLE IF NOT EXISTS ReadingPlanChapterProgress (
+            id BLOB NOT NULL PRIMARY KEY,
+            planId TEXT NOT NULL,
+            bookOrdinal INTEGER NOT NULL,
+            chapter INTEGER NOT NULL,
+            completionPercent REAL NOT NULL,
+            lastReadOrdinal INTEGER,
+            chapterAnchor TEXT,
+            updatedAt INTEGER NOT NULL
+        )
+    """)
+    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_ReadingPlanChapterProgress_planId_bookOrdinal_chapter ON ReadingPlanChapterProgress(planId, bookOrdinal, chapter)")
+    db.execSQL("CREATE INDEX IF NOT EXISTS index_ReadingPlanChapterProgress_planId_updatedAt ON ReadingPlanChapterProgress(planId, updatedAt)")
+}
+
+val progressMigrations: Array<Migration> = arrayOf(
+    addMemorizationTarget,
+    addGlobalReadingProgressSettings,
+    addCustomReadingPlanProgress,
+)
