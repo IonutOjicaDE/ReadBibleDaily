@@ -31,8 +31,8 @@ class CustomReadingPlanProgressServiceTest {
 
     @Test
     fun weightedProgress_mathIsWordWeighted() {
-        val chapterA = ChapterIdentity(bookOrdinal = 1, chapter = 1)
-        val chapterB = ChapterIdentity(bookOrdinal = 1, chapter = 2)
+        val chapterA = ChapterIdentity(moduleInitials = "KJV", bookOrdinal = 1, chapter = 1)
+        val chapterB = ChapterIdentity(moduleInitials = "KJV", bookOrdinal = 1, chapter = 2)
 
         val weighted = CustomReadingPlanProgressService.weightedProgress(
             chapterWeights = mapOf(chapterA to 100, chapterB to 300),
@@ -55,7 +55,7 @@ class CustomReadingPlanProgressServiceTest {
 
     @Test
     fun saveAndLoadResume_roundTripsProgressState() {
-        val chapter = ChapterIdentity(bookOrdinal = 40, chapter = 3)
+        val chapter = ChapterIdentity(moduleInitials = "KJV", bookOrdinal = 40, chapter = 3)
         CustomReadingPlanProgressService.saveChapterResume(
             planId = "plan-a",
             chapter = chapter,
@@ -72,6 +72,6 @@ class CustomReadingPlanProgressServiceTest {
 
     @Test
     fun progressDatabaseVersion_bumpedForNewProgressEntities() {
-        assertTrue(PROGRESS_DATABASE_VERSION >= 4)
+        assertTrue(PROGRESS_DATABASE_VERSION >= 5)
     }
 }

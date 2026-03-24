@@ -152,8 +152,8 @@ interface ProgressDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun upsertReadingPlanChapterProgress(progress: ReadingPlanChapterProgress)
 
-    @Query("SELECT * FROM ReadingPlanChapterProgress WHERE planId = :planId AND bookOrdinal = :bookOrdinal AND chapter = :chapter LIMIT 1")
-    fun loadReadingPlanChapterProgress(planId: String, bookOrdinal: Int, chapter: Int): ReadingPlanChapterProgress?
+    @Query("SELECT * FROM ReadingPlanChapterProgress WHERE planId = :planId AND moduleInitials = :moduleInitials AND bookOrdinal = :bookOrdinal AND chapter = :chapter LIMIT 1")
+    fun loadReadingPlanChapterProgress(planId: String, moduleInitials: String, bookOrdinal: Int, chapter: Int): ReadingPlanChapterProgress?
 
     @Query("SELECT * FROM ReadingPlanChapterProgress WHERE planId = :planId")
     fun loadReadingPlanChapterProgressForPlan(planId: String): List<ReadingPlanChapterProgress>

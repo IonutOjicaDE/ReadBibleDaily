@@ -115,13 +115,14 @@ data class ChapterReadCounter(
 
 @Entity(
     indices = [
-        Index(value = ["planId", "bookOrdinal", "chapter"], unique = true),
+        Index(value = ["planId", "moduleInitials", "bookOrdinal", "chapter"], unique = true),
         Index(value = ["planId", "updatedAt"]),
     ]
 )
 data class ReadingPlanChapterProgress(
     @PrimaryKey var id: IdType = IdType(),
     val planId: String,
+    val moduleInitials: String,
     val bookOrdinal: Int,
     val chapter: Int,
     val completionPercent: Float,

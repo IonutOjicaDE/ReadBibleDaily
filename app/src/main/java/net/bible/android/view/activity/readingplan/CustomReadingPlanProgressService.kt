@@ -47,6 +47,7 @@ data class PlanWordEstimate(
 )
 
 data class ChapterIdentity(
+    val moduleInitials: String,
     val bookOrdinal: Int,
     val chapter: Int,
 )
@@ -148,10 +149,11 @@ object CustomReadingPlanProgressService {
         position: ChapterResumePosition,
     ) {
         val normalizedCompletion = completion.coerceIn(0f, 1f)
-        val current = dao.loadReadingPlanChapterProgress(planId, chapter.bookOrdinal, chapter.chapter)
+        val current = dao.loadReadingPlanChapterProgress(planId, chapter.moduleInitials, chapter.bookOrdinal, chapter.chapter)
         dao.upsertReadingPlanChapterProgress(
             (current ?: ReadingPlanChapterProgress(
                 planId = planId,
+                moduleInitials = chapter.moduleInitials,
                 bookOrdinal = chapter.bookOrdinal,
                 chapter = chapter.chapter,
                 completionPercent = normalizedCompletion,
@@ -167,14 +169,14 @@ object CustomReadingPlanProgressService {
     }
 
     fun loadChapterResume(planId: String, chapter: ChapterIdentity): ReadingPlanChapterProgress? =
-        dao.loadReadingPlanChapterProgress(planId, chapter.bookOrdinal, chapter.chapter)
+        dao.loadReadingPlanChapterProgress(planId, chapter.moduleInitials, chapter.bookOrdinal, chapter.chapter)
 
     fun getPlanScopeProgress(planId: String, plan: CustomReadingPlan, treeNodes: List<CustomReadingPlanTreeNode>): PlanScopeProgress {
         val scope = resolveSelectedChapters(plan, treeNodes).map { it.second }.toSet()
         if (scope.isEmpty()) return PlanScopeProgress(0, 0, 0f)
 
         val progressRows = dao.loadReadingPlanChapterProgressForPlan(planId)
-            .associateBy { ChapterIdentity(it.bookOrdinal, it.chapter) }
+            .associateBy { ChapterIdentity(it.moduleInitials, it.bookOrdinal, it.chapter) }
 
         val completed = scope.count { (progressRows[it]?.completionPercent ?: 0f) >= 1f }
 
@@ -209,7 +211,7 @@ object CustomReadingPlanProgressService {
             val document = SwordDocumentFacade.getDocumentByInitials(moduleInitials) as? AbstractPassageBook ?: return@flatMap emptyList()
             val chapters = document.versification.getLastChapter(bibleBook)
             (1..chapters).map {
-                document to ChapterIdentity(bookOrdinal = bibleBook.ordinal, chapter = it)
+                document to ChapterIdentity(moduleInitials = moduleInitials, bookOrdinal = bibleBook.ordinal, chapter = it)
             }
         }
     }
@@ -218,13 +220,13 @@ object CustomReadingPlanProgressService {
         scope: Set<ChapterIdentity>,
         progressRows: Map<ChapterIdentity, ReadingPlanChapterProgress>,
     ): Float {
-        val groupedByBook = scope.groupBy { it.bookOrdinal }
+        val groupedByBook = scope.groupBy { it.moduleInitials to it.bookOrdinal }
         var weightedDone = 0.0
         var weightedTotal = 0.0
 
-        for ((bookOrdinal, chapters) in groupedByBook) {
+        for ((_, chapters) in groupedByBook) {
             val weights = chapters.associateWith { chapter ->
-                getChapterWeight(bookOrdinal, chapter.chapter)
+                getChapterWeight(chapter)
             }
             for ((chapter, weight) in weights) {
                 val completion = progressRows[chapter]?.completionPercent?.coerceIn(0f, 1f) ?: 0f
@@ -237,9 +239,9 @@ object CustomReadingPlanProgressService {
         return (weightedDone / weightedTotal).toFloat().coerceIn(0f, 1f)
     }
 
-    private fun getChapterWeight(bookOrdinal: Int, chapter: Int): Int {
+    private fun getChapterWeight(chapterIdentity: ChapterIdentity): Int {
         val indexed = cachedWordIndex.values.asSequence()
-            .mapNotNull { it[ChapterIdentity(bookOrdinal, chapter)] }
+            .mapNotNull { it[chapterIdentity] }
             .firstOrNull()
         return max(indexed ?: 0, 1)
     }
@@ -260,7 +262,9 @@ object CustomReadingPlanProgressService {
 
                 val existing = dao.getWordIndex(moduleInitials, versification.name)
                 if (existing.isNotEmpty() && existingVersion == version) {
-                    cachedWordIndex[cacheKey(moduleInitials, versification.name)] = existing.associate { ChapterIdentity(it.bookOrdinal, it.chapter) to it.wordCount }
+                    cachedWordIndex[cacheKey(moduleInitials, versification.name)] = existing.associate {
+                        ChapterIdentity(moduleInitials, it.bookOrdinal, it.chapter) to it.wordCount
+                    }
                     return@execute
                 }
 
@@ -282,7 +286,9 @@ object CustomReadingPlanProgressService {
                 }
                 if (records.isNotEmpty()) {
                     dao.upsertWordIndex(records)
-                    cachedWordIndex[cacheKey(moduleInitials, versification.name)] = records.associate { ChapterIdentity(it.bookOrdinal, it.chapter) to it.wordCount }
+                    cachedWordIndex[cacheKey(moduleInitials, versification.name)] = records.associate {
+                        ChapterIdentity(moduleInitials, it.bookOrdinal, it.chapter) to it.wordCount
+                    }
                 }
                 ABEventBus.post(CustomReadingPlanWordIndexUpdatedEvent(moduleInitials))
             } finally {
@@ -326,7 +332,7 @@ object CustomReadingPlanProgressService {
 
     private fun loadWordIndex(moduleInitials: String, versification: String): Map<ChapterIdentity, Int> =
         dao.getWordIndex(moduleInitials, versification)
-            .associate { ChapterIdentity(it.bookOrdinal, it.chapter) to it.wordCount }
+            .associate { ChapterIdentity(moduleInitials, it.bookOrdinal, it.chapter) to it.wordCount }
 
     private fun cacheKey(moduleInitials: String, versification: String): String = "$moduleInitials:$versification"
 }

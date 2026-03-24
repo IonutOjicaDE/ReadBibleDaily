@@ -74,6 +74,7 @@ private val addCustomReadingPlanProgress = makeMigration(3..4) { db ->
         CREATE TABLE IF NOT EXISTS ReadingPlanChapterProgress (
             id BLOB NOT NULL PRIMARY KEY,
             planId TEXT NOT NULL,
+            moduleInitials TEXT NOT NULL,
             bookOrdinal INTEGER NOT NULL,
             chapter INTEGER NOT NULL,
             completionPercent REAL NOT NULL,
@@ -82,7 +83,34 @@ private val addCustomReadingPlanProgress = makeMigration(3..4) { db ->
             updatedAt INTEGER NOT NULL
         )
     """)
-    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_ReadingPlanChapterProgress_planId_bookOrdinal_chapter ON ReadingPlanChapterProgress(planId, bookOrdinal, chapter)")
+    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_ReadingPlanChapterProgress_planId_moduleInitials_bookOrdinal_chapter ON ReadingPlanChapterProgress(planId, moduleInitials, bookOrdinal, chapter)")
+    db.execSQL("CREATE INDEX IF NOT EXISTS index_ReadingPlanChapterProgress_planId_updatedAt ON ReadingPlanChapterProgress(planId, updatedAt)")
+}
+
+private val addModuleIdentityToPlanProgress = makeMigration(4..5) { db ->
+    db.execSQL("""
+        CREATE TABLE IF NOT EXISTS ReadingPlanChapterProgress_new (
+            id BLOB NOT NULL PRIMARY KEY,
+            planId TEXT NOT NULL,
+            moduleInitials TEXT NOT NULL,
+            bookOrdinal INTEGER NOT NULL,
+            chapter INTEGER NOT NULL,
+            completionPercent REAL NOT NULL,
+            lastReadOrdinal INTEGER,
+            chapterAnchor TEXT,
+            updatedAt INTEGER NOT NULL
+        )
+    """)
+    db.execSQL("""
+        INSERT INTO ReadingPlanChapterProgress_new (
+            id, planId, moduleInitials, bookOrdinal, chapter, completionPercent, lastReadOrdinal, chapterAnchor, updatedAt
+        )
+        SELECT id, planId, '', bookOrdinal, chapter, completionPercent, lastReadOrdinal, chapterAnchor, updatedAt
+        FROM ReadingPlanChapterProgress
+    """)
+    db.execSQL("DROP TABLE ReadingPlanChapterProgress")
+    db.execSQL("ALTER TABLE ReadingPlanChapterProgress_new RENAME TO ReadingPlanChapterProgress")
+    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_ReadingPlanChapterProgress_planId_moduleInitials_bookOrdinal_chapter ON ReadingPlanChapterProgress(planId, moduleInitials, bookOrdinal, chapter)")
     db.execSQL("CREATE INDEX IF NOT EXISTS index_ReadingPlanChapterProgress_planId_updatedAt ON ReadingPlanChapterProgress(planId, updatedAt)")
 }
 
@@ -90,4 +118,5 @@ val progressMigrations: Array<Migration> = arrayOf(
     addMemorizationTarget,
     addGlobalReadingProgressSettings,
     addCustomReadingPlanProgress,
+    addModuleIdentityToPlanProgress,
 )
