@@ -17,14 +17,36 @@
 
 package net.bible.android.view.activity.readingplan
 
+import android.content.Intent
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.MenuItem
+import android.view.ViewGroup
+import androidx.core.view.isVisible
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.checkbox.MaterialCheckBox
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanSelectionPlaceholderActivityBinding
+import net.bible.android.activity.databinding.CustomReadingPlanTreeItemBinding
 import net.bible.android.view.activity.base.ActivityBase
+
+private data class TreeRowRenderModel(
+    val visibleNode: VisibleCustomReadingPlanTreeNode,
+    val selectionState: CustomReadingPlanSelectionState,
+    val isExpanded: Boolean,
+)
+
+private class TreeRowViewHolder(val binding: CustomReadingPlanTreeItemBinding) : RecyclerView.ViewHolder(binding.root)
 
 class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private lateinit var binding: CustomReadingPlanSelectionPlaceholderActivityBinding
+    private lateinit var treeAdapter: CustomReadingPlanTreeAdapter
+    private var treeNodes: List<CustomReadingPlanTreeNode> = emptyList()
+    private var visibleRows: List<TreeRowRenderModel> = emptyList()
+    private var expandedKeys: MutableSet<String> = mutableSetOf()
+    private var pendingSelection: Set<String> = emptySet()
+    private lateinit var initialSelection: CustomReadingPlanSelection
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,22 +56,165 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = getString(R.string.custom_reading_plan_selection_title)
 
-        val planTitle = intent.getStringExtra(EXTRA_PLAN_TITLE).orEmpty()
-        val selectionSummary = intent.getStringExtra(EXTRA_SELECTION_SUMMARY).orEmpty()
-        binding.placeholderTitle.text = getString(R.string.custom_reading_plan_selection_placeholder_title, planTitle)
-        binding.placeholderSummary.text = getString(R.string.custom_reading_plan_selection_placeholder_summary, selectionSummary)
+        initialSelection = savedInstanceState?.getSerializable(STATE_INITIAL_SELECTION) as? CustomReadingPlanSelection
+            ?: intent.getSerializableExtra(EXTRA_SELECTION) as? CustomReadingPlanSelection
+            ?: CustomReadingPlanSelection()
+        pendingSelection = savedInstanceState?.getStringArrayList(STATE_PENDING_SELECTION)?.toSet()
+            ?: initialSelection.selectedNodeKeys
+
+        treeNodes = CustomReadingPlanTreeFactory.build(this)
+        val validKeys = CustomReadingPlanTreeSelection.validNodeKeys(treeNodes)
+        expandedKeys = CustomReadingPlanExpansionStateStore.loadAndPrune(validKeys).toMutableSet()
+        pendingSelection = pendingSelection.intersect(validKeys)
+
+        setupList()
+        renderSummary()
+        refreshVisibleRows()
+        setupButtons()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putSerializable(STATE_INITIAL_SELECTION, initialSelection)
+        outState.putStringArrayList(STATE_PENDING_SELECTION, ArrayList(pendingSelection))
+    }
+
+    override fun onBackPressed() {
+        confirmSelection()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
         android.R.id.home -> {
-            finish()
+            confirmSelection()
             true
         }
         else -> super.onOptionsItemSelected(item)
     }
 
+    private fun setupList() {
+        treeAdapter = CustomReadingPlanTreeAdapter(
+            onExpandToggle = ::toggleExpanded,
+            onSelectionToggle = ::toggleSelection,
+        )
+        binding.selectionTree.apply {
+            layoutManager = LinearLayoutManager(this@CustomReadingPlanSelectionPlaceholderActivity)
+            adapter = treeAdapter
+        }
+    }
+
+    private fun setupButtons() = binding.apply {
+        cancelButton.setOnClickListener { cancelSelection() }
+        confirmButton.setOnClickListener { confirmSelection() }
+    }
+
+    private fun refreshVisibleRows() {
+        visibleRows = CustomReadingPlanTreeSelection.flattenVisible(treeNodes, expandedKeys)
+            .map { visibleNode ->
+                TreeRowRenderModel(
+                    visibleNode = visibleNode,
+                    selectionState = CustomReadingPlanTreeSelection.selectionState(visibleNode.node, pendingSelection),
+                    isExpanded = visibleNode.node.key in expandedKeys,
+                )
+            }
+        treeAdapter.submit(visibleRows)
+        binding.emptyState.isVisible = visibleRows.isEmpty()
+        binding.selectionTree.isVisible = visibleRows.isNotEmpty()
+        renderSummary()
+    }
+
+    private fun renderSummary() {
+        val selection = CustomReadingPlanSelection(pendingSelection)
+        binding.placeholderTitle.text = getString(
+            R.string.custom_reading_plan_selection_placeholder_title,
+            intent.getStringExtra(EXTRA_PLAN_TITLE).orEmpty(),
+        )
+        binding.placeholderSummary.text = CustomReadingPlanSelectionSummaryFormatter.format(this, selection, treeNodes)
+    }
+
+    private fun toggleExpanded(node: CustomReadingPlanTreeNode) {
+        if (!node.isExpandable) return
+        if (!expandedKeys.add(node.key)) {
+            expandedKeys.remove(node.key)
+        }
+        CustomReadingPlanExpansionStateStore.persist(expandedKeys, CustomReadingPlanTreeSelection.validNodeKeys(treeNodes))
+        refreshVisibleRows()
+    }
+
+    private fun toggleSelection(node: CustomReadingPlanTreeNode, checked: Boolean) {
+        pendingSelection = CustomReadingPlanTreeSelection.setSelected(node, pendingSelection, checked)
+        refreshVisibleRows()
+    }
+
+    private fun confirmSelection() {
+        val selection = CustomReadingPlanSelection(pendingSelection)
+        setResult(RESULT_OK, Intent().apply {
+            putExtra(EXTRA_RESULT_SELECTION, selection)
+            putExtra(
+                EXTRA_RESULT_SELECTION_SUMMARY,
+                CustomReadingPlanSelectionSummaryFormatter.format(this@CustomReadingPlanSelectionPlaceholderActivity, selection, treeNodes),
+            )
+        })
+        finish()
+    }
+
+    private fun cancelSelection() {
+        setResult(RESULT_CANCELED)
+        finish()
+    }
+
+    private inner class CustomReadingPlanTreeAdapter(
+        private val onExpandToggle: (CustomReadingPlanTreeNode) -> Unit,
+        private val onSelectionToggle: (CustomReadingPlanTreeNode, Boolean) -> Unit,
+    ) : RecyclerView.Adapter<TreeRowViewHolder>() {
+        private val items = mutableListOf<TreeRowRenderModel>()
+
+        fun submit(rows: List<TreeRowRenderModel>) {
+            items.clear()
+            items += rows
+            notifyDataSetChanged()
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TreeRowViewHolder {
+            val binding = CustomReadingPlanTreeItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return TreeRowViewHolder(binding)
+        }
+
+        override fun getItemCount(): Int = items.size
+
+        override fun onBindViewHolder(holder: TreeRowViewHolder, position: Int) {
+            val item = items[position]
+            holder.binding.apply {
+                val node = item.visibleNode.node
+                val indent = root.resources.getDimensionPixelSize(R.dimen.custom_reading_plan_tree_indent_step)
+                contentContainer.setPaddingRelative(item.visibleNode.depth * indent, contentContainer.paddingTop, contentContainer.paddingEnd, contentContainer.paddingBottom)
+                expandButton.isVisible = node.isExpandable
+                expandButton.setImageResource(if (item.isExpanded) R.drawable.ic_expand_less_24 else R.drawable.ic_expand_more_24)
+                expandButton.setOnClickListener { onExpandToggle(node) }
+                label.text = node.label
+                checkbox.setOnCheckedChangeListener(null)
+                checkbox.checkedState = when (item.selectionState) {
+                    CustomReadingPlanSelectionState.CHECKED -> MaterialCheckBox.STATE_CHECKED
+                    CustomReadingPlanSelectionState.PARTIAL -> MaterialCheckBox.STATE_INDETERMINATE
+                    CustomReadingPlanSelectionState.UNCHECKED -> MaterialCheckBox.STATE_UNCHECKED
+                }
+                checkbox.setOnClickListener {
+                    val shouldCheck = item.selectionState != CustomReadingPlanSelectionState.CHECKED
+                    onSelectionToggle(node, shouldCheck)
+                }
+                root.setOnClickListener {
+                    if (node.isExpandable) onExpandToggle(node) else onSelectionToggle(node, item.selectionState != CustomReadingPlanSelectionState.CHECKED)
+                }
+            }
+        }
+    }
+
     companion object {
         const val EXTRA_PLAN_TITLE = "plan_title"
         const val EXTRA_SELECTION_SUMMARY = "selection_summary"
+        const val EXTRA_SELECTION = "selection"
+        const val EXTRA_RESULT_SELECTION = "result_selection"
+        const val EXTRA_RESULT_SELECTION_SUMMARY = "result_selection_summary"
+        private const val STATE_INITIAL_SELECTION = "initial_selection"
+        private const val STATE_PENDING_SELECTION = "pending_selection"
     }
 }

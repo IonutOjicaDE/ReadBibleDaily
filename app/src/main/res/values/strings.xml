@@ -1872,8 +1872,8 @@
     <string name="custom_reading_plan_delete_confirmation">Are you sure you want to delete %1$s?</string>
     <string name="custom_reading_plan_reading_speed_setting_placeholder">Future setting key: %1$s</string>
     <string name="custom_reading_plan_selection_title">Choose books and chapters</string>
-    <string name="custom_reading_plan_selection_placeholder_title">Selection placeholder for %1$s</string>
-    <string name="custom_reading_plan_selection_placeholder_summary">The selection UI will be implemented in a later step. Current mock selection: %1$s</string>
+    <string name="custom_reading_plan_selection_placeholder_title">Select books and chapters for %1$s</string>
+    <string name="custom_reading_plan_selection_placeholder_summary">Current selection: %1$s</string>
     <string name="custom_reading_plan_list_summary">%1$d minutes, %2$s, %3$s</string>
     <string name="custom_reading_plan_cadence_daily">daily</string>
     <string name="custom_reading_plan_cadence_every_two_days">every two days</string>
@@ -1890,4 +1890,25 @@
     <string name="custom_reading_plan_day_saturday">Saturday</string>
     <string name="custom_reading_plan_day_sunday">Sunday</string>
     <string name="custom_reading_plan_duration_months_days">%1$d months and %2$d days</string>
+    <string name="custom_reading_plan_selection_empty">No installed Bible modules are available yet for Custom Reading Plans.</string>
+    <string name="custom_reading_plan_toggle_expand">Expand or collapse section</string>
+    <string name="custom_reading_plan_selection_summary_none">No books selected</string>
+    <string name="custom_reading_plan_subsection_ot_pentateuch">Pentateuch</string>
+    <string name="custom_reading_plan_subsection_ot_historical">Historical books</string>
+    <string name="custom_reading_plan_subsection_ot_poetic">Poetic / didactic books</string>
+    <string name="custom_reading_plan_subsection_ot_prophetic">Prophetic books</string>
+    <string name="custom_reading_plan_subsection_ot_orthodox_additional">Additional books included in the Orthodox Bible</string>
+    <string name="custom_reading_plan_subsection_nt_gospels">Gospels</string>
+    <string name="custom_reading_plan_subsection_nt_acts">Acts of the Apostles</string>
+    <string name="custom_reading_plan_subsection_nt_pauline">Pauline epistles</string>
+    <string name="custom_reading_plan_subsection_nt_catholic">Catholic epistles</string>
+    <string name="custom_reading_plan_subsection_nt_revelation">Revelation</string>
+    <plurals name="custom_reading_plan_selection_summary_bibles">
+        <item quantity="one">%d Bible selected</item>
+        <item quantity="other">%d Bibles selected</item>
+    </plurals>
+    <plurals name="custom_reading_plan_selection_summary_books">
+        <item quantity="one">%d book selected</item>
+        <item quantity="other">%d books selected</item>
+    </plurals>
 </resources>

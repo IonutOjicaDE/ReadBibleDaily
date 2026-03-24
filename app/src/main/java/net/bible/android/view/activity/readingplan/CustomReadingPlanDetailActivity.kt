@@ -27,6 +27,7 @@ import android.view.MenuItem
 import android.widget.CheckBox
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanDetailActivityBinding
 import net.bible.android.view.activity.base.ActivityBase
@@ -42,6 +43,19 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
     private lateinit var draftPlan: CustomReadingPlan
     private var isNewPlan = false
     private var bindingState = false
+    private val selectionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val data = result.data ?: return@registerForActivityResult
+        val selection = data.getSerializableExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_RESULT_SELECTION) as? CustomReadingPlanSelection
+            ?: return@registerForActivityResult
+        val selectionSummary = data.getStringExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_RESULT_SELECTION_SUMMARY)
+            ?: CustomReadingPlanSelectionSummaryFormatter.format(this, selection, CustomReadingPlanTreeFactory.build(this))
+        draftPlan = draftPlan.copy(
+            selection = selection,
+            selectionSummary = selectionSummary,
+        )
+        renderDraft()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,7 +72,6 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         bindDraftToViews()
         renderDraft()
     }
-
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
@@ -92,10 +105,15 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         }
     }
 
-    private fun defaultPlan(): CustomReadingPlan = CustomReadingPlan(
-        title = getString(R.string.custom_reading_plan_new_title),
-        selectionSummary = defaultSelectionSummary(this),
-    )
+    private fun defaultPlan(): CustomReadingPlan {
+        val selection = CustomReadingPlanSelection()
+        val tree = CustomReadingPlanTreeFactory.build(this)
+        return CustomReadingPlan(
+            title = getString(R.string.custom_reading_plan_new_title),
+            selection = selection,
+            selectionSummary = if (tree.isEmpty()) defaultSelectionSummary(this) else CustomReadingPlanSelectionSummaryFormatter.format(this, selection, tree),
+        )
+    }
 
     private fun setupViews() = binding.apply {
         titleInput.addTextChangedListener(object : TextWatcher {
@@ -111,9 +129,10 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         })
 
         selectedBooksValue.setOnClickListener {
-            startActivity(Intent(this@CustomReadingPlanDetailActivity, CustomReadingPlanSelectionPlaceholderActivity::class.java).apply {
+            selectionLauncher.launch(Intent(this@CustomReadingPlanDetailActivity, CustomReadingPlanSelectionPlaceholderActivity::class.java).apply {
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_PLAN_TITLE, draftPlan.title)
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_SELECTION_SUMMARY, draftPlan.selectionSummary)
+                putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_SELECTION, draftPlan.selection)
             })
         }
 
