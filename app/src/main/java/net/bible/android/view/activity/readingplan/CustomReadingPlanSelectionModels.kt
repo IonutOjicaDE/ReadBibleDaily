@@ -105,29 +105,33 @@ class BibleTreeSource(
                 key = "bible:${bible.initials}:$BIBLE_SECTION_OT",
                 label = context.getString(R.string.custom_reading_plan_old_testament),
                 type = CustomReadingPlanNodeType.BIBLE_TESTAMENT,
-                children = subsectionProvider.oldTestament(context).map { it.toTreeNode(bible, versification) },
+                children = subsectionProvider.oldTestament(context).mapNotNull { it.toTreeNodeOrNull(bible, versification) },
             ),
             CustomReadingPlanTreeNode(
                 key = "bible:${bible.initials}:$BIBLE_SECTION_NT",
                 label = context.getString(R.string.custom_reading_plan_new_testament),
                 type = CustomReadingPlanNodeType.BIBLE_TESTAMENT,
-                children = subsectionProvider.newTestament(context).map { it.toTreeNode(bible, versification) },
+                children = subsectionProvider.newTestament(context).mapNotNull { it.toTreeNodeOrNull(bible, versification) },
             ),
         )
     }
 
-    private fun BibleSubsectionDefinition.toTreeNode(bible: Book, versification: Versification): CustomReadingPlanTreeNode = CustomReadingPlanTreeNode(
-        key = "bible:${bible.initials}:${this.key}",
-        label = title,
-        type = CustomReadingPlanNodeType.BIBLE_SUBSECTION,
-        children = resolveBooks(versification).map { bibleBook ->
-            CustomReadingPlanTreeNode(
-                key = "bible:${bible.initials}:book:${bibleBook.name}",
-                label = versification.getLongName(bibleBook),
-                type = CustomReadingPlanNodeType.BIBLE_BOOK,
-            )
-        },
-    )
+    private fun BibleSubsectionDefinition.toTreeNodeOrNull(bible: Book, versification: Versification): CustomReadingPlanTreeNode? {
+        val books = resolveBooks(versification)
+        if (books.isEmpty()) return null
+        return CustomReadingPlanTreeNode(
+            key = "bible:${bible.initials}:${this.key}",
+            label = title,
+            type = CustomReadingPlanNodeType.BIBLE_SUBSECTION,
+            children = books.map { bibleBook ->
+                CustomReadingPlanTreeNode(
+                    key = "bible:${bible.initials}:book:${bibleBook.name}",
+                    label = versification.getLongName(bibleBook),
+                    type = CustomReadingPlanNodeType.BIBLE_BOOK,
+                )
+            },
+        )
+    }
 
     private fun BibleSubsectionDefinition.resolveBooks(versification: Versification): List<BibleBook> {
         val availableBooks = versification.bookIterator.asSequence().toSet()
@@ -216,11 +220,19 @@ object CustomReadingPlanTreeSelection {
     }
 
     fun selectionState(node: CustomReadingPlanTreeNode, selectedNodeKeys: Set<String>): CustomReadingPlanSelectionState {
-        val subtreeKeys = node.subtreeKeys()
-        val selectedCount = subtreeKeys.count { it in selectedNodeKeys }
+        if (node.children.isEmpty()) {
+            return if (node.key in selectedNodeKeys) {
+                CustomReadingPlanSelectionState.CHECKED
+            } else {
+                CustomReadingPlanSelectionState.UNCHECKED
+            }
+        }
+
+        val descendantKeys = node.descendantKeys()
+        val selectedDescendants = descendantKeys.count { it in selectedNodeKeys }
         return when {
-            selectedCount == 0 -> CustomReadingPlanSelectionState.UNCHECKED
-            selectedCount == subtreeKeys.size -> CustomReadingPlanSelectionState.CHECKED
+            selectedDescendants == 0 && node.key !in selectedNodeKeys -> CustomReadingPlanSelectionState.UNCHECKED
+            selectedDescendants == descendantKeys.size -> CustomReadingPlanSelectionState.CHECKED
             else -> CustomReadingPlanSelectionState.PARTIAL
         }
     }
@@ -233,6 +245,8 @@ object CustomReadingPlanTreeSelection {
     }
 
     fun validNodeKeys(nodes: List<CustomReadingPlanTreeNode>): Set<String> = nodes.flatMap { it.subtreeKeys() }.toSet()
+
+    private fun CustomReadingPlanTreeNode.descendantKeys(): Set<String> = children.flatMap { it.subtreeKeys() }.toSet()
 
     private fun CustomReadingPlanTreeNode.subtreeKeys(): Set<String> = buildSet {
         add(key)
@@ -263,8 +277,14 @@ object CustomReadingPlanSelectionSummaryFormatter {
 
         val allNodes = CustomReadingPlanTreeSelection.flattenVisible(treeNodes, CustomReadingPlanTreeSelection.validNodeKeys(treeNodes))
             .map { it.node }
-        val selectedBooks = allNodes.filter { it.type == CustomReadingPlanNodeType.BIBLE_BOOK && it.key in selection.selectedNodeKeys }
-        val selectedBibles = allNodes.filter { it.type == CustomReadingPlanNodeType.BIBLE_MODULE && it.key in selection.selectedNodeKeys }
+        val selectedBooks = allNodes.filter {
+            it.type == CustomReadingPlanNodeType.BIBLE_BOOK &&
+                CustomReadingPlanTreeSelection.selectionState(it, selection.selectedNodeKeys) == CustomReadingPlanSelectionState.CHECKED
+        }
+        val selectedBibles = allNodes.filter {
+            it.type == CustomReadingPlanNodeType.BIBLE_MODULE &&
+                CustomReadingPlanTreeSelection.selectionState(it, selection.selectedNodeKeys) == CustomReadingPlanSelectionState.CHECKED
+        }
 
         return when {
             selectedBibles.isNotEmpty() -> context.resources.getQuantityString(

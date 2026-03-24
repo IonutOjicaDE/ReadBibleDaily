@@ -81,9 +81,13 @@ object CustomReadingPlanInMemoryRepository {
         if (isInitialized) return
         isInitialized = true
 
+        val newTestamentSeed = seededSelection(context, "new_testament")
+        val oldTestamentSeed = seededSelection(context, "old_testament")
+
         plans += CustomReadingPlan(
             title = context.getString(R.string.custom_reading_plan_new_testament),
-            selectionSummary = defaultSelectionSummary(context),
+            selection = newTestamentSeed?.first ?: CustomReadingPlanSelection(),
+            selectionSummary = newTestamentSeed?.second ?: defaultSelectionSummary(context),
             selectedDays = linkedSetOf(
                 ReadingWeekDay.MONDAY,
                 ReadingWeekDay.TUESDAY,
@@ -95,7 +99,8 @@ object CustomReadingPlanInMemoryRepository {
         )
         plans += CustomReadingPlan(
             title = context.getString(R.string.custom_reading_plan_old_testament),
-            selectionSummary = defaultSelectionSummary(context),
+            selection = oldTestamentSeed?.first ?: CustomReadingPlanSelection(),
+            selectionSummary = oldTestamentSeed?.second ?: defaultSelectionSummary(context),
             minutesPerSession = 15,
             periodInDays = 2,
             selectedDays = linkedSetOf(
@@ -134,6 +139,16 @@ object CustomReadingPlanInMemoryRepository {
     internal fun resetForTesting() {
         plans.clear()
         isInitialized = false
+    }
+
+    private fun seededSelection(context: Context, testamentKey: String): Pair<CustomReadingPlanSelection, String>? {
+        val treeNodes = CustomReadingPlanTreeFactory.build(context)
+        val firstBibleNode = treeNodes.firstOrNull { it.type == CustomReadingPlanNodeType.BIBLE_MODULE } ?: return null
+        val testamentNode = firstBibleNode.children.firstOrNull { it.key.endsWith(":$testamentKey") } ?: return null
+        val selectedKeys = CustomReadingPlanTreeSelection.setSelected(testamentNode, emptySet(), true)
+        val selection = CustomReadingPlanSelection(selectedKeys)
+        val summary = CustomReadingPlanSelectionSummaryFormatter.format(context, selection, treeNodes)
+        return selection to summary
     }
 }
 

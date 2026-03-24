@@ -30,6 +30,13 @@ class CustomReadingPlanTreeSelectionTest {
     }
 
     @Test
+    fun `selecting all children marks parent checked`() {
+        val selected = setOf("book:gen", "book:exod")
+
+        assertEquals(CustomReadingPlanSelectionState.CHECKED, CustomReadingPlanTreeSelection.selectionState(subsection, selected))
+    }
+
+    @Test
     fun `flattenVisible only includes expanded descendants`() {
         val root = CustomReadingPlanTreeNode("root", "Bible", CustomReadingPlanNodeType.BIBLE_MODULE, listOf(subsection))
 
