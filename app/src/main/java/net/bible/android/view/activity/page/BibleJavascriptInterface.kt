@@ -101,6 +101,7 @@ class BibleJavascriptInterface(
 
     @JavascriptInterface
     fun scrolledToOrdinal(keyStr: String, ordinal: Int) {
+        mainBibleActivity.onCustomPlanScrolledToOrdinal(ordinal)
         val doc = bibleView.firstDocument
         if (doc is BibleDocument || doc is MyNotesDocument) {
             currentPageManager.currentBible.setCurrentVerseOrdinal(ordinal,

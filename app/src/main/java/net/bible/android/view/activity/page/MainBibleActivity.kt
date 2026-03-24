@@ -42,6 +42,7 @@ import android.text.style.ImageSpan
 import android.util.Log
 import android.util.TypedValue
 import android.view.ContextMenu
+import android.view.Gravity
 import android.view.GestureDetector
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -59,6 +60,7 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.view.menu.MenuPopupHelper
@@ -125,9 +127,13 @@ import net.bible.android.view.activity.navigation.ChooseDictionaryWord
 import net.bible.android.view.activity.navigation.ChooseDocument
 import net.bible.android.view.activity.navigation.GridChoosePassageBook
 import net.bible.android.view.activity.progress.ReadingProgressActivity
+import net.bible.android.view.activity.readingplan.ChapterIdentity
 import net.bible.android.view.activity.readingplan.CustomReadingPlanInMemoryRepository
 import net.bible.android.view.activity.readingplan.CustomReadingPlanQueueBuilder
+import net.bible.android.view.activity.readingplan.CustomReadingPlanStickyTitleFormatter
 import net.bible.android.view.activity.readingplan.CustomReadingPlanTreeFactory
+import net.bible.android.view.activity.readingplan.CustomPlanQueueItem
+import net.bible.android.view.activity.readingplan.CustomReadingPlanProgressService
 import net.bible.android.view.activity.navigation.History
 import net.bible.android.view.activity.navigation.genbookmap.ChooseGeneralBookKey
 import net.bible.android.view.activity.navigation.genbookmap.ChooseMapKey
@@ -394,8 +400,17 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
 
     override fun fixNightMode() {} // handle this manually here
 
+    private var customPlanStartupMode = false
+    private var customStartupQueue: List<CustomPlanQueueItem> = emptyList()
+    private var customPlanStickyTitle: TextView? = null
+    private var customPlanStickyTitleLastUpdateMs: Long? = null
+
     private fun maybeStartInCustomPlanMode(savedInstanceState: Bundle?) {
         if (savedInstanceState != null || intent.hasExtra("openLink")) return
+        val existingCustomPlans = runCatching {
+            DatabaseContainer.instance.progressDb.progressDao().loadCustomReadingPlans()
+        }.getOrDefault(emptyList())
+        if (existingCustomPlans.isEmpty()) return
 
         CustomReadingPlanInMemoryRepository.initialize(this)
         val plans = CustomReadingPlanInMemoryRepository.getPlans()
@@ -403,14 +418,81 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
         val decision = CustomReadingPlanQueueBuilder().decideStartup(plans, treeNodes)
         if (!decision.shouldEnterMode) return
 
+        customPlanStartupMode = true
+        customStartupQueue = decision.queue
         fullScreen = true
+        updateCustomPlanStickyTitle("")
         decision.queue.firstOrNull()?.chapter?.let { chapter ->
             val document = SwordDocumentFacade.getDocumentByInitials(chapter.moduleInitials) as? AbstractPassageBook ?: return@let
             val bibleBook = document.versification.bookIterator.asSequence().firstOrNull { it.ordinal == chapter.bookOrdinal }
                 ?: return@let
             val verse = Verse(document.versification, bibleBook, chapter.chapter, 1)
-            windowControl.showLink(document, verse)
+            windowControl.activeWindowPageManager.setCurrentDocumentAndKey(document, verse)
         }
+    }
+
+    fun onCustomPlanScrolledToOrdinal(ordinal: Int) {
+        if (!customPlanStartupMode || !fullScreen || customStartupQueue.isEmpty()) return
+        val now = System.currentTimeMillis()
+        if (!CustomReadingPlanStickyTitleFormatter.shouldEmit(now, customPlanStickyTitleLastUpdateMs)) return
+        customPlanStickyTitleLastUpdateMs = now
+
+        val verse = runCatching { Verse(KJVA, ordinal) }.getOrNull() ?: return
+        val activeDoc = windowControl.activeWindowPageManager.currentBible.currentDocument as? AbstractPassageBook ?: return
+        val currentChapter = ChapterIdentity(activeDoc.initials, verse.book.ordinal, verse.chapter)
+        val currentIndex = customStartupQueue.indexOfFirst { it.chapter == currentChapter }
+        if (currentIndex < 0) return
+
+        val current = customStartupQueue[currentIndex]
+        val next = customStartupQueue.getOrNull(currentIndex + 1)
+        val labels = mutableListOf(
+            stickyTitleItemFor(current, useCurrentVerse = true, currentVerse = verse)
+        )
+        if (next != null) {
+            labels += stickyTitleItemFor(next, useCurrentVerse = false, currentVerse = verse)
+        }
+        updateCustomPlanStickyTitle(CustomReadingPlanStickyTitleFormatter.format(labels))
+    }
+
+    private fun stickyTitleItemFor(
+        item: CustomPlanQueueItem,
+        useCurrentVerse: Boolean,
+        currentVerse: Verse,
+    ): CustomReadingPlanStickyTitleFormatter.VisibleChapterProgress {
+        val label = if (useCurrentVerse) {
+            "${resolveBookShortName(currentVerse.book.ordinal)} ${item.chapter.chapter}"
+        } else {
+            "${resolveBookShortName(item.chapter.bookOrdinal)} ${item.chapter.chapter}"
+        }
+        val completionPercent = (CustomReadingPlanProgressService.loadChapterResume(item.planId, item.chapter)
+            ?.completionPercent
+            ?.times(100)
+            ?.roundToInt() ?: 0).coerceIn(0, 100)
+        return CustomReadingPlanStickyTitleFormatter.VisibleChapterProgress(label, completionPercent)
+    }
+
+    private fun resolveBookShortName(bookOrdinal: Int): String =
+        KJVA.bookIterator.asSequence().firstOrNull { it.ordinal == bookOrdinal }?.let { KJVA.getShortName(it) } ?: ""
+
+    private fun updateCustomPlanStickyTitle(text: String) {
+        val view = customPlanStickyTitle ?: AppCompatTextView(this).apply {
+            textSize = 12f
+            setPadding(24, 12, 24, 12)
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.argb(170, 0, 0, 0))
+            layoutParams = DrawerLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                leftMargin = 12
+                topMargin = topOffset1 + 8
+            }
+            binding.drawerLayout.addView(this)
+            customPlanStickyTitle = this
+        }
+        view.text = text
+        view.visibility = if (customPlanStartupMode && fullScreen && text.isNotBlank()) View.VISIBLE else View.GONE
     }
 
     private fun setupUi() {
@@ -1730,6 +1812,9 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
                 hideSystemUI()
                 Log.i(TAG, "Fullscreen on")
                 toolbarLayout.visibility = View.GONE
+                if (customPlanStartupMode) {
+                    customPlanStickyTitle?.visibility = View.VISIBLE
+                }
 
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
                     toolbarLayout.translationY = 0f
@@ -1746,6 +1831,7 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
             else {
                 showSystemUI()
                 Log.i(TAG, "Fullscreen off")
+                customPlanStickyTitle?.visibility = View.GONE
 
                 toolbarLayout.visibility = View.VISIBLE
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
