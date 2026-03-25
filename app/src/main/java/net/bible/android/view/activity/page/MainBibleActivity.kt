@@ -406,14 +406,16 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
     private var customStartupQueue: List<CustomPlanQueueItem> = emptyList()
     private var customPlanStickyTitle: TextView? = null
     private var customPlanStickyTitleLastUpdateMs: Long? = null
-    private val customPlanProgressBatchWriter = CustomReadingPlanProgressBatchWriter { pending ->
-        CustomReadingPlanProgressService.saveChapterResume(
-            planId = pending.planId,
-            chapter = pending.chapter,
-            completion = pending.completion,
-            position = pending.position,
-        )
-    }
+    private val customPlanProgressBatchWriter = CustomReadingPlanProgressBatchWriter(
+        sink = { pending: CustomReadingPlanProgressBatchWriter.PendingProgress ->
+            CustomReadingPlanProgressService.saveChapterResume(
+                planId = pending.planId,
+                chapter = pending.chapter,
+                completion = pending.completion,
+                position = pending.position,
+            )
+        },
+    )
 
     private fun maybeStartInCustomPlanMode(savedInstanceState: Bundle?) {
         if (savedInstanceState != null || intent.hasExtra("openLink")) return
