@@ -15,7 +15,7 @@
  * If not, see http://www.gnu.org/licenses/.
  */
 
-import {ComputedRef, ref, Ref, watch} from "vue";
+import {ComputedRef, nextTick, ref, Ref, watch} from "vue";
 import {throttle} from "lodash";
 import {setupWindowEventListener} from "@/utils";
 import {AnyDocument, BibleDocumentType} from "@/types/documents";
@@ -97,9 +97,14 @@ export function useVisibleChaptersIndicator(
     const onScroll = throttle(detectVisibleChapters, 500, {leading: true, trailing: true});
     setupWindowEventListener("scroll", onScroll);
 
-    watch(() => documents.map(d => d.id), () => {
-        detectVisibleChapters();
-    });
+    watch(
+        () => documents.map(d => d.id),
+        async () => {
+            await nextTick();
+            detectVisibleChapters();
+        },
+        {flush: "post"}
+    );
 
     watch(() => [
         appSettings.topOffset,

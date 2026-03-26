@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
 import {computed} from "vue";
-import {VisibleChapter} from "@/composables/visible-chapters-indicator";
+import type {VisibleChapter} from "@/composables/visible-chapters-indicator";
 
 const props = defineProps<{
   visible: boolean,
