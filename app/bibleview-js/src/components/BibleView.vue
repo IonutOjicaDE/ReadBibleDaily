@@ -40,6 +40,11 @@
       <div class="bottom-right-corner"/>
     </div>
     <div id="top"/>
+    <StickyChapterIndicator
+      :visible="visibleChapterIndicator"
+      :visible-chapters="visibleChapters"
+      :top-offset="calculatedConfig.topOffset"
+    />
     <ChapterNavigationButtons
       v-if="showChapterNavButtons"
       position="top"
@@ -137,9 +142,11 @@ import {useCustomCss} from "@/composables/custom-css";
 import {useCustomFeatures} from "@/composables/features";
 import {useSharing} from "@/composables/sharing";
 import {AnyDocument, BibleViewDocumentType} from "@/types/documents";
+import {useVisibleChaptersIndicator} from "@/composables/visible-chapters-indicator";
 import AmbiguousSelection from "@/components/modals/AmbiguousSelection.vue";
 import ChapterNavigationButtons from "@/components/ChapterNavigationButtons.vue";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
+import StickyChapterIndicator from "@/components/StickyChapterIndicator.vue";
 
 console.log("BibleView setup");
 useAddonFonts();
@@ -201,6 +208,13 @@ onMounted(() => {
 onUnmounted(() => mounted.value = false)
 
 const {currentVerse} = useVerseNotifier(config, calculatedConfig, mounted, android, topElement, scroll, lineHeight);
+const {visible: visibleChapterIndicator, visibleChapters} = useVisibleChaptersIndicator(
+    documents,
+    appSettings,
+    calculatedConfig,
+    lineHeight,
+    mounted,
+);
 
 const customFeatures = useCustomFeatures(android);
 provide(customFeaturesKey, customFeatures);
