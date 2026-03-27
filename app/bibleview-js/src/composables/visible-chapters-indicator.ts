@@ -76,6 +76,9 @@ export function useVisibleChaptersIndicator(
                     continue;
                 }
                 const rect = el.getBoundingClientRect();
+                if (rect.top >= bottomBoundary) {
+                    break;
+                }
                 const isVisible = rect.bottom > topBoundary && rect.top < bottomBoundary;
                 if (isVisible) {
                     chapterKeys.add(chapter.key);
@@ -118,7 +121,8 @@ export function useVisibleChaptersIndicator(
     ], () => detectVisibleChapters());
 
     const visible = computed(() =>
-        isFullscreenFromOffsets(appSettings)
+        appSettings.isFullscreen
+        && isFullscreenFromOffsets(appSettings)
         && documents.length > 0
         && documents[0].type === "bible"
         && visibleChapters.value.length > 0

@@ -48,13 +48,14 @@ export function useScroll(
     function setToolbarOffset(
         topOffset: number,
         bottomOffset: number,
-        {doNotScroll = false, immediate = false, imeOpen = false} = {}
+        {doNotScroll = false, immediate = false, imeOpen = false, isFullscreen = false} = {}
     ) {
-        console.log("setToolbarOffset", {topOffset, bottomOffset, doNotScroll, immediate, imeOpen});
+        console.log("setToolbarOffset", {topOffset, bottomOffset, doNotScroll, immediate, imeOpen, isFullscreen});
         const diff = appSettings.topOffset - topOffset;
         appSettings.topOffset = topOffset;
         appSettings.bottomOffset = bottomOffset;
         appSettings.imeOpen = imeOpen;
+        appSettings.isFullscreen = isFullscreen;
         const delay = immediate ? 0 : 500;
 
         if (diff !== 0 && !doNotScroll) {
@@ -236,4 +237,3 @@ export function useScroll(
     setupEventBusListener("setup_content", setupContent)
     return {scrollToId, isScrolling, doScrolling, scrollYAtStart, scrollY}
 }
-

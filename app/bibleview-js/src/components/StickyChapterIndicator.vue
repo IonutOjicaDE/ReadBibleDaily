@@ -14,22 +14,23 @@ import type {VisibleChapter} from "@/composables/visible-chapters-indicator";
 const props = defineProps<{
   visible: boolean,
   visibleChapters: VisibleChapter[],
-  topOffset: number,
+  bottomOffset: number,
+  leftOffset: number,
 }>();
 
 const indicatorStyle = computed(() => ({
-    top: `${Math.max(0, props.topOffset)}px`
+    bottom: `${Math.max(0, props.bottomOffset)}px`,
+    left: `${Math.max(0, props.leftOffset)}px`,
 }));
 </script>
 
 <style scoped lang="scss">
 .sticky-chapter-indicator {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
+  transform: none;
   z-index: 30;
   padding: 4px 12px;
-  border-radius: 12px;
+  border-radius: 0 12px 0 0;
   background: hsla(var(--text-color-h), var(--text-color-s), var(--text-color-l), 0.85);
   color: var(--background-color);
   font-size: 0.85em;

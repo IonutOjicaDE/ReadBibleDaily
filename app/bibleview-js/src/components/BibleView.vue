@@ -43,7 +43,8 @@
     <StickyChapterIndicator
       :visible="visibleChapterIndicator"
       :visible-chapters="visibleChapters"
-      :top-offset="calculatedConfig.topOffset"
+      :bottom-offset="appSettings.bottomOffset"
+      :left-offset="calculatedConfig.marginLeft"
     />
     <ChapterNavigationButtons
       v-if="showChapterNavButtons"
@@ -143,7 +144,6 @@ import {useCustomFeatures} from "@/composables/features";
 import {useSharing} from "@/composables/sharing";
 import {AnyDocument, BibleViewDocumentType} from "@/types/documents";
 import {useVisibleChaptersIndicator} from "@/composables/visible-chapters-indicator";
-import type {VisibleChapter} from "@/composables/visible-chapters-indicator";
 import AmbiguousSelection from "@/components/modals/AmbiguousSelection.vue";
 import ChapterNavigationButtons from "@/components/ChapterNavigationButtons.vue";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
@@ -209,21 +209,13 @@ onMounted(() => {
 onUnmounted(() => mounted.value = false)
 
 const {currentVerse} = useVerseNotifier(config, calculatedConfig, mounted, android, topElement, scroll, lineHeight);
-const visibleChapterIndicator = ref(false);
-const visibleChapters = ref<VisibleChapter[]>([]);
-try {
-    const indicator = useVisibleChaptersIndicator(
-        documents,
-        appSettings,
-        calculatedConfig,
-        lineHeight,
-        mounted,
-    );
-    watch(indicator.visible, (value) => visibleChapterIndicator.value = value, {immediate: true});
-    watch(indicator.visibleChapters, (value) => visibleChapters.value = value, {immediate: true});
-} catch (error) {
-    console.error("Sticky chapter indicator initialization failed", error);
-}
+const {visible: visibleChapterIndicator, visibleChapters} = useVisibleChaptersIndicator(
+    documents,
+    appSettings,
+    calculatedConfig,
+    lineHeight,
+    mounted,
+);
 
 const customFeatures = useCustomFeatures(android);
 provide(customFeaturesKey, customFeatures);
