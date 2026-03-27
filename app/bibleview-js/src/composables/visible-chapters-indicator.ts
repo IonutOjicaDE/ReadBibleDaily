@@ -50,46 +50,51 @@ export function useVisibleChaptersIndicator(
     const visibleChapters = ref<VisibleChapter[]>([]);
 
     function detectVisibleChapters() {
-        if (!mounted.value || documents.length === 0) {
-            if (visibleChapters.value.length > 0) {
-                visibleChapters.value = [];
+        try {
+            if (!mounted.value || documents.length === 0) {
+                if (visibleChapters.value.length > 0) {
+                    visibleChapters.value = [];
+                }
+                return;
             }
-            return;
-        }
-        const topBoundary = Math.max(0, calculatedConfig.value.topOffset + (lineHeight.value * 0.2));
-        const bottomBoundary = window.innerHeight;
+            const topBoundary = Math.max(0, calculatedConfig.value.topOffset + (lineHeight.value * 0.2));
+            const bottomBoundary = window.innerHeight;
 
-        const chapters: VisibleChapter[] = [];
-        const chapterKeys = new Set<string>();
+            const chapters: VisibleChapter[] = [];
+            const chapterKeys = new Set<string>();
 
-        for (const doc of documents) {
-            if (doc.type !== "bible") {
-                continue;
+            for (const doc of documents) {
+                if (doc.type !== "bible") {
+                    continue;
+                }
+                const chapter = asVisibleChapter(doc);
+                if (!chapter || chapterKeys.has(chapter.key)) {
+                    continue;
+                }
+                const el = window.document.getElementById(`doc-${doc.id}`);
+                if (!el) {
+                    continue;
+                }
+                const rect = el.getBoundingClientRect();
+                const isVisible = rect.bottom > topBoundary && rect.top < bottomBoundary;
+                if (isVisible) {
+                    chapterKeys.add(chapter.key);
+                    chapters.push(chapter);
+                }
+                if (chapters.length >= 2) {
+                    break;
+                }
             }
-            const chapter = asVisibleChapter(doc);
-            if (!chapter || chapterKeys.has(chapter.key)) {
-                continue;
-            }
-            const el = window.document.getElementById(`doc-${doc.id}`);
-            if (!el) {
-                continue;
-            }
-            const rect = el.getBoundingClientRect();
-            const isVisible = rect.bottom > topBoundary && rect.top < bottomBoundary;
-            if (isVisible) {
-                chapterKeys.add(chapter.key);
-                chapters.push(chapter);
-            }
-            if (chapters.length >= 2) {
-                break;
-            }
-        }
 
-        const hasChanged = chapters.length !== visibleChapters.value.length
-            || chapters.some((chapter, index) => chapter.key !== visibleChapters.value[index]?.key);
+            const hasChanged = chapters.length !== visibleChapters.value.length
+                || chapters.some((chapter, index) => chapter.key !== visibleChapters.value[index]?.key);
 
-        if (hasChanged) {
-            visibleChapters.value = chapters;
+            if (hasChanged) {
+                visibleChapters.value = chapters;
+            }
+        } catch (error) {
+            console.error("Visible chapter detection failed", error);
+            visibleChapters.value = [];
         }
     }
 
