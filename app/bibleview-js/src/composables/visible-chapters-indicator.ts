@@ -18,8 +18,8 @@
 import {ComputedRef, nextTick, ref, Ref, watch} from "vue";
 import {throttle} from "lodash";
 import {setupWindowEventListener} from "@/utils";
-import {AnyDocument, BibleDocumentType} from "@/types/documents";
-import {AppSettings, CalculatedConfig} from "@/composables/config";
+import type {AnyDocument} from "@/types/documents";
+import type {AppSettings, CalculatedConfig} from "@/composables/config";
 
 export type VisibleChapter = {
     label: string
@@ -30,10 +30,9 @@ export function asVisibleChapter(document: AnyDocument): VisibleChapter | null {
     if (document.type !== "bible") {
         return null;
     }
-    const bibleDocument = document as BibleDocumentType;
     return {
-        label: `${bibleDocument.bibleBookName} ${Math.max(1, bibleDocument.chapterNumber)}`,
-        key: `${bibleDocument.bibleBookName}:${Math.max(1, bibleDocument.chapterNumber)}`,
+        label: `${document.bibleBookName} ${Math.max(1, document.chapterNumber)}`,
+        key: `${document.bibleBookName}:${Math.max(1, document.chapterNumber)}`,
     };
 }
 
@@ -96,6 +95,7 @@ export function useVisibleChaptersIndicator(
 
     const onScroll = throttle(detectVisibleChapters, 500, {leading: true, trailing: true});
     setupWindowEventListener("scroll", onScroll);
+    setupWindowEventListener("resize", onScroll);
 
     watch(
         () => documents.map(d => d.id),
