@@ -31,8 +31,10 @@ const indicatorStyle = computed(() => ({
   z-index: 30;
   padding: 4px 12px;
   border-radius: 0 12px 0 0;
-  background: hsla(var(--text-color-h), var(--text-color-s), var(--text-color-l), 0.85);
-  color: var(--background-color);
+  background: var(--background-color);
+  color: var(--text-color);
+  border-top: 1px solid var(--text-color);
+  border-right: 1px solid var(--text-color);
   font-size: 0.85em;
   line-height: 1.2;
   pointer-events: none;

@@ -48,10 +48,17 @@ export function useVisibleChaptersIndicator(
     mounted: Ref<boolean>,
 ) {
     const visibleChapters = ref<VisibleChapter[]>([]);
+    const canShowIndicator = computed(() =>
+        mounted.value
+        && appSettings.isFullscreen
+        && isFullscreenFromOffsets(appSettings)
+        && documents.length > 0
+        && documents[0].type === "bible"
+    );
 
     function detectVisibleChapters() {
         try {
-            if (!mounted.value || documents.length === 0) {
+            if (!canShowIndicator.value) {
                 if (visibleChapters.value.length > 0) {
                     visibleChapters.value = [];
                 }
@@ -120,13 +127,7 @@ export function useVisibleChaptersIndicator(
         mounted.value,
     ], () => detectVisibleChapters());
 
-    const visible = computed(() =>
-        appSettings.isFullscreen
-        && isFullscreenFromOffsets(appSettings)
-        && documents.length > 0
-        && documents[0].type === "bible"
-        && visibleChapters.value.length > 0
-    );
+    const visible = computed(() => canShowIndicator.value && visibleChapters.value.length > 0);
 
     return {
         visible,

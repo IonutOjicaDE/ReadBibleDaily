@@ -48,7 +48,7 @@ export function useScroll(
     function setToolbarOffset(
         topOffset: number,
         bottomOffset: number,
-        {doNotScroll = false, immediate = false, imeOpen = false, isFullscreen = false} = {}
+        {doNotScroll = false, immediate = false, imeOpen = false, isFullscreen = appSettings.isFullscreen} = {}
     ) {
         console.log("setToolbarOffset", {topOffset, bottomOffset, doNotScroll, immediate, imeOpen, isFullscreen});
         const diff = appSettings.topOffset - topOffset;
