@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible" class="sticky-chapter-indicator" :style="indicatorStyle">
+  <div v-if="visible && visibleChapters.length > 0" class="sticky-chapter-indicator" :style="indicatorStyle">
     <span class="primary">{{ visibleChapters[0].label }}</span>
     <template v-if="visibleChapters[1]">
       <span class="secondary">, {{ visibleChapters[1].label }}</span>

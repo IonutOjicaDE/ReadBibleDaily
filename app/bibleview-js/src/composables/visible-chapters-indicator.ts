@@ -15,7 +15,7 @@
  * If not, see http://www.gnu.org/licenses/.
  */
 
-import {ComputedRef, nextTick, ref, Ref, watch} from "vue";
+import {computed, ComputedRef, nextTick, ref, Ref, watch} from "vue";
 import {throttle} from "lodash";
 import {setupWindowEventListener} from "@/utils";
 import type {AnyDocument} from "@/types/documents";
@@ -112,21 +112,11 @@ export function useVisibleChaptersIndicator(
         mounted.value,
     ], () => detectVisibleChapters());
 
-    const visible = ref(false);
-    watch(
-        () => [
-            visibleChapters.value.length,
-            appSettings.topOffset,
-            documents.length,
-            documents[0]?.type,
-        ],
-        () => {
-            visible.value = isFullscreenFromOffsets(appSettings)
-                && documents.length > 0
-                && documents[0].type === "bible"
-                && visibleChapters.value.length > 0;
-        },
-        {immediate: true}
+    const visible = computed(() =>
+        isFullscreenFromOffsets(appSettings)
+        && documents.length > 0
+        && documents[0].type === "bible"
+        && visibleChapters.value.length > 0
     );
 
     return {
