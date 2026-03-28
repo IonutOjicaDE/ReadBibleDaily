@@ -136,6 +136,29 @@ object CustomReadingPlanInMemoryRepository {
         runBlocking { dao.deleteCustomPlan(planId) }
     }
 
+    fun reorder(planIdsInOrder: List<String>) {
+        if (planIdsInOrder.size != plans.size) return
+        if (planIdsInOrder.toSet() != plans.map { it.id }.toSet()) return
+
+        val orderedPlansById = plans.associateBy { it.id }
+        val reorderedPlans = planIdsInOrder.mapNotNull { orderedPlansById[it] }
+        if (reorderedPlans.size != plans.size) return
+
+        plans.clear()
+        plans += reorderedPlans
+
+        planOrders.clear()
+        plans.forEachIndexed { index, plan ->
+            planOrders[plan.id] = index.toLong()
+        }
+
+        runBlocking {
+            dao.insertAllCustomPlans(
+                plans.mapIndexed { index, plan -> plan.toEntity(index.toLong()) },
+            )
+        }
+    }
+
     internal fun resetForTesting() {
         plans.clear()
         planOrders.clear()
