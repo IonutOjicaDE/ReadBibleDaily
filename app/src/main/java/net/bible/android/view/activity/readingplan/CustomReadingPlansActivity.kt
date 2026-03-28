@@ -21,6 +21,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
@@ -54,6 +55,7 @@ class CustomReadingPlansActivity : ActivityBase() {
     private lateinit var binding: CustomReadingPlansActivityBinding
     private val planItems = mutableListOf<CustomReadingPlanListRow>()
     private lateinit var adapter: CustomReadingPlanAdapter
+    private lateinit var itemTouchHelper: ItemTouchHelper
 
     private val editPlanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         refreshPlanItems()
@@ -67,7 +69,7 @@ class CustomReadingPlansActivity : ActivityBase() {
         }
 
         override fun onBindViewHolder(holder: CustomReadingPlanViewHolder, position: Int) {
-            bindItem(holder.binding, planItems[position])
+            bindItem(holder, holder.binding, planItems[position])
         }
 
         override fun getItemCount(): Int = planItems.size
@@ -91,7 +93,8 @@ class CustomReadingPlansActivity : ActivityBase() {
                 addItemDecoration(DividerItemDecoration(context, linearLayoutManager.orientation))
             }
         }
-        ItemTouchHelper(planReorderTouchHelperCallback()).attachToRecyclerView(binding.recyclerView)
+        itemTouchHelper = ItemTouchHelper(planReorderTouchHelperCallback())
+        itemTouchHelper.attachToRecyclerView(binding.recyclerView)
         refreshPlanItems()
     }
 
@@ -117,6 +120,7 @@ class CustomReadingPlansActivity : ActivityBase() {
     }
 
     private fun bindItem(
+        holder: CustomReadingPlanViewHolder,
         itemBinding: CustomReadingPlanListItemBinding,
         item: CustomReadingPlanListRow,
     ) = itemBinding.run {
@@ -128,6 +132,22 @@ class CustomReadingPlansActivity : ActivityBase() {
         root.setOnClickListener {
             if (!isDragReorderActive) {
                 openPlan(item)
+            }
+        }
+        root.setOnLongClickListener {
+            if (!item.isMovable) {
+                false
+            } else {
+                itemTouchHelper.startDrag(holder)
+                true
+            }
+        }
+        root.setOnTouchListener { _, event ->
+            if (item.isMovable && event.actionMasked == MotionEvent.ACTION_DOWN && !toggle.isPressed) {
+                itemTouchHelper.startDrag(holder)
+                false
+            } else {
+                false
             }
         }
     }
@@ -217,19 +237,9 @@ class CustomReadingPlansActivity : ActivityBase() {
             return super.getMovementFlags(recyclerView, viewHolder)
         }
 
-        override fun isLongPressDragEnabled(): Boolean = true
+        override fun isLongPressDragEnabled(): Boolean = false
 
         override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
-
-        override fun canDropOver(
-            recyclerView: RecyclerView,
-            current: RecyclerView.ViewHolder,
-            target: RecyclerView.ViewHolder,
-        ): Boolean {
-            val targetPosition = target.bindingAdapterPosition
-            val targetRow = planItems.getOrNull(targetPosition) ?: return false
-            return targetRow.isMovable
-        }
 
         override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
             super.onSelectedChanged(viewHolder, actionState)
