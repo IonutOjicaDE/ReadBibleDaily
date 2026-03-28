@@ -21,7 +21,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MenuItem
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
@@ -140,14 +139,6 @@ class CustomReadingPlansActivity : ActivityBase() {
             } else {
                 itemTouchHelper.startDrag(holder)
                 true
-            }
-        }
-        root.setOnTouchListener { _, event ->
-            if (item.isMovable && event.actionMasked == MotionEvent.ACTION_DOWN && !toggle.isPressed) {
-                itemTouchHelper.startDrag(holder)
-                false
-            } else {
-                false
             }
         }
     }
