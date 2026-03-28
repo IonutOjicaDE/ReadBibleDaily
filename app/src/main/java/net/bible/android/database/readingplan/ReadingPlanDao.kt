@@ -24,6 +24,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import net.bible.android.database.IdType
+import net.bible.android.database.readingplan.ReadingPlanEntities.CustomReadingPlan
 import net.bible.android.database.readingplan.ReadingPlanEntities.ReadingPlan
 import net.bible.android.database.readingplan.ReadingPlanEntities.ReadingPlanStatus
 import java.util.Date
@@ -87,6 +88,29 @@ interface ReadingPlanDao {
     @Query("DELETE FROM ReadingPlan WHERE PlanCode = :planCode")
     suspend fun deletePlanInfo(planCode: String)
 
+    //endregion
+
+    //region CustomReadingPlan
+    @Query("SELECT * FROM CustomReadingPlan")
+    suspend fun getAllCustomPlans(): List<CustomReadingPlan>
+
+    @Query("SELECT * FROM CustomReadingPlan WHERE id = :id")
+    suspend fun getCustomPlanById(id: String): CustomReadingPlan?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCustomPlan(plan: CustomReadingPlan)
+
+    @Query("UPDATE CustomReadingPlan SET isActive = :isActive WHERE id = :id")
+    suspend fun updateCustomPlanActive(id: String, isActive: Boolean)
+
+    @Query("DELETE FROM CustomReadingPlan WHERE id = :id")
+    suspend fun deleteCustomPlan(id: String)
+
+    @Query("SELECT COUNT(*) FROM CustomReadingPlan")
+    suspend fun countCustomPlans(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllCustomPlans(plans: List<CustomReadingPlan>)
     //endregion
 
 }

@@ -17,10 +17,26 @@
 
 package net.bible.android.database.migrations
 
-// private val rpTriggers_1_2 = makeMigration(1..2) {_db -> }
+private val rpTriggers_1_2 = makeMigration(1..2) { db ->
+    db.execSQL(
+        """
+            CREATE TABLE IF NOT EXISTS `CustomReadingPlan` (
+                `id` TEXT NOT NULL,
+                `title` TEXT NOT NULL,
+                `selectionSummary` TEXT NOT NULL,
+                `selectionJson` TEXT NOT NULL,
+                `minutesPerSession` INTEGER NOT NULL,
+                `periodInDays` INTEGER NOT NULL,
+                `selectedDaysMask` INTEGER NOT NULL,
+                `isActive` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+        """.trimIndent()
+    )
+}
 
 val readingPlanMigrations: Array<Migration> = arrayOf(
-
+    rpTriggers_1_2,
 )
 
-const val READING_PLAN_DATABASE_VERSION = 1
+const val READING_PLAN_DATABASE_VERSION = 2
