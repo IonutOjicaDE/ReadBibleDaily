@@ -73,8 +73,12 @@ import net.bible.android.control.bookmark.BookmarkControl
 import net.bible.android.control.bookmark.BookmarkNoteModifiedEvent
 import net.bible.android.control.bookmark.BookmarkToLabelAddedOrUpdatedEvent
 import net.bible.android.control.bookmark.BookmarksAddedOrUpdatedEvent
+import net.bible.android.control.progress.ActiveCycleChangedEvent
 import net.bible.android.control.progress.ChapterReadStatusChangedEvent
 import net.bible.android.control.progress.MemorizationDataChangedEvent
+import net.bible.android.control.progress.ProgressControl
+import net.bible.android.control.progress.ReadingProgressSettingsChangedEvent
+import net.bible.service.common.ReadingProgressSettings
 import net.bible.android.control.bookmark.BookmarksDeletedEvent
 import net.bible.android.control.bookmark.LabelAddedOrUpdatedEvent
 import net.bible.android.control.bookmark.LabelsDeletedEvent
@@ -90,6 +94,7 @@ import net.bible.android.control.link.LinkControl
 import net.bible.android.control.link.WindowMode
 import net.bible.android.control.page.BibleDocument
 import net.bible.android.control.page.MemorizeDocument
+import net.bible.android.control.page.ClientAiDocMarker
 import net.bible.android.control.page.ClientBibleBookmark
 import net.bible.android.control.page.ClientBookmarkLabel
 import net.bible.android.control.page.ClientGenericBookmark
@@ -124,7 +129,6 @@ import net.bible.android.view.activity.page.screen.AfterRemoveWebViewEvent
 import net.bible.android.view.activity.page.screen.BibleFrame
 import net.bible.android.view.activity.page.screen.PageTiltScroller
 import net.bible.android.view.activity.page.screen.RestoreButtonsVisibilityChanged
-import net.bible.android.view.util.widget.AgentLogVisibilityChanged
 import net.bible.android.view.activity.page.screen.WebViewsBuiltEvent
 import net.bible.android.view.activity.page.screen.clipboardKey
 import net.bible.android.view.activity.search.SearchIndex
@@ -136,13 +140,11 @@ import net.bible.service.common.AndBibleAddons.fontsByModule
 import net.bible.service.common.CommonUtils
 import net.bible.service.common.CommonUtils.buildActivityComponent
 import net.bible.service.common.CommonUtils.parseAndBibleReference
-import net.bible.service.common.ReadingProgressSettings
 import net.bible.service.common.ReloadAddonsEvent
 import net.bible.service.db.DatabaseContainer
 import net.bible.service.device.ScreenSettings
-import net.bible.service.llm.agent.AgentSessionManager
 import net.bible.service.sword.BookAndKey
-import net.bible.service.sword.mydocument.MyDocumentBookManager
+import net.bible.service.sword.mydocument.AiDocPagesChangedEvent
 import net.bible.service.sword.SwordDocumentFacade
 import net.bible.service.sword.epub.EpubBackend
 import net.bible.service.sword.epub.isEpub
@@ -1182,8 +1184,8 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
             val v11n = uri.getQueryParameter("v11n")
             val forceDoc = uri.getBooleanQueryParameter("force-doc", false)
             val book = Books.installed().getBook(doc)
-            if(ordinal != null) {
-                val bookKey = book!!.getKey(osisRef).let {if(it is RangedPassage) it.first() else it }
+            if(ordinal != null && ordinal.toIntOrNull() != null && book != null) {
+                val bookKey = book.getKey(osisRef).let {if(it is RangedPassage) it.first() else it }
                 linkControl.showLink(book, BookAndKey(bookKey, book, OrdinalRange(ordinal.toInt())))
             } else if (osisRef != null) {
                 linkControl.loadApplicationUrl(BibleLink("osis", osisRef.trim(), v11n, forceDoc = forceDoc), book)
@@ -1500,6 +1502,7 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
             CommonUtils.settings.getStringSet("disable_gen_bookmark_modal_buttons", emptySet())
         )
         val monochromeMode = CommonUtils.settings.monochromeMode
+        val einkMode = CommonUtils.settings.einkMode
         val disableAnimations = CommonUtils.settings.disableAnimations
         val disableClickToEdit = CommonUtils.settings.disableClickToEdit
         val enabledExperimentalFeatures = json.encodeToString(serializer(), CommonUtils.settings.enabledExperimentalFeatures.toList())
@@ -1523,6 +1526,7 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
                         disableBibleModalButtons: $disableBibleModalButtons, 
                         disableGenericModalButtons: $disableGenericModalButtons, 
                         monochromeMode: $monochromeMode,
+                        einkMode: $einkMode,
                         disableAnimations: $disableAnimations,
                         fontSizeMultiplier: ${CommonUtils.settings.fontSizeMultiplierFloat},
                         enabledExperimentalFeatures: $enabledExperimentalFeatures,
@@ -1589,11 +1593,16 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
             ${getUpdateConfigCommand(true)}
             bibleView.emit("add_documents", $documentStr);
             bibleView.emit("setup_content", {
-                jumpToOrdinal: ${verse?.ordinal}, 
+                jumpToOrdinal: ${verse?.ordinal},
                 jumpToAnchor: ${initialAnchorOrdinal?.start},
                 jumpToId: ${wrapString(jumpToId)},
                 topOffset: $topOffset,
                 bottomOffset: $bottomOffset,
+                ordinalStart: ${initialAnchorOrdinal?.start},
+                ordinalEnd: ${initialAnchorOrdinal?.end},
+                highlight: ${initialAnchorOrdinal?.end != null},
+                bookInitials: ${wrapString(window.pageManager.currentPage.currentDocument?.initials)},
+                osisRef: ${wrapString(window.pageManager.currentPage.key?.osisRef)},
             });            
             bibleView.emit("set_title", "BibleView-${window.displayId}");
             """
@@ -1621,6 +1630,7 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
         var isOkay = true
         if(modalOpen) return false
         if(firstDocument is StudyPadDocument) return false
+        if(firstDocument is MemorizeDocument) return false
         if (window.pageManager.isMapShown) {
             // allow swipe right if at right side of map
             val isAtRightEdge = if(CommonUtils.isRtl) scrollX == 0 else scrollX >= maxHorizontalScroll
@@ -1638,6 +1648,7 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
         var isOkay = true
         if(modalOpen) return false
         if(firstDocument is StudyPadDocument) return false
+        if(firstDocument is MemorizeDocument) return false
         if (window.pageManager.isMapShown) {
             // allow swipe left if at left edge of map
             val isAtLeftEdge = if(!CommonUtils.isRtl) scrollX == 0 else scrollX >= maxHorizontalScroll
@@ -1765,8 +1776,14 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
         val doc = firstDocument
         if (doc !is BibleDocument && doc !is MemorizeDocument) return
 
-        // Convert KJV ordinals to document versification for BibleDocument
-        val v11n = if (doc is BibleDocument) doc.swordBook.versification else null
+        // Convert KJV ordinals to document versification
+        val v11n = when (doc) {
+            is BibleDocument -> doc.swordBook.versification
+            is MemorizeDocument -> doc.bookInitials?.let {
+                (SwordDocumentFacade.getDocumentByInitials(it) as? SwordBook)?.versification
+            }
+            else -> null
+        }
         fun convertOrdinals(kjvOrdinals: List<Int>): String {
             val converted = if (v11n != null) {
                 kjvOrdinals.map { Verse(KJVA, it).toV11n(v11n).ordinal }
@@ -1792,6 +1809,40 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
         executeJavascriptOnUiThread("""bibleView.emit("update_chapter_read_status", {
             kjvBookOrdinal: ${event.kjvBookOrdinal}, chapter: ${event.chapter}, isRead: ${event.isRead}
         });""")
+    }
+
+    fun onEvent(event: ActiveCycleChangedEvent) {
+        val doc = firstDocument
+        if (doc !is BibleDocument) return
+        if (minChapter < 0 || maxChapter < 0) return
+        val v11n = doc.swordBook.versification
+        val book = doc.verseRange.start.book
+        for (chapter in minChapter..maxChapter) {
+            val isRead = ProgressControl.isChapterRead(v11n, book, chapter)
+            executeJavascriptOnUiThread("""bibleView.emit("update_chapter_read_status", {
+                chapter: $chapter, isRead: $isRead
+            });""")
+        }
+    }
+
+    fun onEvent(event: ReadingProgressSettingsChangedEvent) {
+        val settingsJson = ReadingProgressSettings.getBundleAsJson()
+        executeJavascriptOnUiThread("""bibleView.emit("update_reading_progress_settings", $settingsJson);""")
+    }
+
+    fun onEvent(event: AiDocPagesChangedEvent) {
+        val doc = firstDocument
+        if (doc !is BibleDocument) return
+        val v11n = doc.swordBook.versification
+
+        if (event.markers.isNotEmpty()) {
+            val markerStr = event.markers.map { ClientAiDocMarker(it, v11n).asJson }.joinToString(",", "[", "]")
+            executeJavascriptOnUiThread("""bibleView.emit("add_or_update_ai_doc_markers", $markerStr);""")
+        }
+        if (event.deletedPageIds.isNotEmpty()) {
+            val idsStr = json.encodeToString(serializer(), event.deletedPageIds.map { it.toString() })
+            executeJavascriptOnUiThread("""bibleView.emit("delete_ai_doc_markers", $idsStr);""")
+        }
     }
 
     fun onEvent(event: BookmarkNoteModifiedEvent) {

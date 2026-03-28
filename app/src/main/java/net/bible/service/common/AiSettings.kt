@@ -17,11 +17,15 @@
 
 package net.bible.service.common
 
+import net.bible.android.control.event.ABEventBus
 import net.bible.android.database.IdType
 import net.bible.service.db.DatabaseContainer
 import net.bible.service.llm.AgentTool
 import net.bible.service.llm.GlobalAiSettings
 import net.bible.service.llm.agent.PermissionMode
+
+/** Posted when the global default model changes. */
+class DefaultModelChangedEvent
 
 /**
  * Accessor for global AI settings stored in the syncable AiSettingsDatabase.
@@ -63,4 +67,15 @@ object AiSettings {
     var maxIterations: Int
         get() = getOrDefault().maxIterations
         set(value) = update { copy(maxIterations = value) }
+
+    var commentaryDeselected: Set<String>
+        get() = getOrDefault().commentaryDeselected
+        set(value) = update { copy(commentaryDeselected = value) }
+
+    var defaultModelId: IdType?
+        get() = getOrDefault().defaultModelId
+        set(value) {
+            update { copy(defaultModelId = value) }
+            ABEventBus.post(DefaultModelChangedEvent())
+        }
 }

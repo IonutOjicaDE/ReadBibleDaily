@@ -168,25 +168,26 @@ export function useScroll(
         }
 
         if (toElement != null) {
-            const diff = toElement.offsetTop - window.scrollY;
+            const elementTop = toElement.getBoundingClientRect().top + window.scrollY;
+            const diff = elementTop - window.scrollY;
             if (Math.abs(diff) > 800 / window.devicePixelRatio) {
                 now = true;
             }
-            console.log("Scrolling to", toElement, attributesToString(toElement), toElement.offsetTop - delta);
+            console.log("Scrolling to", toElement, attributesToString(toElement), elementTop - delta);
             const style = window.getComputedStyle(toElement);
             const lineHeight = parseFloat(style.getPropertyValue('line-height'));
             const fontSize = parseFloat(style.getPropertyValue('font-size'));
             delta += 0.5 * (lineHeight - fontSize);
             if (now) {
                 currentScrollAnimation.value = -1;
-                window.scrollTo(0, toElement.offsetTop - delta);
+                window.scrollTo(0, elementTop - delta);
                 setTimeout(() => {
                     if (currentScrollAnimation.value === -1) {
                         currentScrollAnimation.value = null;
                     }
                 }, 100);
             } else {
-                doScrolling(toElement.offsetTop - delta, duration);
+                doScrolling(elementTop - delta, duration);
             }
         }
     }
@@ -202,13 +203,23 @@ export function useScroll(
             jumpToAnchor = null,
             jumpToId = null,
             topOffset,
-            bottomOffset
+            bottomOffset,
+            ordinalStart = null,
+            ordinalEnd = null,
+            highlight = false,
+            bookInitials = null,
+            osisRef = null,
         }: {
             jumpToOrdinal: Nullable<number>,
             jumpToAnchor: Nullable<number>,
             jumpToId: Nullable<string>,
             topOffset: number,
-            bottomOffset: number
+            bottomOffset: number,
+            ordinalStart?: Nullable<number>,
+            ordinalEnd?: Nullable<number>,
+            highlight?: boolean,
+            bookInitials?: Nullable<string>,
+            osisRef?: Nullable<string>,
         }) {
         await documentPromise.value;
         console.log(`setupContent`, jumpToOrdinal, jumpToAnchor, topOffset);
@@ -220,7 +231,7 @@ export function useScroll(
         if (jumpToOrdinal != null) {
             scrollToId(`o-${jumpToOrdinal}`, {now: true, force: true});
         } else if (jumpToAnchor !== null) {
-            scrollToId(`o-${jumpToAnchor}`, {now: true, force: true});
+            scrollToId(`o-${jumpToAnchor}`, {now: true, force: true, highlight, ordinalStart, ordinalEnd, bookInitials: bookInitials ?? undefined, osisRef: osisRef ?? undefined});
         } else if (jumpToId !== null) {
             scrollToId(jumpToId, {now: true, force: true});
         } else {

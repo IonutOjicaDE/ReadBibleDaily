@@ -20,19 +20,23 @@ package net.bible.service.llm.tools.read
 import android.app.AlertDialog
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import android.view.LayoutInflater
 import net.bible.android.activity.databinding.DialogCommentaryFilterBinding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import net.bible.android.BibleApplication.Companion.application
 import net.bible.android.activity.R
+import net.bible.android.control.event.ABEventBus
 import net.bible.android.view.activity.base.CurrentActivityHolder
 import net.bible.service.common.CommonUtils
 import net.bible.service.common.useSaxBuilder
 import net.bible.service.llm.AgentTool
 import net.bible.service.llm.ToolCategory
 import net.bible.service.llm.agent.AgentContext
+import net.bible.service.llm.agent.AgentPermissionWaitingEvent
 import net.bible.service.llm.tools.AiDocumentFilter
 import net.bible.service.llm.tools.ContentFormat
 import net.bible.service.llm.tools.OsisToPlainText
@@ -104,8 +108,18 @@ object GetCommentariesTool : Tool {
         Supports verse ranges (e.g. 'Matt.5.1-10') — iterates through each verse and deduplicates
         identical content that commentaries repeat across consecutive verses.
 
-        IMPORTANT: Each entry includes 'linkUrl'. When citing commentaries in your response,
-        ALWAYS create clickable links. Example: [MHC](sword://MHC/Matt.5.3)
+        IMPORTANT: Each entry includes 'linkUrl' (already properly URL-encoded).
+        When citing commentaries in your response, ALWAYS use the linkUrl value directly
+        in clickable links. Example: [MHC](sword://MHC/Matt.5.3)
+        Note: Some module initials contain spaces. The linkUrl handles encoding for you,
+        so always use it as-is rather than constructing URLs manually.
+
+        Commentary text includes anchor markers like [§5] at each sentence boundary.
+        These mark scroll positions within the commentary. When citing a specific section,
+        append anchor ordinal(s) to the linkUrl:
+        - Single sentence: [MHC §5](sword://MHC/Matt.5.3#o5)
+        - Range of sentences: [MHC §5-10](sword://MHC/Matt.5.3#o5-10)
+        The cited range will be highlighted when the user clicks the link.
     """.trimIndent()
 
     override val parametersSchema = yamlToJson("""
@@ -231,15 +245,15 @@ object GetCommentariesTool : Tool {
                     if (useXml) {
                         CommentaryEntry(
                             verseRange = rangeRef,
-                            linkUrl = "sword://${commentary.initials}/${Uri.encode(block.startVerseRef)}",
+                            linkUrl = "sword://${Uri.encode(commentary.initials)}/${Uri.encode(block.startVerseRef)}",
                             osisXml = block.osisXml
                         )
                     } else {
                         val fragment = useSaxBuilder { it.build(StringReader(block.osisXml)).rootElement }
                         CommentaryEntry(
                             verseRange = rangeRef,
-                            linkUrl = "sword://${commentary.initials}/${Uri.encode(block.startVerseRef)}",
-                            text = OsisToPlainText.convert(fragment)
+                            linkUrl = "sword://${Uri.encode(commentary.initials)}/${Uri.encode(block.startVerseRef)}",
+                            text = OsisToPlainText.convert(fragment, injectAnchors = true)
                         )
                     }
                 }
@@ -254,7 +268,7 @@ object GetCommentariesTool : Tool {
             }
         }
 
-        val filterResult = filterByResponseSizeLimit(commentaryResults)
+        val filterResult = filterByResponseSizeLimit(commentaryResults, context)
             ?: return ToolResult.error("User cancelled commentary selection", "USER_CANCELLED")
 
         return typedSuccess(Result(
@@ -311,7 +325,7 @@ object GetCommentariesTool : Tool {
      * shows a selection dialog so the user can choose which commentaries to include.
      * Returns null if the user cancels (meaning: abort the tool call entirely).
      */
-    private suspend fun filterByResponseSizeLimit(commentaryResults: List<CommentaryResult>): FilterResult? {
+    private suspend fun filterByResponseSizeLimit(commentaryResults: List<CommentaryResult>, context: AgentContext): FilterResult? {
         val thresholdTokens = CommonUtils.aiSettings.commentaryMaxResponseTokens
         if (thresholdTokens <= 0 || commentaryResults.isEmpty()) {
             return FilterResult(commentaryResults, emptyList())
@@ -328,8 +342,21 @@ object GetCommentariesTool : Tool {
         val totalTokens = estimateTokens(infos.sumOf { it.estimatedChars })
         if (totalTokens <= thresholdTokens) return FilterResult(commentaryResults, emptyList())
 
-        val activity = CurrentActivityHolder.currentActivity
-            ?: return FilterResult(commentaryResults, emptyList())
+        var activity = CurrentActivityHolder.currentActivity
+        if (activity == null) {
+            Log.d("GetCommentariesTool", "No current activity for commentary filter dialog, waiting...")
+            val workspaceId = context.workspaceId
+            if (workspaceId != null) {
+                ABEventBus.post(AgentPermissionWaitingEvent(workspaceId, waiting = true))
+            }
+            while (activity == null) {
+                delay(500)
+                activity = CurrentActivityHolder.currentActivity
+            }
+            if (workspaceId != null) {
+                ABEventBus.post(AgentPermissionWaitingEvent(workspaceId, waiting = false))
+            }
+        }
 
         // Sort by size descending for display
         val sorted = infos.sortedByDescending { it.estimatedChars }
@@ -354,7 +381,8 @@ object GetCommentariesTool : Tool {
         thresholdTokens: Int
     ): List<CommentaryInfoForFilter>? = suspendCoroutine { continuation ->
         val binding = DialogCommentaryFilterBinding.inflate(LayoutInflater.from(context))
-        val checkedItems = BooleanArray(items.size) { true }
+        val previouslyDeselected = CommonUtils.aiSettings.commentaryDeselected
+        val checkedItems = BooleanArray(items.size) { items[it].initials !in previouslyDeselected }
         val itemTokens = items.map { estimateTokens(it.estimatedChars) }
 
         fun updateTotal() {
@@ -366,11 +394,17 @@ object GetCommentariesTool : Tool {
             )
         }
 
+        fun syncListView() {
+            for (i in items.indices) {
+                binding.commentaryList.setItemChecked(i, checkedItems[i])
+            }
+            updateTotal()
+        }
+
         binding.description.text = context.getString(
             R.string.commentary_filter_dialog_message,
             "%,d".format(thresholdTokens)
         )
-        updateTotal()
 
         val itemNames = items.map { info ->
             val tokens = estimateTokens(info.estimatedChars)
@@ -383,12 +417,20 @@ object GetCommentariesTool : Tool {
         )
         binding.commentaryList.adapter = adapter
         binding.commentaryList.choiceMode = android.widget.AbsListView.CHOICE_MODE_MULTIPLE
-        for (i in items.indices) {
-            binding.commentaryList.setItemChecked(i, true)
-        }
+        syncListView()
+
         binding.commentaryList.setOnItemClickListener { _, _, position, _ ->
             checkedItems[position] = binding.commentaryList.isItemChecked(position)
             updateTotal()
+        }
+
+        binding.btnSelectAll.setOnClickListener {
+            checkedItems.fill(true)
+            syncListView()
+        }
+        binding.btnSelectNone.setOnClickListener {
+            checkedItems.fill(false)
+            syncListView()
         }
 
         val dialog = AlertDialog.Builder(context)
@@ -400,6 +442,11 @@ object GetCommentariesTool : Tool {
 
         binding.btnOk.setOnClickListener {
             dialog.dismiss()
+            val dialogInitials = items.map { it.initials }.toSet()
+            val newDeselected = items.filterIndexed { i, _ -> !checkedItems[i] }.map { it.initials }.toSet()
+            // Preserve deselections for commentaries not present on this device
+            val preserved = previouslyDeselected - dialogInitials
+            CommonUtils.aiSettings.commentaryDeselected = preserved + newDeselected
             val selected = items.filterIndexed { index, _ -> checkedItems[index] }
             continuation.resume(selected)
         }

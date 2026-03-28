@@ -26,9 +26,7 @@
     <Chapter v-if="document.addChapter" :n="document.chapterNumber.toString()"/>
     <OsisFragment :fragment="document.osisFragment"/>
     <div v-if="config.showMarkAsReadButton && isExperimentalFeatureEnabled('reading_and_memorization')" class="mark-as-read-container">
-      <div class="button" :class="{read: chapterRead}" @click="onMarkAsRead">
-        <FontAwesomeIcon :icon="faCheck"/> {{ chapterRead ? sprintf(strings.chapterMarkedRead, displayChapter) : sprintf(strings.markChapterRead, displayChapter) }}
-      </div>
+      <FontAwesomeIcon class="mark-as-read-icon" :class="{read: chapterRead}" :icon="faCheck" @click="onMarkAsRead"/>
     </div>
   </div>
 </template>
@@ -55,7 +53,7 @@ provide(bibleDocumentInfoKey, {bibleBookName, bookInitials, ordinalRange, origin
 const containerRef = ref<HTMLElement | null>(null);
 
 const globalBookmarks = inject(globalBookmarksKey)!;
-globalBookmarks.updateBookmarks(bookmarks);
+globalBookmarks.updateBookmarks([...bookmarks, ...(props.document.aiDocMarkers ?? [])]);
 
 const memorization = inject(memorizationKey)!;
 if (props.document.memorizedOrdinals) {
@@ -63,7 +61,7 @@ if (props.document.memorizedOrdinals) {
 }
 memorization.setupIndicatorRendering(containerRef, id);
 
-const {config, appSettings, strings, sprintf, isExperimentalFeatureEnabled, ...common} = useCommon();
+const {config, appSettings, isExperimentalFeatureEnabled, ...common} = useCommon();
 
 useBookmarks(id, ordinalRange, globalBookmarks, bookInitials,  null, true, ref(true), common, config, appSettings);
 
@@ -89,11 +87,47 @@ const {chapterRead, toggleChapterRead: onMarkAsRead} = useReadingTracker(
 
 .mark-as-read-container {
     text-align: center;
-    padding: 12px 0;
+    padding: 8px 0;
+}
 
-    .button.read {
-        background-color: #4CAF50;
+.mark-as-read-icon {
+    cursor: pointer;
+    font-size: 18px;
+    color: rgba(0, 0, 0, 0.3);
+    padding: 6px;
+    border-radius: 50%;
+
+    .night & {
+        color: rgba(255, 255, 255, 0.3);
+    }
+
+    .monochrome & {
+        color: black;
+        border: 1px solid rgba(0, 0, 0, 0.4);
+    }
+
+    .monochrome.night & {
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    &.read {
+        color: #4CAF50;
         cursor: default;
+
+        .night & {
+            color: #66BB6A;
+        }
+
+        .monochrome & {
+            color: black;
+            border: 2px solid black;
+        }
+
+        .monochrome.night & {
+            color: white;
+            border: 2px solid white;
+        }
     }
 }
 </style>

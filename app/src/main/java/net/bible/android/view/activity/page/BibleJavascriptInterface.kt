@@ -18,6 +18,7 @@
 package net.bible.android.view.activity.page
 
 import android.app.AlertDialog
+import android.content.ClipData
 import android.content.Intent
 import android.text.method.LinkMovementMethod
 import android.util.Log
@@ -35,6 +36,7 @@ import net.bible.android.activity.R
 import net.bible.android.common.toV11n
 import net.bible.android.control.backup.BackupControl
 import net.bible.android.control.progress.ProgressControl
+import net.bible.android.control.progress.ReadingProgressSettingsChangedEvent
 import net.bible.android.database.progress.ReadingSource
 import net.bible.android.control.event.ABEventBus
 import net.bible.android.control.event.ToastEvent
@@ -55,9 +57,13 @@ import net.bible.android.database.bookmarks.KJVA
 import net.bible.android.view.activity.base.ActivityBase
 import net.bible.android.view.activity.base.IntentHelper
 import net.bible.android.view.activity.download.DownloadActivity
+import net.bible.android.view.activity.progress.ReadingProgressActivity
+import net.bible.android.view.activity.progress.ReadingProgressSettingsActivity
+import net.bible.service.common.ReadingProgressSettings
 import net.bible.android.view.activity.navigation.GridChoosePassageBook
 import net.bible.android.view.activity.workspaces.WorkspaceSelectorActivity
 import net.bible.android.view.activity.ai.PromptEditActivity
+import net.bible.android.view.activity.base.ActivityBase.Companion.STD_REQUEST_CODE
 import net.bible.android.view.util.widget.ShareWidget
 import net.bible.service.common.CommonUtils
 import net.bible.service.common.CommonUtils.json
@@ -86,6 +92,13 @@ import net.bible.service.llm.PromptContext
 import java.io.File
 import java.lang.ClassCastException
 
+
+@Serializable
+private data class AiDocPageRef(
+    val title: String,
+    val documentInitials: String,
+    val pageKey: String,
+)
 
 class BibleJavascriptInterface(
 	private val bibleView: BibleView
@@ -489,6 +502,10 @@ class BibleJavascriptInterface(
 
     @JavascriptInterface
     fun memorize(bookInitials: String, verseOrdinal: Int, endOrdinal: Int) {
+        val verseRange = verseRangeFromOrdinals(bookInitials, verseOrdinal, endOrdinal)
+        if (verseRange != null) {
+            ProgressControl.addMemorizationTargetIfNeeded(verseRange)
+        }
         scope.launch(Dispatchers.Main) {
             bibleView.memorizeSelection(Selection(bookInitials, verseOrdinal, positiveOrNull(endOrdinal)))
         }
@@ -502,8 +519,7 @@ class BibleJavascriptInterface(
     }
 
     @JavascriptInterface
-    fun memorizeCompleted(bookInitials: String, startOrdinal: Int, endOrdinal: Int) {
-        if (!ProgressControl.autoMarkMemorized) return
+    fun markAsMemorized(bookInitials: String, startOrdinal: Int, endOrdinal: Int) {
         val verseRange = verseRangeFromOrdinals(bookInitials, startOrdinal, endOrdinal) ?: return
         ProgressControl.markVerseMemorized(verseRange)
     }
@@ -524,6 +540,29 @@ class BibleJavascriptInterface(
     fun removeMemorizationTarget(bookInitials: String, startOrdinal: Int, endOrdinal: Int) {
         val verseRange = verseRangeFromOrdinals(bookInitials, startOrdinal, endOrdinal) ?: return
         ProgressControl.removeMemorizationTargetByRange(verseRange)
+    }
+
+    @JavascriptInterface
+    fun setReadingProgressSettings(json: String) {
+        ReadingProgressSettings.setBundleFromJson(json)
+        ABEventBus.post(ReadingProgressSettingsChangedEvent())
+    }
+
+    @JavascriptInterface
+    fun openReadingProgress(tab: Int) {
+        scope.launch(Dispatchers.Main) {
+            val intent = Intent(mainBibleActivity, ReadingProgressActivity::class.java)
+            intent.putExtra(ReadingProgressActivity.EXTRA_TAB, tab)
+            mainBibleActivity.startActivityForResult(intent, STD_REQUEST_CODE)
+        }
+    }
+
+    @JavascriptInterface
+    fun openReadingProgressSettings() {
+        scope.launch(Dispatchers.Main) {
+            val intent = Intent(mainBibleActivity, ReadingProgressSettingsActivity::class.java)
+            mainBibleActivity.startActivityForResult(intent, STD_REQUEST_CODE)
+        }
     }
 
     @JavascriptInterface
@@ -563,6 +602,34 @@ class BibleJavascriptInterface(
     }
 
     @JavascriptInterface
+    fun openAiDocPage(documentInitials: String, pageKey: String) {
+        scope.launch(Dispatchers.Main) {
+            val book = Books.installed().getBook(documentInitials) ?: return@launch
+            val key = book.getKey(pageKey) ?: return@launch
+            linkControl.showLink(book, key)
+        }
+    }
+
+    @JavascriptInterface
+    fun openAiDocPageChooser(markersJson: String) {
+        scope.launch(Dispatchers.Main) {
+            val markers: List<AiDocPageRef> = json.decodeFromString(serializer(), markersJson)
+            if (markers.isEmpty()) return@launch
+            if (markers.size == 1) {
+                openAiDocPage(markers[0].documentInitials, markers[0].pageKey)
+                return@launch
+            }
+            val titles = markers.map { it.title }.toTypedArray()
+            AlertDialog.Builder(mainBibleActivity)
+                .setTitle(R.string.ai_doc_choose_page)
+                .setItems(titles) { _, which ->
+                    openAiDocPage(markers[which].documentInitials, markers[which].pageKey)
+                }
+                .show()
+        }
+    }
+
+    @JavascriptInterface
     fun speak(bookInitials: String, v11nName: String, ordinal: Int, endOrdinal: Int) {
         scope.launch(Dispatchers.Main) {
             val book = Books.installed().getBook(bookInitials) as SwordBook
@@ -572,6 +639,20 @@ class BibleJavascriptInterface(
                 mainBibleActivity.speakControl.pause(willContinueAfterThis = true, toast = false)
             }
             mainBibleActivity.speakControl.speakBible(book, verse)
+        }
+    }
+
+    @JavascriptInterface
+    fun speakMemorizationLoop(bookInitials: String, v11nName: String, ordinal: Int, endOrdinal: Int) {
+        scope.launch(Dispatchers.Main) {
+            val book = Books.installed().getBook(bookInitials) as SwordBook
+            val v11n = Versifications.instance().getVersification(v11nName)
+            val startVerse = Verse(v11n, ordinal).toV11n(book.versification)
+            val endVerse = Verse(v11n, endOrdinal).toV11n(book.versification)
+            if (mainBibleActivity.speakControl.isSpeaking) {
+                mainBibleActivity.speakControl.pause(willContinueAfterThis = true, toast = false)
+            }
+            mainBibleActivity.speakControl.speakMemorizationLoop(book, startVerse, endVerse)
         }
     }
 
@@ -853,6 +934,31 @@ class BibleJavascriptInterface(
                 "null"
             }
             bibleView.executeJavascriptOnUiThread("bibleView.response($callId, $jsonResult);")
+        }
+    }
+
+    @JavascriptInterface
+    fun shareMyDocumentContent(bookInitials: String, pageKey: String) {
+        scope.launch {
+            val result = MyDocumentBookManager.getPageRawContent(bookInitials, pageKey) ?: return@launch
+            withContext(Dispatchers.Main) {
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    putExtra(Intent.EXTRA_TEXT, result.content)
+                    putExtra(Intent.EXTRA_SUBJECT, result.title)
+                    type = "text/plain"
+                }
+                mainBibleActivity.startActivity(Intent.createChooser(sendIntent, mainBibleActivity.getString(R.string.share)))
+            }
+        }
+    }
+
+    @JavascriptInterface
+    fun copyMyDocumentContent(bookInitials: String, pageKey: String) {
+        scope.launch {
+            val result = MyDocumentBookManager.getPageRawContent(bookInitials, pageKey) ?: return@launch
+            withContext(Dispatchers.Main) {
+                CommonUtils.copyToClipboard(ClipData.newPlainText(result.title, result.content))
+            }
         }
     }
 

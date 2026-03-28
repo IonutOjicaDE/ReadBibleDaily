@@ -19,8 +19,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="internalOnly"
-    android:versionCode="1031"
-    android:versionName="5.0.1031">
+    android:versionCode="1052"
+    android:versionName="5.0.1052">
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" android:minSdkVersion="24"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
@@ -187,12 +187,6 @@
             android:configChanges="keyboardHidden|orientation|screenSize|locale"
             android:label="@string/edit_prompt"
             android:parentActivityName="net.bible.android.view.activity.ai.AiSettingsActivity"
-            />
-        <activity
-            android:name="net.bible.android.view.activity.ai.PromptToolPermissionsActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize|locale"
-            android:label="@string/prompt_tool_permissions"
-            android:parentActivityName="net.bible.android.view.activity.ai.PromptEditActivity"
             />
         <activity
             android:name="net.bible.android.view.activity.ai.GlobalToolPermissionsActivity"
@@ -384,6 +378,10 @@
         <service
             android:name="net.bible.service.device.speak.TextToSpeechNotificationManager$ForegroundService"
             android:foregroundServiceType="mediaPlayback" />
+
+        <service
+            android:name="net.bible.service.llm.agent.AgentForegroundService"
+            android:foregroundServiceType="dataSync" />
 
         <receiver
             android:name="net.bible.service.device.speak.TextToSpeechNotificationManager$NotificationReceiver"

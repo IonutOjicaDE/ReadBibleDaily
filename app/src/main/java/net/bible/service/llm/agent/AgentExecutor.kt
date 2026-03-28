@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.flow
 import net.bible.android.BibleApplication.Companion.application
 import net.bible.android.activity.R
 import net.bible.service.llm.AgentTool
+import net.bible.android.control.event.ABEventBus
 import net.bible.android.database.IdType
 import net.bible.android.view.activity.base.CurrentActivityHolder
 import net.bible.android.view.activity.base.Dialogs
@@ -53,6 +54,9 @@ import net.bible.service.llm.tools.write.FinishWithMyDocumentPageTool
 import net.bible.service.llm.tools.write.FinishWithStudyPadTool
 import net.bible.service.llm.tools.write.FinishWithoutDocumentTool
 import net.bible.service.llm.tools.ToolDefinition
+import org.crosswire.jsword.book.Books
+import org.crosswire.jsword.book.sword.SwordBook
+import org.crosswire.jsword.index.IndexStatus
 import org.json.JSONObject
 import java.io.StringReader
 import java.util.Locale
@@ -63,28 +67,26 @@ private const val DEFAULT_MAX_ITERATIONS = 10
 /**
  * Computes the set of tools to exclude from LLM tool definitions.
  *
- * When [promptAllowedTools] is set (non-null), only those tools are available to the prompt —
- * all others are excluded. This prevents new tools from automatically becoming available to
- * existing prompts. When [promptAllowedTools] is null, all tools are available (minus denied).
+ * Exclusion is deny-based: tools are excluded only if they appear in [permanentlyDeniedTools]
+ * or [promptDeniedTools]. [promptAvailableTools] overrides both deny sets, allowing built-in
+ * prompts to re-enable tools that the user has globally disabled.
  *
- * [promptAllowedTools] also overrides [permanentlyDeniedTools] for the tools it contains,
- * allowing built-in prompts to use tools that the user has globally disabled.
+ * Tool visibility (which tools the LLM can see) is controlled by [promptDeniedTools].
+ * Permission auto-allow (which tools bypass the permission dialog) is controlled by
+ * [AgentContext.promptAllowedTools] in [checkPermission], not here.
  *
  * Structural tools (setDocumentTitle, finishWithStudyPad, etc.) are never excluded.
  */
 fun computeExcludedTools(
     permanentlyDeniedTools: Set<AgentTool>,
     promptDeniedTools: Set<AgentTool>?,
-    promptAllowedTools: Set<AgentTool>?,
+    promptAvailableTools: Set<AgentTool>?,
 ): Set<AgentTool> {
     val excluded = mutableSetOf<AgentTool>()
     excluded.addAll(permanentlyDeniedTools)
-    if (promptAllowedTools != null) {
-        excluded.addAll(AgentTool.entries.toSet() - promptAllowedTools)
-    }
     promptDeniedTools?.let { excluded.addAll(it) }
-    // Prompt-level allow overrides global deny for tools in the allowlist
-    promptAllowedTools?.let { excluded.removeAll(it) }
+    // Prompt-level available overrides both global and prompt deny
+    promptAvailableTools?.let { excluded.removeAll(it) }
     excluded.removeAll(ToolRegistry.STRUCTURAL_TOOLS)
     return excluded
 }
@@ -131,11 +133,10 @@ class AgentExecutor(
     private val maxIterations: Int = DEFAULT_MAX_ITERATIONS
 ) {
     fun execute(prompt: AgentPrompt, context: AgentContext, rawLlmLog: RawLlmLog? = null): Flow<AgentEvent> = flow {
-        emit(AgentEvent.Started)
-
         try {
             val llmConfig = LlmModelConfig.fromPrompt(prompt)
-            val adapter = LlmProcessingService.resolveAdapter(llmConfig)
+            val resolved = LlmProcessingService.resolveFromConfig(llmConfig)
+            emit(AgentEvent.Started(resolved.model))
             val messages = buildInitialMessages(prompt, context)
             val excludedTools = computeExcludedTools(context)
             val toolDefs = ToolRegistry.getToolDefinitions(excludedTools = excludedTools)
@@ -148,7 +149,7 @@ class AgentExecutor(
                 rawLlmLog?.addMessage(msg.role.name, msg.content)
             }
 
-            runAgentLoop(messages, toolDefs, adapter, context, llmConfig, rawLlmLog)
+            runAgentLoop(messages, toolDefs, resolved.adapter, context, llmConfig, rawLlmLog, resolved)
 
         } catch (e: CancellationException) {
             emit(AgentEvent.Cancelled)
@@ -165,13 +166,14 @@ class AgentExecutor(
         adapter: LlmApiAdapter,
         context: AgentContext,
         llmConfig: LlmModelConfig? = null,
-        rawLlmLog: RawLlmLog? = null
+        rawLlmLog: RawLlmLog? = null,
+        preResolved: LlmProcessingService.ResolvedProvider? = null
     ) {
         var iteration = 0
         var iterationLimit = if (maxIterations > 0) maxIterations else Int.MAX_VALUE
         var currentContext = context  // Mutable context for session permission tracking
         var totalUsage = LlmUsage()
-        val resolved = LlmProcessingService.resolveFromConfig(llmConfig)
+        val resolved = preResolved ?: LlmProcessingService.resolveFromConfig(llmConfig)
         val loopHeaders = LlmProcessingService.buildProviderExtraHeaders(resolved.providerConfig)
 
         loop@ while (true) {
@@ -182,11 +184,11 @@ class AgentExecutor(
 
                 val (parsed, callUsage) = callLlmAndParse(adapter, messages, tools, iteration, llmConfig, loopHeaders, rawLlmLog)
                 totalUsage += callUsage
-                rawLlmLog?.addUsageForIteration(iteration, callUsage, resolved.model)
+                rawLlmLog?.addUsageForIteration(iteration, callUsage, resolved.model, resolved.configuredModelId)
 
                 // Emit per-operation usage
                 if (callUsage.totalTokens > 0) {
-                    emit(AgentEvent.ApiCallCompleted(callUsage, resolved.model))
+                    emit(AgentEvent.ApiCallCompleted(callUsage, resolved.model, resolved.configuredModelId))
                 }
 
                 when (parsed) {
@@ -202,7 +204,8 @@ class AgentExecutor(
                                     content = result.content,
                                     totalIterations = iteration,
                                     usage = totalUsage,
-                                    model = resolved.model
+                                    model = resolved.model,
+                                    configuredModelId = resolved.configuredModelId
                                 ))
                                 return
                             }
@@ -212,7 +215,8 @@ class AgentExecutor(
                                     message = result.message,
                                     totalIterations = iteration,
                                     usage = totalUsage,
-                                    model = resolved.model
+                                    model = resolved.model,
+                                    configuredModelId = resolved.configuredModelId
                                 ))
                                 return
                             }
@@ -224,7 +228,8 @@ class AgentExecutor(
                                     message = result.message,
                                     totalIterations = iteration,
                                     usage = totalUsage,
-                                    model = resolved.model
+                                    model = resolved.model,
+                                    configuredModelId = resolved.configuredModelId
                                 ))
                                 return
                             }
@@ -236,7 +241,8 @@ class AgentExecutor(
                                     message = result.message,
                                     totalIterations = iteration,
                                     usage = totalUsage,
-                                    model = resolved.model
+                                    model = resolved.model,
+                                    configuredModelId = resolved.configuredModelId
                                 ))
                                 return
                             }
@@ -253,7 +259,8 @@ class AgentExecutor(
                             response = normalizedContent,
                             totalIterations = iteration,
                             usage = totalUsage,
-                            model = resolved.model
+                            model = resolved.model,
+                            configuredModelId = resolved.configuredModelId
                         ))
                         return
                     }
@@ -265,7 +272,7 @@ class AgentExecutor(
             }
 
             // Max iterations reached — ask user if they want to continue
-            if (maxIterations > 0 && showContinueDialog(iteration, maxIterations)) {
+            if (maxIterations > 0 && showContinueDialog(iteration, maxIterations, context.workspaceId)) {
                 iterationLimit += maxIterations
                 continue@loop
             }
@@ -451,6 +458,14 @@ class AgentExecutor(
             if (context.verseRefString != null) {
                 append("Selected verse reference: ${context.verseRefString}\n")
             }
+            if (prompt.allowedTools == null || AgentTool.SEARCH_BIBLE in prompt.allowedTools!!) {
+                val defaultSearchBible = AiDocumentFilter.filterAllowed(
+                    Books.installed().books.filterIsInstance<SwordBook>()
+                ).firstOrNull { it.indexStatus == IndexStatus.DONE }
+                if (defaultSearchBible != null) {
+                    append("Default search Bible (for searchBible tool): ${defaultSearchBible.initials} (${defaultSearchBible.language?.name ?: "unknown language"})\n")
+                }
+            }
             if (context.selectionStartOffset != null && context.selectionEndOffset != null) {
                 append("The user has highlighted specific text within a verse. " +
                     "Character offsets (startOffset/endOffset) are provided — these are character positions " +
@@ -478,6 +493,11 @@ class AgentExecutor(
                     "STUDYPAD_TEXT" -> append("Use updateStudyPadTextEntry with this entry ID to save changes.\n")
                     "MY_DOCUMENT_PAGE" -> append("Use editMyDocumentPage with this page ID to save changes.\n")
                 }
+            }
+
+            if (context.workspaceWindowsSummary != null) {
+                append("\n--- Current Workspace ---\n")
+                append(context.workspaceWindowsSummary)
             }
 
             val prefGreek = AiDocumentFilter.preferredStrongsGreek()
@@ -630,7 +650,7 @@ class AgentExecutor(
         )) {
             PermissionCheckResult.Allowed -> DialogResult.Allowed
             PermissionCheckResult.Denied -> DialogResult.Denied
-            PermissionCheckResult.NeedsDialog -> showPermissionDialog(tool, arguments)
+            PermissionCheckResult.NeedsDialog -> showPermissionDialog(tool, arguments, context.workspaceId)
         }
     }
 
@@ -644,17 +664,24 @@ class AgentExecutor(
         computeExcludedTools(
             permanentlyDeniedTools = CommonUtils.aiSettings.permanentlyDeniedTools,
             promptDeniedTools = context.promptDeniedTools,
-            promptAllowedTools = context.promptAllowedTools,
+            promptAvailableTools = context.promptAvailableTools,
         )
 
     /** "Always allow" persists tool to permanentlyAllowedTools after confirmation dialog. */
-    private suspend fun showPermissionDialog(tool: Tool, arguments: JSONObject): DialogResult {
+    private suspend fun showPermissionDialog(tool: Tool, arguments: JSONObject, workspaceId: IdType? = null): DialogResult {
         var activity = CurrentActivityHolder.currentActivity
         if (activity == null) {
             Log.d(TAG, "No current activity, waiting for activity to resume...")
+            val toolDisplayName = ToolRegistry.getDisplayName(tool)
+            if (workspaceId != null) {
+                ABEventBus.post(AgentPermissionWaitingEvent(workspaceId, waiting = true, toolName = toolDisplayName))
+            }
             while (activity == null) {
                 delay(500)
                 activity = CurrentActivityHolder.currentActivity
+            }
+            if (workspaceId != null) {
+                ABEventBus.post(AgentPermissionWaitingEvent(workspaceId, waiting = false))
             }
             Log.d(TAG, "Activity resumed, showing permission dialog")
         }
@@ -694,13 +721,19 @@ class AgentExecutor(
      * Shows a dialog asking the user whether to continue execution after reaching the iteration limit.
      * Follows the same activity-lookup pattern as [showPermissionDialog].
      */
-    private suspend fun showContinueDialog(currentIteration: Int, increment: Int): Boolean {
+    private suspend fun showContinueDialog(currentIteration: Int, increment: Int, workspaceId: IdType? = null): Boolean {
         var activity = CurrentActivityHolder.currentActivity
         if (activity == null) {
             Log.d(TAG, "No current activity for continue dialog, waiting...")
+            if (workspaceId != null) {
+                ABEventBus.post(AgentPermissionWaitingEvent(workspaceId, waiting = true))
+            }
             while (activity == null) {
                 delay(500)
                 activity = CurrentActivityHolder.currentActivity
+            }
+            if (workspaceId != null) {
+                ABEventBus.post(AgentPermissionWaitingEvent(workspaceId, waiting = false))
             }
         }
         return Dialogs.simpleQuestion(

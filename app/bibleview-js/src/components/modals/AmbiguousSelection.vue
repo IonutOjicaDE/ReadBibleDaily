@@ -165,7 +165,7 @@ const clickedBookmarks = computed<BaseBookmark[]>(() => {
         originalSelections.value
             .filter(v => v.options.bookmarkId && !v.options.hidden && bookmarkMap.has(v.options.bookmarkId))
             .map(v => bookmarkMap.get(v.options.bookmarkId)!),
-        v => v.text.length
+        [v => v.type !== "ai-doc-marker" ? 1 : 0, v => v.text.length]
     );
 });
 
@@ -259,7 +259,10 @@ const selectedBookmarks = computed<BaseBookmark[]>(() => {
             ...Array.from(bookmarkIdsByOrdinal.get(`${keyBase}-${o}`) || [])
                 .filter(bId => !clickedIds.has(bId) && !result.includes(bId)))
     }
-    return result.map(bId => bookmarkMap.get(bId)).filter(b => b) as BaseBookmark[];
+    return sortBy(
+        result.map(bId => bookmarkMap.get(bId)).filter(b => b) as BaseBookmark[],
+        [v => v.type !== "ai-doc-marker" ? 1 : 0]
+    );
 });
 
 function setInitialVerse(_verseInfo: EventVerseInfo) {
@@ -303,6 +306,9 @@ async function handle(event: MouseEvent) {
     const allEventFunctions = getAllEventFunctions(event).filter(e => config.showBookmarks || !e.options.bookmarkId);
     const hasParticularClicks = eventFunctions.filter(f => !f.options.hidden).length > 0; // let's not show only "hidden" items
     if (appSettings.actionMode) return;
+    // If a plain <a> link was clicked (e.g. from rendered markdown) with no registered
+    // event functions, let the browser handle it instead of showing the modal.
+    if (!hasParticularClicks && (event.target as HTMLElement)?.closest("a")) return;
     const hadHighlights = hasHighlights.value;
     resetHighlights();
     if (hadHighlights && !showModal.value && !hasParticularClicks) {

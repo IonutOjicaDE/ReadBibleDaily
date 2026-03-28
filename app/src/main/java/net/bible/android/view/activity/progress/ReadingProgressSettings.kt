@@ -23,6 +23,8 @@ import androidx.preference.PreferenceDataStore
 import androidx.preference.PreferenceFragmentCompat
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.SettingsDialogBinding
+import net.bible.android.control.event.ABEventBus
+import net.bible.android.control.progress.ReadingProgressSettingsChangedEvent
 import net.bible.android.view.activity.base.ActivityBase
 import net.bible.service.common.ReadingProgressSettings
 
@@ -30,12 +32,35 @@ class ReadingProgressSettingsDataStore : PreferenceDataStore() {
     override fun putBoolean(key: String?, value: Boolean) {
         when (key) {
             "auto_mark_memorized" -> ReadingProgressSettings.autoMarkMemorized = value
+            "memorize_type_full_words" -> ReadingProgressSettings.memorizeTypeFullWords = value
+            "memorize_error_heatmap" -> ReadingProgressSettings.memorizeErrorHeatmap = value
+            "memorize_scramble_hide_used" -> ReadingProgressSettings.memorizeScrambleHideUsed = value
+            "memorize_include_reference" -> ReadingProgressSettings.memorizeIncludeReference = value
         }
+        ABEventBus.post(ReadingProgressSettingsChangedEvent())
     }
 
     override fun getBoolean(key: String?, defValue: Boolean): Boolean {
         return when (key) {
             "auto_mark_memorized" -> ReadingProgressSettings.autoMarkMemorized
+            "memorize_type_full_words" -> ReadingProgressSettings.memorizeTypeFullWords
+            "memorize_error_heatmap" -> ReadingProgressSettings.memorizeErrorHeatmap
+            "memorize_scramble_hide_used" -> ReadingProgressSettings.memorizeScrambleHideUsed
+            "memorize_include_reference" -> ReadingProgressSettings.memorizeIncludeReference
+            else -> defValue
+        }
+    }
+
+    override fun putString(key: String?, value: String?) {
+        when (key) {
+            "memorize_word_visibility" -> ReadingProgressSettings.memorizeWordVisibility = value ?: "light"
+        }
+        ABEventBus.post(ReadingProgressSettingsChangedEvent())
+    }
+
+    override fun getString(key: String?, defValue: String?): String? {
+        return when (key) {
+            "memorize_word_visibility" -> ReadingProgressSettings.memorizeWordVisibility
             else -> defValue
         }
     }
@@ -46,6 +71,7 @@ class ReadingProgressSettingsActivity : ActivityBase() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        buildActivityComponent().inject(this)
         binding = SettingsDialogBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

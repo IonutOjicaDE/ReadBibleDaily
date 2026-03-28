@@ -23,6 +23,28 @@
 <resources
   xmlns:tools="http://schemas.android.com/tools"
   tools:ignore="MissingTranslation">
+    <string-array name="pageScrollAmountEntries">
+        <item>25%</item>
+        <item>33%</item>
+        <item>50%</item>
+        <item>66%</item>
+        <item>75%</item>
+        <item>100%</item>
+    </string-array>
+    <integer-array name="pageScrollAmountValues">
+        <item>25</item>
+        <item>33</item>
+        <item>50</item>
+        <item>66</item>
+        <item>75</item>
+        <item>100</item>
+    </integer-array>
+    <string-array name="scrollHelperLineStyleEntries">
+        <item>@string/scroll_helper_line_style_thin_dotted</item>
+        <item>@string/scroll_helper_line_style_thin_solid</item>
+        <item>@string/scroll_helper_line_style_thick_solid</item>
+    </string-array>
+
     <string-array name="strongsModeEntries">
 		<item>@string/strongs_hidden_links</item>
 		<item>@string/strongs_links</item>
@@ -267,4 +289,14 @@
 		<item>ALLOW_ALL</item>
 		<item>DENY_ALL</item>
 	</string-array>
+    <string-array name="memorize_word_visibility_entries">
+        <item>@string/memorize_word_visibility_light</item>
+        <item>@string/memorize_word_visibility_dim</item>
+        <item>@string/memorize_word_visibility_hidden</item>
+    </string-array>
+    <string-array name="memorize_word_visibility_values">
+        <item>light</item>
+        <item>dim</item>
+        <item>hidden</item>
+    </string-array>
 </resources>

@@ -17,15 +17,18 @@
 
 package net.bible.android.view.activity.progress
 
-import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.format.DateUtils
 import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -39,6 +42,7 @@ import net.bible.android.control.versification.Scripture
 import net.bible.android.database.IdType
 import net.bible.android.view.activity.base.ActivityBase
 import net.bible.android.view.activity.navigation.GridChoosePassageBook
+import net.bible.service.common.CommonUtils
 import org.crosswire.jsword.passage.Verse
 import org.crosswire.jsword.passage.VerseRange
 import org.crosswire.jsword.versification.BibleBook
@@ -51,17 +55,31 @@ class ReadingProgressActivity : ActivityBase() {
     private val kjva get() = Versifications.instance().getVersification("KJVA")
     private var currentCycle = 1
 
+    private var memorizedPassagesShown = PAGE_SIZE
+    private var memorizeTargetsShown = PAGE_SIZE
+    private var memOverviewActive = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        buildActivityComponent().inject(this)
         binding = ReadingProgressBinding.inflate(layoutInflater)
         setContentView(binding.root)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = getString(R.string.reading_progress_title)
 
         currentCycle = ProgressControl.getCurrentCycle()
+        memOverviewActive = CommonUtils.settings.getBoolean(PREF_MEM_OVERVIEW, true)
 
         setupTabs()
         setupReadingTab()
+        setupMemorizeToggle()
+
+        val initialTab = intent.getIntExtra(EXTRA_TAB,
+            CommonUtils.settings.getInt(PREF_LAST_TAB, 0)
+        )
+        if (initialTab == 1) {
+            binding.tabLayout.getTabAt(1)?.select()
+        }
 
         refreshAll()
     }
@@ -86,15 +104,41 @@ class ReadingProgressActivity : ActivityBase() {
     private fun showReadingTab() {
         binding.readingContent.visibility = View.VISIBLE
         binding.memorizeContent.visibility = View.GONE
+        memorizedPassagesShown = PAGE_SIZE
+        memorizeTargetsShown = PAGE_SIZE
+        CommonUtils.settings.setInt(PREF_LAST_TAB, 0)
     }
 
     private fun showMemorizeTab() {
         binding.readingContent.visibility = View.GONE
         binding.memorizeContent.visibility = View.VISIBLE
-        refreshMemorizeTab()
+        CommonUtils.settings.setInt(PREF_LAST_TAB, 1)
+        refreshMemorizeSummary()
+        if (memOverviewActive) {
+            refreshMemorizationHeatmap()
+        } else {
+            refreshMemorizeListView()
+        }
     }
 
     private fun setupReadingTab() {
+        binding.cyclePrevButton.setOnClickListener {
+            if (currentCycle > 1) {
+                currentCycle--
+                ProgressControl.setActiveCycle(currentCycle)
+                refreshAll()
+            }
+        }
+
+        binding.cycleNextButton.setOnClickListener {
+            val latest = ProgressControl.getLatestCycle()
+            if (currentCycle < latest) {
+                currentCycle++
+                ProgressControl.setActiveCycle(currentCycle)
+                refreshAll()
+            }
+        }
+
         binding.newCycleButton.setOnClickListener {
             AlertDialog.Builder(this)
                 .setTitle(R.string.reading_progress_new_cycle)
@@ -105,6 +149,35 @@ class ReadingProgressActivity : ActivityBase() {
                 }
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
+        }
+    }
+
+    private fun setupMemorizeToggle() {
+        binding.memViewOverviewButton.apply {
+            setTypeface(null, if (memOverviewActive) Typeface.BOLD else Typeface.NORMAL)
+            setOnClickListener { setMemorizeView(overview = true) }
+        }
+        binding.memViewListButton.apply {
+            setTypeface(null, if (!memOverviewActive) Typeface.BOLD else Typeface.NORMAL)
+            setOnClickListener { setMemorizeView(overview = false) }
+        }
+        binding.memListView.visibility = if (memOverviewActive) View.GONE else View.VISIBLE
+        binding.memOverviewView.visibility = if (memOverviewActive) View.VISIBLE else View.GONE
+    }
+
+    private fun setMemorizeView(overview: Boolean) {
+        memOverviewActive = overview
+        CommonUtils.settings.setBoolean(PREF_MEM_OVERVIEW, overview)
+        binding.memListView.visibility = if (overview) View.GONE else View.VISIBLE
+        binding.memOverviewView.visibility = if (overview) View.VISIBLE else View.GONE
+
+        binding.memViewOverviewButton.setTypeface(null, if (overview) Typeface.BOLD else Typeface.NORMAL)
+        binding.memViewListButton.setTypeface(null, if (!overview) Typeface.BOLD else Typeface.NORMAL)
+
+        if (overview) {
+            refreshMemorizationHeatmap()
+        } else {
+            refreshMemorizeListView()
         }
     }
 
@@ -133,14 +206,11 @@ class ReadingProgressActivity : ActivityBase() {
     private fun refreshSummary() {
         val totalRead = ProgressControl.getTotalReadChapters(currentCycle)
         val totalChapters = ProgressControl.totalBibleChapters
-        val memorizedVerses = ProgressControl.getTotalMemorizedVerses()
         val activeDays = ProgressControl.getDistinctReadDays(currentCycle)
 
         binding.apply {
             chaptersReadCount.text = "$totalRead"
             chaptersReadLabel.text = getString(R.string.reading_progress_chapters_read)
-            memorizedVersesCount.text = "$memorizedVerses"
-            memorizedVersesLabel.text = getString(R.string.reading_progress_verses_memorized)
             activeDaysCount.text = "$activeDays"
             activeDaysLabel.text = getString(R.string.reading_progress_active_days)
 
@@ -162,7 +232,7 @@ class ReadingProgressActivity : ActivityBase() {
             val grid = if (isNT) binding.ntBooksGrid else binding.otBooksGrid
 
             val progress = bookProgress[book] ?: 0f
-            val btn = createBookButton(book, progress)
+            val btn = createBookButton(book, progress, ::progressToColor, { showChapterDetail(book) })
             val params = GridLayout.LayoutParams().apply {
                 width = 0
                 height = GridLayout.LayoutParams.WRAP_CONTENT
@@ -173,23 +243,49 @@ class ReadingProgressActivity : ActivityBase() {
         }
     }
 
-    private fun createBookButton(book: BibleBook, progress: Float): TextView {
+    private fun createBookButton(
+        book: BibleBook,
+        progress: Float,
+        colorMapper: (Float) -> Int,
+        onClick: () -> Unit,
+        hasTarget: Boolean = false,
+    ): View {
         val dp4 = 4.dp
-        return TextView(this).apply {
+        val density = resources.displayMetrics.density
+        val textView = TextView(this).apply {
             text = kjva.getShortName(book)
             textSize = 11f
             gravity = Gravity.CENTER
             setPadding(dp4, dp4 * 2, dp4, dp4 * 2)
             setTextColor(if (progress >= 1f) Color.WHITE else Color.DKGRAY)
-
             background = GradientDrawable().apply {
-                cornerRadius = 4f * resources.displayMetrics.density
-                setColor(progressToColor(progress))
+                cornerRadius = 4f * density
+                setColor(colorMapper(progress))
             }
+            setOnClickListener { onClick() }
+        }
 
-            setOnClickListener {
-                showChapterDetail(book)
+        if (!hasTarget) return textView
+
+        // Wrap in FrameLayout and add a small target indicator dot
+        return FrameLayout(this).apply {
+            addView(textView, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ))
+            val dotSize = (5 * density).toInt()
+            val dotMargin = (2 * density).toInt()
+            val dot = View(this@ReadingProgressActivity).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(COLOR_TARGET_DOT)
+                }
             }
+            addView(dot, FrameLayout.LayoutParams(dotSize, dotSize).apply {
+                gravity = Gravity.TOP or Gravity.END
+                setMargins(0, dotMargin, dotMargin, 0)
+            })
+            setOnClickListener { onClick() }
         }
     }
 
@@ -203,22 +299,9 @@ class ReadingProgressActivity : ActivityBase() {
 
         for (ch in 1..totalChapters) {
             val isRead = ch in readChapters
-            val btn = TextView(this).apply {
-                text = "$ch"
-                textSize = 12f
-                gravity = Gravity.CENTER
-                val dp6 = 6.dp
-                setPadding(dp6, dp6, dp6, dp6)
-                minWidth = 36.dp
-                setTextColor(if (isRead) Color.WHITE else Color.DKGRAY)
-                background = GradientDrawable().apply {
-                    cornerRadius = 4f * resources.displayMetrics.density
-                    setColor(if (isRead) COLOR_READ else COLOR_EMPTY)
-                }
-                setOnClickListener {
-                    navigateToChapter(book, ch)
-                }
-            }
+            val btn = createChapterButton(ch, if (isRead) COLOR_READ else COLOR_EMPTY, isRead, {
+                navigateToChapter(book, ch)
+            })
             val params = GridLayout.LayoutParams().apply {
                 setMargins(2.dp, 2.dp, 2.dp, 2.dp)
             }
@@ -226,11 +309,66 @@ class ReadingProgressActivity : ActivityBase() {
         }
     }
 
+    private fun createChapterButton(
+        chapter: Int,
+        bgColor: Int,
+        isHighlighted: Boolean,
+        onClick: () -> Unit,
+        hasTarget: Boolean = false,
+    ): View {
+        val dp6 = 6.dp
+        val density = resources.displayMetrics.density
+        val textView = TextView(this).apply {
+            text = "$chapter"
+            textSize = 12f
+            gravity = Gravity.CENTER
+            setPadding(dp6, dp6, dp6, dp6)
+            minWidth = 36.dp
+            setTextColor(if (isHighlighted) Color.WHITE else Color.DKGRAY)
+            background = GradientDrawable().apply {
+                cornerRadius = 4f * density
+                setColor(bgColor)
+            }
+            setOnClickListener { onClick() }
+        }
+
+        if (!hasTarget) return textView
+
+        return FrameLayout(this).apply {
+            addView(textView, FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            ))
+            val dotSize = (5 * density).toInt()
+            val dotMargin = (2 * density).toInt()
+            val dot = View(this@ReadingProgressActivity).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(COLOR_TARGET_DOT)
+                }
+            }
+            addView(dot, FrameLayout.LayoutParams(dotSize, dotSize).apply {
+                gravity = Gravity.TOP or Gravity.END
+                setMargins(0, dotMargin, dotMargin, 0)
+            })
+            setOnClickListener { onClick() }
+        }
+    }
+
     private fun navigateToChapter(book: BibleBook, chapter: Int) {
         val verse = Verse(kjva, book, chapter, 1)
         val resultIntent = Intent(this, GridChoosePassageBook::class.java)
         resultIntent.putExtra("verse", verse.osisID)
-        setResult(Activity.RESULT_OK, resultIntent)
+        setResult(RESULT_OK, resultIntent)
+        finish()
+    }
+
+    private fun navigateToMemorize(range: VerseRange) {
+        val resultIntent = Intent(this, ReadingProgressActivity::class.java)
+        resultIntent.putExtra("action", "memorize")
+        resultIntent.putExtra("startOrdinal", range.start.ordinal)
+        resultIntent.putExtra("endOrdinal", range.end.ordinal)
+        setResult(RESULT_OK, resultIntent)
         finish()
     }
 
@@ -240,23 +378,31 @@ class ReadingProgressActivity : ActivityBase() {
         cal.add(Calendar.WEEK_OF_YEAR, -52)
         val startMs = cal.timeInMillis
 
-        val records = ProgressControl.getReadingCalendar(startMs, endMs)
+        val records = ProgressControl.getReadingCalendar(startMs, endMs, currentCycle)
         val dailyCounts = mutableMapOf<Long, Int>()
         for (record in records) {
             dailyCounts[record.dayTimestamp] = record.count
         }
 
         binding.calendarHeatmap.setData(dailyCounts)
+        binding.calendarHeatmapScroll.post {
+            binding.calendarHeatmapScroll.fullScroll(HorizontalScrollView.FOCUS_RIGHT)
+        }
     }
 
     private fun refreshCycleLabel() {
+        val latest = ProgressControl.getLatestCycle()
         binding.cycleLabel.text = getString(R.string.reading_progress_cycle, currentCycle)
+        binding.cyclePrevButton.isEnabled = currentCycle > 1
+        binding.cyclePrevButton.alpha = if (currentCycle > 1) 1f else 0.3f
+        binding.cycleNextButton.isEnabled = currentCycle < latest
+        binding.cycleNextButton.alpha = if (currentCycle < latest) 1f else 0.3f
+        binding.newCycleButton.visibility = if (currentCycle >= latest) View.VISIBLE else View.GONE
     }
 
     // --- Memorize tab ---
 
-    private fun refreshMemorizeTab() {
-        refreshMemorizeSummary()
+    private fun refreshMemorizeListView() {
         refreshMemorizedPassages()
         refreshMemorizeTargets()
     }
@@ -294,17 +440,26 @@ class ReadingProgressActivity : ActivityBase() {
     private fun refreshMemorizedPassages() {
         binding.memorizedPassagesList.removeAllViews()
 
-        val ranges = ProgressControl.getMemorizedVerseRanges()
+        val rangesWithTimestamps = ProgressControl.getMemorizedVerseRangesWithTimestamps()
 
-        if (ranges.isEmpty()) {
+        if (rangesWithTimestamps.isEmpty()) {
             binding.noMemorizedPassages.visibility = View.VISIBLE
             return
         }
         binding.noMemorizedPassages.visibility = View.GONE
 
-        for (range in ranges) {
-            val item = createPassageItem(range.name, range)
+        val displayed = rangesWithTimestamps.take(memorizedPassagesShown)
+        for (rangeTs in displayed) {
+            val item = createPassageItem(rangeTs.verseRange.name, rangeTs.verseRange, rangeTs.latestMemorizedAt)
             binding.memorizedPassagesList.addView(item)
+        }
+
+        val remaining = rangesWithTimestamps.size - memorizedPassagesShown
+        if (remaining > 0) {
+            addShowMoreButton(binding.memorizedPassagesList, remaining) {
+                memorizedPassagesShown += PAGE_SIZE
+                refreshMemorizedPassages()
+            }
         }
     }
 
@@ -319,27 +474,95 @@ class ReadingProgressActivity : ActivityBase() {
         }
         binding.noMemorizeTargets.visibility = View.GONE
 
-        for (target in targets) {
+        val incompleteTargets = targets.filter { target ->
+            val memorizedCount = ProgressControl.getMemorizedOrdinalsInRange(
+                target.kjvOrdinalStart, target.kjvOrdinalEnd
+            ).size
+            memorizedCount < target.verseCount
+        }
+
+        if (incompleteTargets.isEmpty()) {
+            binding.noMemorizeTargets.visibility = View.VISIBLE
+            return
+        }
+
+        val displayed = incompleteTargets.take(memorizeTargetsShown)
+        for (target in displayed) {
             val range = target.verseRange
             val memorizedCount = ProgressControl.getMemorizedOrdinalsInRange(
                 target.kjvOrdinalStart, target.kjvOrdinalEnd
             ).size
-            val item = createTargetItem(range.name, memorizedCount, target.verseCount, target.id)
+            val item = createTargetItem(range.name, memorizedCount, target.verseCount, target.id, range, target.createdAt)
             binding.memorizeTargetsList.addView(item)
+        }
+
+        val remaining = incompleteTargets.size - memorizeTargetsShown
+        if (remaining > 0) {
+            addShowMoreButton(binding.memorizeTargetsList, remaining) {
+                memorizeTargetsShown += PAGE_SIZE
+                refreshMemorizeTargets()
+            }
         }
     }
 
-    private fun createPassageItem(text: String, range: VerseRange): LinearLayout {
+    private fun addShowMoreButton(container: LinearLayout, remaining: Int, onClick: () -> Unit) {
+        val accentColor = run {
+            val attrs = intArrayOf(android.R.attr.colorAccent)
+            val ta = obtainStyledAttributes(attrs)
+            val color = ta.getColor(0, Color.BLUE)
+            ta.recycle()
+            color
+        }
+        val btn = TextView(this).apply {
+            text = getString(R.string.memorize_show_more, minOf(remaining, PAGE_SIZE))
+            textSize = 14f
+            gravity = Gravity.CENTER
+            setPadding(8.dp, 12.dp, 8.dp, 12.dp)
+            setTextColor(accentColor)
+            setOnClickListener { onClick() }
+        }
+        container.addView(btn)
+    }
+
+    private fun formatRelativeTime(timestampMs: Long): CharSequence {
+        return DateUtils.getRelativeTimeSpanString(
+            timestampMs,
+            System.currentTimeMillis(),
+            DateUtils.MINUTE_IN_MILLIS,
+            DateUtils.FORMAT_ABBREV_RELATIVE
+        )
+    }
+
+    private fun createPassageItem(text: String, range: VerseRange, memorizedAt: Long): LinearLayout {
         val dp8 = 8.dp
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp8, dp8, dp8, dp8)
+            isClickable = true
+            isFocusable = true
+            setBackgroundResource(android.R.attr.selectableItemBackground.let {
+                val attrs = intArrayOf(it)
+                val ta = context.obtainStyledAttributes(attrs)
+                val resId = ta.getResourceId(0, 0)
+                ta.recycle()
+                resId
+            })
+            setOnClickListener { navigateToMemorize(range) }
 
-            addView(TextView(context).apply {
-                this.text = text
-                textSize = 14f
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+
+                addView(TextView(context).apply {
+                    this.text = text
+                    textSize = 14f
+                })
+                addView(TextView(context).apply {
+                    this.text = formatRelativeTime(memorizedAt)
+                    textSize = 11f
+                    setTextColor(Color.GRAY)
+                })
             })
 
             addView(TextView(context).apply {
@@ -351,8 +574,8 @@ class ReadingProgressActivity : ActivityBase() {
                         .setMessage(getString(R.string.memorize_confirm_unmark, text))
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             ProgressControl.unmarkVerseMemorized(range)
-                            refreshMemorizeTab()
-                            refreshSummary()
+                            refreshMemorizeSummary()
+                            refreshMemorizedPassages()
                         }
                         .setNegativeButton(android.R.string.cancel, null)
                         .show()
@@ -361,21 +584,40 @@ class ReadingProgressActivity : ActivityBase() {
         }
     }
 
-    private fun createTargetItem(text: String, memorized: Int, total: Int, targetId: IdType): LinearLayout {
+    private fun createTargetItem(text: String, memorized: Int, total: Int, targetId: IdType, range: VerseRange, createdAt: Long): LinearLayout {
         val dp4 = 4.dp
         val dp8 = 8.dp
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp8, dp8, dp8, dp8)
+            isClickable = true
+            isFocusable = true
+            setBackgroundResource(android.R.attr.selectableItemBackground.let {
+                val attrs = intArrayOf(it)
+                val ta = context.obtainStyledAttributes(attrs)
+                val resId = ta.getResourceId(0, 0)
+                ta.recycle()
+                resId
+            })
+            setOnClickListener { navigateToMemorize(range) }
 
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
 
-                addView(TextView(context).apply {
-                    this.text = "$text ($memorized/$total)"
-                    textSize = 14f
+                addView(LinearLayout(context).apply {
+                    orientation = LinearLayout.VERTICAL
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+
+                    addView(TextView(context).apply {
+                        this.text = "$text ($memorized/$total)"
+                        textSize = 14f
+                    })
+                    addView(TextView(context).apply {
+                        this.text = formatRelativeTime(createdAt)
+                        textSize = 11f
+                        setTextColor(Color.GRAY)
+                    })
                 })
 
                 addView(TextView(context).apply {
@@ -387,7 +629,8 @@ class ReadingProgressActivity : ActivityBase() {
                             .setMessage(getString(R.string.memorize_confirm_remove_target, text))
                             .setPositiveButton(android.R.string.ok) { _, _ ->
                                 ProgressControl.removeMemorizationTarget(targetId)
-                                refreshMemorizeTab()
+                                refreshMemorizeSummary()
+                                refreshMemorizeTargets()
                             }
                             .setNegativeButton(android.R.string.cancel, null)
                             .show()
@@ -406,6 +649,76 @@ class ReadingProgressActivity : ActivityBase() {
         }
     }
 
+    // --- Memorization heatmap (Overview) ---
+
+    private fun refreshMemorizationHeatmap() {
+        val bookProgress = ProgressControl.getBookMemorizationProgress()
+        val booksWithTargets = ProgressControl.getBooksWithMemorizationTargets()
+
+        binding.memOtBooksGrid.removeAllViews()
+        binding.memNtBooksGrid.removeAllViews()
+        binding.memChapterDetailSection.visibility = View.GONE
+
+        for (book in kjva.bookIterator) {
+            if (!Scripture.isScripture(book)) continue
+            val isNT = book.ordinal >= BibleBook.MATT.ordinal
+            val grid = if (isNT) binding.memNtBooksGrid else binding.memOtBooksGrid
+
+            val progress = bookProgress[book] ?: 0f
+            val hasTarget = book in booksWithTargets
+            val btn = createBookButton(book, progress, ::memorizationProgressToColor, { showMemChapterDetail(book) }, hasTarget)
+            val params = GridLayout.LayoutParams().apply {
+                width = 0
+                height = GridLayout.LayoutParams.WRAP_CONTENT
+                columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1, 1f)
+                setMargins(2.dp, 2.dp, 2.dp, 2.dp)
+            }
+            grid.addView(btn, params)
+        }
+
+        refreshMemorizationCalendarHeatmap()
+    }
+
+    private fun showMemChapterDetail(book: BibleBook) {
+        binding.memChapterDetailSection.visibility = View.VISIBLE
+        binding.memChapterDetailTitle.text = kjva.getLongName(book)
+        binding.memChaptersGrid.removeAllViews()
+
+        val totalChapters = kjva.getLastChapter(book)
+        val chaptersWithTargets = ProgressControl.getChaptersWithMemorizationTargets(book)
+
+        for (ch in 1..totalChapters) {
+            val progress = ProgressControl.getMemorizationProgress(kjva, book, ch)
+            val bgColor = memorizationProgressToColor(progress)
+            val hasTarget = ch in chaptersWithTargets
+            val btn = createChapterButton(ch, bgColor, progress >= 1f, { navigateToChapter(book, ch) }, hasTarget)
+            val params = GridLayout.LayoutParams().apply {
+                setMargins(2.dp, 2.dp, 2.dp, 2.dp)
+            }
+            binding.memChaptersGrid.addView(btn, params)
+        }
+    }
+
+    private fun refreshMemorizationCalendarHeatmap() {
+        val cal = Calendar.getInstance()
+        val endMs = cal.timeInMillis
+        cal.add(Calendar.WEEK_OF_YEAR, -52)
+        val startMs = cal.timeInMillis
+
+        val records = ProgressControl.getMemorizationCalendar(startMs, endMs)
+        val dailyCounts = mutableMapOf<Long, Int>()
+        for (record in records) {
+            dailyCounts[record.dayTimestamp] = record.count
+        }
+
+        binding.memCalendarHeatmap.setData(dailyCounts)
+        binding.memCalendarHeatmapScroll.post {
+            binding.memCalendarHeatmapScroll.fullScroll(HorizontalScrollView.FOCUS_RIGHT)
+        }
+    }
+
+    // --- Color helpers ---
+
     private fun progressToColor(progress: Float): Int {
         return when {
             progress <= 0f -> COLOR_EMPTY
@@ -417,15 +730,41 @@ class ReadingProgressActivity : ActivityBase() {
         }
     }
 
+    private fun memorizationProgressToColor(progress: Float): Int {
+        return when {
+            progress <= 0f -> COLOR_EMPTY
+            progress < 0.25f -> COLOR_MEM_LOW
+            progress < 0.50f -> COLOR_MEM_MEDIUM
+            progress < 0.75f -> COLOR_MEM_HIGH
+            progress < 1.0f -> COLOR_MEM_ALMOST
+            else -> COLOR_MEM_FULL
+        }
+    }
+
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
 
     companion object {
+        private const val PAGE_SIZE = 10
+
         private val COLOR_EMPTY = Color.parseColor("#E8E8E8")
         private val COLOR_LOW = Color.parseColor("#C6E48B")
         private val COLOR_MEDIUM = Color.parseColor("#7BC96F")
         private val COLOR_HIGH = Color.parseColor("#239A3B")
         private val COLOR_ALMOST = Color.parseColor("#196127")
         private val COLOR_READ = Color.parseColor("#196127")
+
+        private val COLOR_MEM_LOW = Color.parseColor("#C6E48B")
+        private val COLOR_MEM_MEDIUM = Color.parseColor("#7BC96F")
+        private val COLOR_MEM_HIGH = Color.parseColor("#239A3B")
+        private val COLOR_MEM_ALMOST = Color.parseColor("#196127")
+        private val COLOR_MEM_FULL = Color.parseColor("#196127")
+
+        private val COLOR_TARGET_DOT = Color.parseColor("#9C27B0")
+
+        private const val PREF_LAST_TAB = "reading_progress_last_tab"
+        private const val PREF_MEM_OVERVIEW = "reading_progress_mem_overview"
+
+        const val EXTRA_TAB = "tab"
     }
 }

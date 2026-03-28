@@ -21,11 +21,14 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.core.view.MenuItemCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.ActivityRawLlmLogBinding
@@ -82,7 +85,7 @@ class RawLlmLogActivity : ActivityBase() {
             for ((_, data) in usageByIteration) {
                 totalInput += data.usage.inputTokens
                 totalOutput += data.usage.outputTokens
-                val cost = LlmPricing.estimateCost(data.usage, data.model)
+                val cost = LlmPricing.estimateCost(data.usage, data.model, data.configuredModelId)
                 if (cost != null) {
                     totalCost += cost
                     hasCost = true
@@ -112,6 +115,13 @@ class RawLlmLogActivity : ActivityBase() {
         menu.add(Menu.NONE, MENU_SHARE, Menu.NONE, R.string.share)
             .setIcon(R.drawable.ic_baseline_share_24)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+
+        val typedValue = TypedValue()
+        theme.resolveAttribute(R.attr.toolbarTextColor, typedValue, true)
+        val tintList = ColorStateList.valueOf(typedValue.data)
+        for (i in 0 until menu.size()) {
+            MenuItemCompat.setIconTintList(menu.getItem(i), tintList)
+        }
         return true
     }
 

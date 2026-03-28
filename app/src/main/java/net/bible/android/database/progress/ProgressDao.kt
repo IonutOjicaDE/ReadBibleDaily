@@ -63,6 +63,13 @@ interface ProgressDao {
     @Query("DELETE FROM MemorizedVerse WHERE kjvOrdinal >= :startOrdinal AND kjvOrdinal <= :endOrdinal")
     fun deleteMemorizedVersesInRange(startOrdinal: Int, endOrdinal: Int)
 
+    @Query("SELECT (memorizedAt / 86400000) * 86400000 AS dayTimestamp, COUNT(*) AS count " +
+        "FROM MemorizedVerse " +
+        "WHERE memorizedAt >= :startMs AND memorizedAt <= :endMs " +
+        "GROUP BY memorizedAt / 86400000 " +
+        "ORDER BY dayTimestamp")
+    fun getMemorizationCalendar(startMs: Long, endMs: Long): List<DailyReadingCount>
+
     // Memorization target queries
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertMemorizationTarget(target: MemorizationTarget)
@@ -116,8 +123,11 @@ interface ProgressDao {
     @Query("SELECT chapter FROM ChapterReadingRecord WHERE kjvBookOrdinal = :kjvBookOrdinal AND cycle = :cycle ORDER BY chapter")
     fun getReadChaptersForBook(kjvBookOrdinal: Int, cycle: Int): List<Int>
 
-    @Query("SELECT (readAt / 86400000) * 86400000 AS dayTimestamp, COUNT(*) AS count FROM ChapterReadingRecord WHERE readAt >= :startMs AND readAt <= :endMs GROUP BY readAt / 86400000 ORDER BY dayTimestamp")
-    fun getReadingCalendar(startMs: Long, endMs: Long): List<DailyReadingCount>
+    @Query("SELECT (readAt / 86400000) * 86400000 AS dayTimestamp, COUNT(*) AS count " +
+        "FROM ChapterReadingRecord " +
+        "WHERE readAt >= :startMs AND readAt <= :endMs AND cycle = :cycle " +
+        "GROUP BY readAt / 86400000 ORDER BY dayTimestamp")
+    fun getReadingCalendar(startMs: Long, endMs: Long, cycle: Int): List<DailyReadingCount>
 
     // Canonical read counters
     @Query("SELECT * FROM ChapterReadCounter WHERE bookOrdinal = :bookOrdinal AND chapter = :chapter LIMIT 1")

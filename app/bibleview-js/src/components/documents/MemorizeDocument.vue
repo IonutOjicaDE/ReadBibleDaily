@@ -16,9 +16,9 @@
   -->
 
 <template>
-  <h2>{{document.title}}</h2>
-  
-  <!-- Mode selection using TabContainer -->
+  <div class="memorize-wrapper" :class="{ 'memorized-border': isMemorized }">
+  <h2 v-if="!includeReference"><a class="title-link" :href="bibleUrl">{{document.title}}</a></h2>
+
   <TabContainer
       :tabs="tabsConfig"
       :default-tab="selectedTabId"
@@ -28,10 +28,41 @@
       :show-navigation="true"
       @tab-change="handleModeChange"
   >
+    <template #trailing>
+      <div class="menu-wrapper" ref="menuWrapper">
+        <div class="menu-trigger" @click="toggleMenu">
+          <FontAwesomeIcon :icon="faEllipsisV"/>
+        </div>
+        <div v-if="menuOpen" class="dropdown-menu">
+          <div v-if="!isMemorized" class="menu-item" @click="menuAction(markAsMemorized)">
+            <FontAwesomeIcon :icon="faCheck"/> {{ strings.markAsMemorized }}
+          </div>
+          <div v-else class="menu-item memorized" @click="menuAction(unmarkMemorized)">
+            <FontAwesomeIcon :icon="faCheck"/> {{ strings.markedAsMemorized }}
+          </div>
+          <div v-if="isTarget && !isMemorized" class="menu-item" @click="menuAction(removeFromTargets)">
+            <FontAwesomeIcon :icon="faBrain"/> {{ strings.removeFromTargets }}
+          </div>
+          <div v-if="!isTarget" class="menu-item" @click="menuAction(addToTargets)">
+            <FontAwesomeIcon :icon="faBrain"/> {{ strings.addMemorizationTarget }}
+          </div>
+          <div class="menu-item" @click="menuAction(openProgress)">
+            <FontAwesomeIcon :icon="faChartLine"/> {{ strings.viewReadingProgress }}
+          </div>
+          <div class="menu-item" @click="menuAction(openSettings)">
+            <FontAwesomeIcon :icon="faCog"/> {{ strings.viewReadingProgressSettings }}
+          </div>
+          <div class="menu-item" @click="menuAction(listenInLoop)">
+            <FontAwesomeIcon :icon="faVolumeUp"/> {{ strings.listenInLoop }}
+          </div>
+        </div>
+      </div>
+    </template>
+
     <!-- Word Blur Tab -->
     <template #blur>
       <WordBlur
-          :text-items="document.texts"
+          :text-items="effectiveTextItems"
           :mode-config="document.state?.memorize?.modeConfig"
           @save-mode-config="saveModeConfig"
       />
@@ -40,28 +71,33 @@
     <!-- Word Scramble Tab -->
     <template #scramble>
       <WordScramble
-          :text-items="document.texts"
+          :text-items="effectiveTextItems"
+          :mode-config="document.state?.memorize?.modeConfig"
+          @save-mode-config="saveModeConfig"
+          @memorize-completed="onMemorizeCompleted"
+      />
+    </template>
+
+    <!-- Word Type Tab -->
+    <template #type>
+      <WordType
+          :text-items="effectiveTextItems"
+          :mode-config="document.state?.memorize?.modeConfig"
+          @save-mode-config="saveModeConfig"
+          @memorize-completed="onMemorizeCompleted"
+      />
+    </template>
+
+    <!-- Word Order Tab -->
+    <template #order>
+      <WordOrder
+          :text-items="effectiveTextItems"
           :mode-config="document.state?.memorize?.modeConfig"
           @save-mode-config="saveModeConfig"
           @memorize-completed="onMemorizeCompleted"
       />
     </template>
   </TabContainer>
-
-  <!-- Mark as memorized / unmark button -->
-  <div class="memorize-actions">
-    <div v-if="!isMemorized" class="button" @click="markAsMemorized">
-      <FontAwesomeIcon :icon="faCheck"/> {{ strings.markAsMemorized }}
-    </div>
-    <div v-else class="button memorized" @click="unmarkMemorized">
-      <FontAwesomeIcon :icon="faCheck"/> {{ strings.markedAsMemorized }}
-    </div>
-    <div v-if="isTarget && !isMemorized" class="button target" @click="removeFromTargets">
-      <FontAwesomeIcon :icon="faBrain"/> {{ strings.removeFromTargets }}
-    </div>
-    <div v-if="!isTarget" class="button" @click="addToTargets">
-      <FontAwesomeIcon :icon="faBrain"/> {{ strings.addMemorizationTarget }}
-    </div>
   </div>
 </template>
 
@@ -72,19 +108,23 @@ let lastSelectedMode: MemorizeStateMode | null = null;
 
 <script setup lang="ts">
 import {useCommon} from "@/composables";
-import {computed, ref, toRefs, watch} from "vue";
+import {computed, onBeforeUnmount, onMounted, provide, ref, toRefs, watch} from "vue";
 import {
     MemorizeDocument,
     MemorizeModeConfig,
-    MemorizeStateModeEnum, MemorizeState
+    MemorizeStateModeEnum, MemorizeState,
+    MemorizeTextItem
 } from "@/types/documents";
+import {useReadingProgressSettings} from "@/composables/reading-progress-settings";
 import WordBlur from '@/components/memorize/WordBlur.vue';
 import WordScramble from '@/components/memorize/WordScramble.vue';
+import WordType from '@/components/memorize/WordType.vue';
+import WordOrder from '@/components/memorize/WordOrder.vue';
 import TabContainer from '@/components/tabs/TabContainer.vue';
 import {FontAwesomeIcon} from "@fortawesome/vue-fontawesome";
-import {faBrain, faCheck, faEyeSlash, faRandom, faTimes} from "@fortawesome/free-solid-svg-icons";
+import {faBrain, faChartLine, faCheck, faCog, faEllipsisV, faEyeSlash, faKeyboard, faRandom, faSort, faTimes, faVolumeUp} from "@fortawesome/free-solid-svg-icons";
 import {inject} from "vue";
-import {memorizationKey} from "@/types/constants";
+import {memorizationKey, readingProgressSettingsKey} from "@/types/constants";
 
 const props = defineProps<{ document: MemorizeDocument }>();
 
@@ -95,7 +135,13 @@ const modeConfig = ref<MemorizeModeConfig|undefined>(document.value.state?.memor
 
 // Computed for mapping selected mode to tab ID
 const selectedTabId = computed(() => {
-    return selectedMode.value === MemorizeStateModeEnum.BLUR ? 'blur' : 'scramble';
+    switch (selectedMode.value) {
+        case MemorizeStateModeEnum.BLUR: return 'blur';
+        case MemorizeStateModeEnum.SCRAMBLE: return 'scramble';
+        case MemorizeStateModeEnum.TYPE: return 'type';
+        case MemorizeStateModeEnum.ORDER: return 'order';
+        default: return 'blur';
+    }
 });
 
 const memorizeState = computed<MemorizeState>(() => {
@@ -107,6 +153,22 @@ const memorizeState = computed<MemorizeState>(() => {
 
 const {strings, android} = useCommon();
 const memorization = inject(memorizationKey)!;
+const readingProgressSettings = useReadingProgressSettings(document.value.readingProgressSettings, android);
+provide(readingProgressSettingsKey, readingProgressSettings);
+
+const includeReference = computed(() => readingProgressSettings.settings.memorizeIncludeReference);
+
+const effectiveTextItems = computed<MemorizeTextItem[]>(() => {
+    if (includeReference.value && document.value.title) {
+        return [...document.value.texts, {key: '__reference__', text: document.value.title}];
+    }
+    return document.value.texts;
+});
+
+watch(includeReference, () => {
+    modeConfig.value = undefined;
+    saveState();
+});
 
 // Populate memorization data so isMemorized/isTarget are reactive
 memorization.mergeData(
@@ -141,7 +203,7 @@ const isTarget = computed(() => {
 
 function markAsMemorized() {
     withVerseRange((b, s, e) => {
-        android.memorizeCompleted(b, s, e);
+        android.markAsMemorized(b, s, e);
         if (!isTarget.value) {
             android.addMemorizationTarget(b, s, e);
         }
@@ -160,6 +222,50 @@ function addToTargets() {
     withVerseRange((b, s, e) => android.addMemorizationTarget(b, s, e));
 }
 
+function openProgress() {
+    android.openReadingProgress(1);
+}
+
+function openSettings() {
+    android.openReadingProgressSettings();
+}
+
+function listenInLoop() {
+    const {bookInitials, v11n, startOrdinal, endOrdinal} = document.value;
+    if (bookInitials && v11n && startOrdinal != null && endOrdinal != null) {
+        android.speakMemorizationLoop(bookInitials, v11n, startOrdinal, endOrdinal);
+    }
+}
+
+const bibleUrl = computed(() => {
+    const {osisRef, v11n} = document.value;
+    if (osisRef && v11n) {
+        return `osis://?osis=${encodeURI(osisRef)}&v11n=${encodeURI(v11n)}`;
+    }
+    return "#";
+});
+
+const menuOpen = ref(false);
+const menuWrapper = ref<HTMLElement | null>(null);
+
+function toggleMenu() {
+    menuOpen.value = !menuOpen.value;
+}
+
+function menuAction(fn: () => void) {
+    menuOpen.value = false;
+    fn();
+}
+
+function onClickOutside(e: Event) {
+    if (menuWrapper.value && !menuWrapper.value.contains(e.target as Node)) {
+        menuOpen.value = false;
+    }
+}
+
+onMounted(() => document.value && window.addEventListener('click', onClickOutside));
+onBeforeUnmount(() => window.removeEventListener('click', onClickOutside));
+
 // Tab configuration for the TabContainer
 const tabsConfig = computed(() => [
     { 
@@ -168,11 +274,23 @@ const tabsConfig = computed(() => [
         value: MemorizeStateModeEnum.BLUR,
         icon: faEyeSlash,
     },
-    { 
-        id: 'scramble', 
+    {
+        id: 'scramble',
         label: strings.wordScramble,
         value: MemorizeStateModeEnum.SCRAMBLE,
         icon: faRandom,
+    },
+    {
+        id: 'type',
+        label: strings.wordType,
+        value: MemorizeStateModeEnum.TYPE,
+        icon: faKeyboard,
+    },
+    {
+        id: 'order',
+        label: strings.wordOrder,
+        value: MemorizeStateModeEnum.ORDER,
+        icon: faSort,
     }
 ]);
 
@@ -191,7 +309,8 @@ function saveModeConfig(_modeConfig: MemorizeModeConfig) {
 }
 
 function onMemorizeCompleted() {
-    withVerseRange((b, s, e) => android.memorizeCompleted(b, s, e));
+    if (!readingProgressSettings.settings.autoMarkMemorized) return;
+    withVerseRange((b, s, e) => android.markAsMemorized(b, s, e));
 }
 
 watch(selectedMode, saveState);
@@ -215,23 +334,119 @@ function saveState() {
 <style scoped lang="scss">
 @use "@/common.scss" as *;
 
+.memorize-wrapper {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 4px;
+  transition: border-color 0.3s ease;
+
+  .noAnimation & {
+    transition: none;
+  }
+
+  &.memorized-border {
+    border-color: #4CAF50;
+
+    .monochrome & {
+      border-color: #666;
+    }
+    .monochrome.night & {
+      border-color: #999;
+    }
+  }
+}
+
 h2 {
   font-size: 1.2em;
   text-align: center;
+
+  .title-link {
+    text-decoration: underline;
+  }
 }
 
-.memorize-actions {
+.menu-wrapper {
+  position: relative;
+  flex-shrink: 0;
   display: flex;
-  justify-content: center;
-  gap: 4px;
-  margin-top: 1em;
+  align-items: center;
+}
 
-  .button.memorized {
-    background-color: #4CAF50;
+.menu-trigger {
+  cursor: pointer;
+  padding: 8px 12px;
+  color: #666;
+  font-size: 18px;
+
+  .night & {
+    color: #999;
+  }
+  .monochrome & {
+    color: black;
+  }
+  .monochrome.night & {
+    color: white;
+  }
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: var(--background-color);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  min-width: 200px;
+  padding: 4px 0;
+  animation: dropdown-fade 0.15s ease;
+
+  .night & {
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+  .monochrome & {
+    border-color: black;
+    box-shadow: none;
+  }
+  .monochrome.night & {
+    border-color: white;
+  }
+  .noAnimation & {
+    animation: none;
+  }
+}
+
+@keyframes dropdown-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+  .night &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .monochrome &:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  .monochrome.night &:hover {
+    background: rgba(255, 255, 255, 0.15);
   }
 
-  .button.target {
-    background-color: #9C27B0;
+  &.memorized {
+    color: #4CAF50;
   }
 }
 </style>

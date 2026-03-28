@@ -31,6 +31,7 @@ import net.bible.android.view.activity.page.Selection
 import net.bible.service.common.CommonUtils
 import net.bible.service.db.DatabaseContainer
 import net.bible.service.llm.AgentPrompt
+import net.bible.service.llm.BuiltInPrompts
 import net.bible.service.llm.LlmCostTracker
 import net.bible.service.llm.LlmPricing
 import net.bible.service.llm.LlmUsage
@@ -50,6 +51,7 @@ import org.crosswire.jsword.passage.VerseRange
 import org.jdom2.output.Format
 import org.jdom2.output.XMLOutputter
 import android.widget.Toast
+import net.bible.android.view.activity.base.CurrentActivityHolder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -74,6 +76,19 @@ class AgentSessionStatusChangedEvent(
     val isRunning: Boolean
 )
 
+/** Posted when the agent is waiting for user to return to grant permission. */
+class AgentPermissionWaitingEvent(
+    val workspaceId: IdType,
+    val waiting: Boolean,
+    val toolName: String? = null
+)
+
+/** Result to open when user returns to the app after background completion. */
+sealed class PendingAgentResult {
+    data class OpenDocument(val documentInitials: String, val pageKey: String, val targetWindowId: IdType?) : PendingAgentResult()
+    data class OpenStudyPad(val labelId: IdType, val scrollToEntryId: IdType?) : PendingAgentResult()
+}
+
 /** One active session per workspace, maintaining log entries and execution state. */
 class AgentSession(val workspaceId: IdType) {
     private val _logEntries = CopyOnWriteArrayList<AgentLogEntry>()
@@ -87,14 +102,24 @@ class AgentSession(val workspaceId: IdType) {
     var isRunning: Boolean = false
         private set
 
+    /** Cumulative session cost in USD, updated on each API call. */
+    @Volatile
+    var sessionCostUsd: Double = 0.0
+        private set
+
     var context: AgentContext? = null
         private set
 
     var job: Job? = null
 
+    /** Result to open when user returns to the app after background completion. */
+    @Volatile
+    var pendingResult: PendingAgentResult? = null
+
     fun start(context: AgentContext) {
         this.context = context
         this.isRunning = true
+        this.sessionCostUsd = 0.0
         _logEntries.clear()
         rawLlmLog = RawLlmLog()
         addLogEntry(AgentLogEntry.info("Agent started"))
@@ -123,6 +148,10 @@ class AgentSession(val workspaceId: IdType) {
             entry.status = newStatus
             ABEventBus.post(AgentLogUpdatedEvent(workspaceId, entry))
         }
+    }
+
+    fun addCost(cost: Double) {
+        sessionCostUsd += cost
     }
 
     fun setLastEntryCost(costInfo: String, isTotalCost: Boolean = false) {
@@ -296,6 +325,29 @@ object AgentSessionManager : AgentSessionManagerBase() {
         previousResponse: String? = null,
         userSpecification: String? = null
     ): AgentContext {
+        // Workspace-level prompt: no specific verse/document selected
+        if (selection.bookInitials == null && selection.startOrdinal < 0
+            && selection.noteEditorEntityType == null) {
+            val workspaceSummary = withContext(Dispatchers.Main.immediate) {
+                buildWorkspaceWindowsSummary()
+            }
+            val isBuiltIn = BuiltInPrompts.isBuiltIn(prompt.id)
+            return AgentContext(
+                promptId = prompt.id,
+                workspaceId = windowControl.windowRepository.id,
+                windowId = windowControl.activeWindow.id,
+                promptPermissionMode = prompt.permissionMode,
+                promptAvailableTools = prompt.allowedTools,
+                promptAllowedTools = if (isBuiltIn) null else prompt.allowedTools,
+                promptDeniedTools = prompt.deniedTools,
+                noDocumentCreation = prompt.noDocumentCreation,
+                previousResponse = previousResponse,
+                additionalInstructions = additionalInstructions,
+                userSpecification = userSpecification,
+                workspaceWindowsSummary = workspaceSummary,
+            )
+        }
+
         val book = selection.bookInitials?.let { Books.installed().getBook(it) }
         val currentPage = windowControl.activeWindowPageManager.currentPage
         val pageKey = currentPage.key
@@ -381,8 +433,11 @@ object AgentSessionManager : AgentSessionManagerBase() {
         // Get highlighted text (specific words selected by user) if available
         val highlightedText = selection.text.takeIf { it.isNotBlank() }
 
+        val isBuiltIn = BuiltInPrompts.isBuiltIn(prompt.id)
+
         return AgentContext(
             promptId = prompt.id,
+            workspaceId = windowControl.windowRepository.id,
             selectedVerseRange = verseRange,
             selectedContent = osisContent,
             activeDocumentInitials = selection.bookInitials,
@@ -392,7 +447,9 @@ object AgentSessionManager : AgentSessionManagerBase() {
             selectionStartOffset = if (highlightedText != null) selection.startOffset else null,
             selectionEndOffset = if (highlightedText != null) selection.endOffset else null,
             promptPermissionMode = prompt.permissionMode,
-            promptAllowedTools = prompt.allowedTools,
+            promptAvailableTools = prompt.allowedTools,
+            // Built-in prompts: no permission auto-allow — rely on permissionMode instead
+            promptAllowedTools = if (isBuiltIn) null else prompt.allowedTools,
             promptDeniedTools = prompt.deniedTools,
             noDocumentCreation = prompt.noDocumentCreation,
             previousResponse = previousResponse,
@@ -403,6 +460,41 @@ object AgentSessionManager : AgentSessionManagerBase() {
             noteEditorContent = selection.noteEditorContent,
             noteEditorContentType = selection.noteEditorContentType
         )
+    }
+
+    /** Build a text summary of all workspace windows for workspace-level prompt context. Must be called on Main thread. */
+    private fun buildWorkspaceWindowsSummary(): String {
+        val windowRepository = windowControl.windowRepository
+        val activeWindowId = windowRepository.activeWindow.id
+        val windows = windowRepository.windowList
+            .filter { it.windowState != net.bible.android.control.page.window.WindowLayout.WindowState.CLOSED }
+
+        val visible = windows.filter { it.windowState == net.bible.android.control.page.window.WindowLayout.WindowState.VISIBLE }
+        val minimised = windows.filter { it.windowState == net.bible.android.control.page.window.WindowLayout.WindowState.MINIMISED }
+
+        return buildString {
+            append("Workspace: ${windowRepository.name}\n")
+            append("Windows: ${windows.size} total (${visible.size} visible, ${minimised.size} minimised)\n\n")
+
+            fun appendWindow(w: net.bible.android.control.page.window.Window) {
+                val page = w.pageManager.currentPage
+                val doc = page.currentDocument
+                val key = page.key
+                append("- ${doc?.initials ?: "unknown"} (${doc?.name ?: "unknown"})")
+                if (key != null) append(" at ${key.name}")
+                if (w.id == activeWindowId) append(" [ACTIVE]")
+                append("\n")
+            }
+
+            if (visible.isNotEmpty()) {
+                append("Visible windows:\n")
+                visible.forEach { appendWindow(it) }
+            }
+            if (minimised.isNotEmpty()) {
+                append("\nMinimised windows:\n")
+                minimised.forEach { appendWindow(it) }
+            }
+        }
     }
 
     private suspend fun handleAgentEvent(
@@ -417,7 +509,10 @@ object AgentSessionManager : AgentSessionManagerBase() {
         val app = BibleApplication.application
         when (event) {
             is AgentEvent.Started -> {
-                session.addLogEntry(AgentLogEntry.info(app.getString(R.string.agent_log_executing, prompt.name)))
+                session.addLogEntry(AgentLogEntry.info(
+                    app.getString(R.string.agent_log_executing, prompt.name),
+                    details = event.model
+                ))
             }
             is AgentEvent.Iteration -> {
                 session.addLogEntry(AgentLogEntry.info(app.getString(R.string.agent_log_iteration, event.number)))
@@ -464,8 +559,9 @@ object AgentSessionManager : AgentSessionManagerBase() {
             }
             is AgentEvent.ApiCallCompleted -> {
                 // Attach cost to the most recent log entry (typically the iteration entry)
-                val cost = LlmPricing.estimateCost(event.usage, event.model)
+                val cost = LlmPricing.estimateCost(event.usage, event.model, event.configuredModelId)
                 if (cost != null) {
+                    session.addCost(cost)
                     session.setLastEntryCost(LlmCostTracker.formatCost(cost))
                 }
             }
@@ -489,7 +585,7 @@ object AgentSessionManager : AgentSessionManagerBase() {
                         details = event.response.take(500)
                     ))
                     session.stop(app.getString(R.string.agent_log_completed))
-                    attachTotalCost(session, event.usage, event.model)
+                    attachTotalCost(session, event.usage, event.model, event.configuredModelId)
                 } else {
                     // Extract title from response (first markdown H1 heading)
                     val (title, content) = extractTitleFromResponse(event.response, prompt.name, context.verseRefString)
@@ -507,10 +603,10 @@ object AgentSessionManager : AgentSessionManagerBase() {
                     session.addLogEntry(AgentLogEntry.info(app.getString(R.string.agent_log_saved, title)))
 
                     // Open the page in target window or linked window
-                    openMyDocumentResult(pageInfo.documentInitials, pageInfo.pageKey, targetWindowId)
+                    openMyDocumentResult(pageInfo.documentInitials, pageInfo.pageKey, targetWindowId, session)
 
                     session.stop(app.getString(R.string.agent_log_completed))
-                    attachTotalCost(session, event.usage, event.model)
+                    attachTotalCost(session, event.usage, event.model, event.configuredModelId)
                 }
             }
             is AgentEvent.CompletedWithDocument -> {
@@ -527,28 +623,28 @@ object AgentSessionManager : AgentSessionManagerBase() {
                 session.addLogEntry(AgentLogEntry.info(app.getString(R.string.agent_log_saved, event.title)))
 
                 // Open the page in target window or linked window
-                openMyDocumentResult(pageInfo.documentInitials, pageInfo.pageKey, targetWindowId)
+                openMyDocumentResult(pageInfo.documentInitials, pageInfo.pageKey, targetWindowId, session)
 
                 session.stop(app.getString(R.string.agent_log_completed))
-                attachTotalCost(session, event.usage, event.model)
+                attachTotalCost(session, event.usage, event.model, event.configuredModelId)
             }
             is AgentEvent.CompletedWithoutDocument -> {
                 // Task completed without creating a document (e.g., just created a bookmark)
                 session.addLogEntry(AgentLogEntry.info(app.getString(R.string.agent_log_done, event.message)))
                 session.stop(app.getString(R.string.agent_log_completed))
-                attachTotalCost(session, event.usage, event.model)
+                attachTotalCost(session, event.usage, event.model, event.configuredModelId)
             }
             is AgentEvent.CompletedWithStudyPad -> {
                 session.addLogEntry(AgentLogEntry.info(app.getString(R.string.agent_log_done, event.message)))
-                linkControl.openStudyPad(event.labelId, event.scrollToEntryId)
+                openStudyPadResult(event.labelId, event.scrollToEntryId, session)
                 session.stop(app.getString(R.string.agent_log_completed))
-                attachTotalCost(session, event.usage, event.model)
+                attachTotalCost(session, event.usage, event.model, event.configuredModelId)
             }
             is AgentEvent.CompletedWithMyDocumentPage -> {
                 session.addLogEntry(AgentLogEntry.info(app.getString(R.string.agent_log_done, event.message)))
-                openMyDocumentResult(event.documentInitials, event.pageKey, targetWindowId)
+                openMyDocumentResult(event.documentInitials, event.pageKey, targetWindowId, session)
                 session.stop(app.getString(R.string.agent_log_completed))
-                attachTotalCost(session, event.usage, event.model)
+                attachTotalCost(session, event.usage, event.model, event.configuredModelId)
             }
             is AgentEvent.Error -> {
                 val hasRawLog = session.rawLlmLog?.isEmpty() == false
@@ -563,9 +659,9 @@ object AgentSessionManager : AgentSessionManagerBase() {
         }
     }
 
-    private fun attachTotalCost(session: AgentSession, usage: LlmUsage, model: String) {
+    private fun attachTotalCost(session: AgentSession, usage: LlmUsage, model: String, configuredModelId: IdType? = null) {
         if (usage.totalTokens > 0) {
-            val cost = LlmPricing.estimateCost(usage, model)
+            val cost = LlmPricing.estimateCost(usage, model, configuredModelId)
             if (cost != null) {
                 val app = BibleApplication.application
                 session.setLastEntryCost(app.getString(R.string.llm_cost_total, LlmCostTracker.formatCost(cost)), isTotalCost = true)
@@ -597,7 +693,12 @@ object AgentSessionManager : AgentSessionManagerBase() {
         }
     }
 
-    private suspend fun openMyDocumentResult(documentInitials: String, pageKey: String, targetWindowId: IdType?) {
+    private suspend fun openMyDocumentResult(documentInitials: String, pageKey: String, targetWindowId: IdType?, session: AgentSession? = null) {
+        if (CurrentActivityHolder.currentActivity == null) {
+            // App is backgrounded — defer opening until user returns
+            session?.pendingResult = PendingAgentResult.OpenDocument(documentInitials, pageKey, targetWindowId)
+            return
+        }
         if (targetWindowId != null) {
             val window = windowControl.windowRepository.getWindow(targetWindowId)
             if (window != null) {
@@ -613,6 +714,16 @@ object AgentSessionManager : AgentSessionManagerBase() {
         }
         withContext(Dispatchers.Main) {
             linkControl.openAIDocument(documentInitials, pageKey)
+        }
+    }
+
+    private suspend fun openStudyPadResult(labelId: IdType, scrollToEntryId: IdType?, session: AgentSession? = null) {
+        if (CurrentActivityHolder.currentActivity == null) {
+            session?.pendingResult = PendingAgentResult.OpenStudyPad(labelId, scrollToEntryId)
+            return
+        }
+        withContext(Dispatchers.Main) {
+            linkControl.openStudyPad(labelId, scrollToEntryId)
         }
     }
 

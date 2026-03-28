@@ -16,6 +16,7 @@
  */
 
 import {
+    AiDocMarker,
     BookCategory,
     BibleBookmark,
     Label,
@@ -85,6 +86,7 @@ export interface ErrorDocument extends BaseDocument {
 export interface BibleDocumentType extends BaseOsisDocument {
     type: "bible"
     bookmarks: BibleBookmark[]
+    aiDocMarkers?: AiDocMarker[]
     bibleBookName: string
     addChapter: boolean
     chapterNumber: number
@@ -130,6 +132,18 @@ export type DocumentOfType<T extends BibleViewDocumentType> =
                                 BaseDocument
 
 
+// types for ReadingProgressSettings
+export type WordVisibility = 'light' | 'dim' | 'hidden';
+
+export type ReadingProgressSettings = {
+    autoMarkMemorized: boolean;
+    memorizeTypeFullWords: boolean;
+    memorizeWordVisibility: WordVisibility;
+    memorizeErrorHeatmap: boolean;
+    memorizeScrambleHideUsed: boolean;
+    memorizeIncludeReference: boolean;
+}
+
 // types for MemorizeDocument
 export type MemorizeTextItem = {
     key: string;
@@ -138,7 +152,9 @@ export type MemorizeTextItem = {
 
 export enum MemorizeStateModeEnum {
     BLUR = 'blur',
-    SCRAMBLE = 'scramble'
+    SCRAMBLE = 'scramble',
+    TYPE = 'type',
+    ORDER = 'order'
 }
 
 export type MemorizeStateMode = MemorizeStateModeEnum[keyof MemorizeStateModeEnum];
@@ -159,10 +175,13 @@ export interface MemorizeDocument extends BaseDocument{
     texts: MemorizeTextItem[]
     state?: DocumentState
     bookInitials?: string
+    v11n?: string
+    osisRef?: string
     startOrdinal?: number
     endOrdinal?: number
     memorizedOrdinals?: number[]
     targetOrdinals?: number[]
+    readingProgressSettings?: ReadingProgressSettings
 }
 
 export function isOsisDocument(t: AnyDocument): t is OsisDocument {

@@ -32,7 +32,7 @@ import {
     StudyPadItem,
     StudyPadTextItem
 } from "@/types/client-objects";
-import {AnyDocument} from "@/types/documents";
+import {AnyDocument, ReadingProgressSettings} from "@/types/documents";
 import {isBibleBookmark, isGenericBookmark, isWholePageBookmark} from "@/composables/bookmarks";
 
 export type BibleJavascriptInterface = {
@@ -78,16 +78,19 @@ export type BibleJavascriptInterface = {
     createWholePageBookmark: (bookInitials: string, bookKey: string) => void,
     compare: (bookInitials: string, verseOrdinal: number, endOrdinal: number) => void,
     memorize: (bookInitials: string, verseOrdinal: number, endOrdinal: number) => void,
-    memorizeCompleted: (bookInitials: string, startOrdinal: number, endOrdinal: number) => void,
+    markAsMemorized: (bookInitials: string, startOrdinal: number, endOrdinal: number) => void,
     addMemorizationTarget: (bookInitials: string, startOrdinal: number, endOrdinal: number) => void,
     unmarkMemorized: (bookInitials: string, startOrdinal: number, endOrdinal: number) => void,
     removeMemorizationTarget: (bookInitials: string, startOrdinal: number, endOrdinal: number) => void,
+    openReadingProgress: (tab: number) => void,
+    openReadingProgressSettings: () => void,
     markChapterRead: (bookInitials: string, startOrdinal: number, chapter: number, source: string) => void,
     unmarkChapterRead: (bookInitials: string, startOrdinal: number, chapter: number) => void,
     openStudyPad: (labelId: IdType, bookmarkId: IdType) => void,
     openMyNotes: (v11n: string, ordinal: number) => void,
     speak: (bookInitials: string, v11n: string, startOrdinal: number, endOrdinal: number) => void,
     speakGeneric: (bookInitials: string, osisRef: string, startOrdinal: number, endOrdinal: number) => void,
+    speakMemorizationLoop: (bookInitials: string, v11n: string, startOrdinal: number, endOrdinal: number) => void,
     setAsPrimaryLabel: (bookmarkId: IdType, labelId: IdType) => void,
     setAsPrimaryLabelGeneric: (bookmarkId: IdType, labelId: IdType) => void,
     toggleBookmarkLabel: (bookmarkId: IdType, labelId: IdType) => void,
@@ -105,6 +108,7 @@ export type BibleJavascriptInterface = {
     helpBookmarks: () => void,
     onKeyDown: (key: string) => void,
     saveState: (newState: string) => void,
+    setReadingProgressSettings: (json: string) => void,
     goToNextChapter: () => void,
     goToPreviousChapter: () => void,
     llmAction: (bookInitials: string, startOrdinal: number, endOrdinal: number) => void,
@@ -115,7 +119,11 @@ export type BibleJavascriptInterface = {
     reloadMyDocumentPage: (bookInitials: string) => void,
     regenerateMyDocumentPage: (pageId: string) => void,
     deleteMyDocumentPage: (pageId: string) => void,
+    shareMyDocumentContent: (bookInitials: string, pageKey: string) => void,
+    copyMyDocumentContent: (bookInitials: string, pageKey: string) => void,
     openPromptEditor: (promptId: string) => void,
+    openAiDocPage: (documentInitials: string, pageKey: string) => void,
+    openAiDocPageChooser: (markersJson: string) => void,
 }
 
 export type UseAndroid = ReturnType<typeof useAndroid>
@@ -425,8 +433,8 @@ export function useAndroid({bookmarks}: { bookmarks: Ref<BaseBookmark[]> }, conf
         window.android.memorize(bookInitials, startOrdinal, endOrdinal ? endOrdinal : -1);
     }
 
-    function memorizeCompleted(bookInitials: string, startOrdinal: number, endOrdinal: number) {
-        window.android.memorizeCompleted(bookInitials, startOrdinal, endOrdinal);
+    function markAsMemorized(bookInitials: string, startOrdinal: number, endOrdinal: number) {
+        window.android.markAsMemorized(bookInitials, startOrdinal, endOrdinal);
     }
 
     function addMemorizationTarget(bookInitials: string, startOrdinal: number, endOrdinal?: number) {
@@ -439,6 +447,14 @@ export function useAndroid({bookmarks}: { bookmarks: Ref<BaseBookmark[]> }, conf
 
     function removeMemorizationTarget(bookInitials: string, startOrdinal: number, endOrdinal: number) {
         window.android.removeMemorizationTarget(bookInitials, startOrdinal, endOrdinal);
+    }
+
+    function openReadingProgress(tab: number = 0) {
+        window.android.openReadingProgress(tab);
+    }
+
+    function openReadingProgressSettings() {
+        window.android.openReadingProgressSettings();
     }
 
     function markChapterRead(bookInitials: string, startOrdinal: number, chapter: number, source: string = "MANUAL") {
@@ -466,6 +482,10 @@ export function useAndroid({bookmarks}: { bookmarks: Ref<BaseBookmark[]> }, conf
 
     function speakGeneric(bookInitials: string, osisRef: string, startOrdinal: number, endOrdinal?: number) {
         window.android.speakGeneric(bookInitials, osisRef, startOrdinal, endOrdinal ? endOrdinal : -1);
+    }
+
+    function speakMemorizationLoop(bookInitials: string, v11n: string, startOrdinal: number, endOrdinal: number) {
+        window.android.speakMemorizationLoop(bookInitials, v11n, startOrdinal, endOrdinal);
     }
 
     function openDownloads() {
@@ -589,6 +609,10 @@ export function useAndroid({bookmarks}: { bookmarks: Ref<BaseBookmark[]> }, conf
         window.android.saveState(JSON.stringify(newState));
     }
 
+    function setReadingProgressSettings(settings: ReadingProgressSettings) {
+        window.android.setReadingProgressSettings(JSON.stringify(settings));
+    }
+
     function goToNextChapter() {
         window.android.goToNextChapter();
     }
@@ -627,6 +651,14 @@ export function useAndroid({bookmarks}: { bookmarks: Ref<BaseBookmark[]> }, conf
 
     function deleteMyDocumentPage(pageId: string) {
         window.android.deleteMyDocumentPage(pageId);
+    }
+
+    function shareMyDocumentContent(bookInitials: string, pageKey: string) {
+        window.android.shareMyDocumentContent(bookInitials, pageKey);
+    }
+
+    function copyMyDocumentContent(bookInitials: string, pageKey: string) {
+        window.android.copyMyDocumentContent(bookInitials, pageKey);
     }
 
     function openPromptEditor(promptId: string) {
@@ -678,18 +710,22 @@ export function useAndroid({bookmarks}: { bookmarks: Ref<BaseBookmark[]> }, conf
         createWholePageBookmark,
         compare,
         memorize,
-        memorizeCompleted,
+        markAsMemorized,
         addMemorizationTarget,
         unmarkMemorized,
         removeMemorizationTarget,
+        openReadingProgress,
+        openReadingProgressSettings,
         markChapterRead,
         unmarkChapterRead,
         speak,
         speakGeneric,
+        speakMemorizationLoop,
         helpDialog,
         onKeyDown,
         parseRef,
         saveState,
+        setReadingProgressSettings,
         goToNextChapter,
         goToPreviousChapter,
         llmAction,
@@ -700,6 +736,8 @@ export function useAndroid({bookmarks}: { bookmarks: Ref<BaseBookmark[]> }, conf
         reloadMyDocumentPage,
         regenerateMyDocumentPage,
         deleteMyDocumentPage,
+        shareMyDocumentContent,
+        copyMyDocumentContent,
         openPromptEditor,
     }
 

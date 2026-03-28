@@ -66,6 +66,8 @@ export type Config = {
 
     showBookmarks: boolean,
     showMyNotes: boolean,
+    showAiDocMarkers: boolean,
+    showOrdinals: boolean,
     bookmarksHideLabels: IdType[],
     bookmarksAssignLabels: IdType[],
 
@@ -94,6 +96,10 @@ export type Config = {
     showTitleScrollButton: boolean,
     showMemorizationIndicators: boolean,
     autoTrackReading: boolean,
+    pageScrollAmount: number,
+    scrollHelperLines: boolean,
+    scrollHelperLineStyle: number,
+    showPageButtons: boolean,
 }
 
 export type BibleModalButtonId = "BOOKMARK"|"BOOKMARK_NOTES"|"MY_NOTES"|"SHARE"|"COMPARE"|"SPEAK"|"MEMORIZE"|"ADD_MEMORIZATION_TARGET"|"REMOVE_MEMORIZATION_TARGET"|"ADD_PARAGRAPH_BREAK"|"LLM_ACTION"
@@ -126,6 +132,7 @@ export type AppSettings = {
     disableBibleModalButtons: BibleModalButtonId[],
     disableGenericModalButtons: GenericModalButtonId[],
     monochromeMode: boolean,
+    einkMode: boolean,
     disableAnimations: boolean,
     disableClickToEdit: boolean,
     fontSizeMultiplier: number,
@@ -169,6 +176,8 @@ export function useConfig(documentType: Ref<BibleViewDocumentType>) {
 
         showBookmarks: true,
         showMyNotes: true,
+        showAiDocMarkers: true,
+        showOrdinals: false,
         bookmarksHideLabels: [],
         bookmarksAssignLabels: [],
 
@@ -197,6 +206,10 @@ export function useConfig(documentType: Ref<BibleViewDocumentType>) {
         showTitleScrollButton: false,
         showMemorizationIndicators: false,
         autoTrackReading: false,
+        pageScrollAmount: 100,
+        scrollHelperLines: false,
+        scrollHelperLineStyle: 0,
+        showPageButtons: false,
     });
     const rtl = new URLSearchParams(window.location.search).get("rtl") === "true";
     const nightMode = new URLSearchParams(window.location.search).get("night") === "true";
@@ -224,6 +237,7 @@ export function useConfig(documentType: Ref<BibleViewDocumentType>) {
         disableBibleModalButtons: [],
         disableGenericModalButtons: [],
         monochromeMode: false,
+        einkMode: false,
         disableAnimations: false,
         disableClickToEdit: false,
         fontSizeMultiplier: 1.0,
@@ -300,7 +314,7 @@ export function useConfig(documentType: Ref<BibleViewDocumentType>) {
         const keys: (keyof Config)[] = [
             "showAnnotations", "showChapterNumbers", "showVerseNumbers", "strongsMode", "showMorphology",
             "showRedLetters", "showVersePerLine", "showNonCanonical", "makeNonCanonicalItalic", "showSectionTitles",
-            "showStrongsSeparately", "showFootNotes", "showFootNotesInline", "showXrefs", "showBookmarks", "showMyNotes", "bookmarksHideLabels",
+            "showStrongsSeparately", "showFootNotes", "showFootNotesInline", "showXrefs", "showBookmarks", "showMyNotes", "showAiDocMarkers", "bookmarksHideLabels",
             "nonStrongsWordItalic",
             "showTitleScrollButton"
         ];
@@ -312,7 +326,7 @@ export function useConfig(documentType: Ref<BibleViewDocumentType>) {
         const keys: (keyof Config)[] = [
             "showAnnotations", "showChapterNumbers", "showVerseNumbers", "strongsMode", "showMorphology",
             "showRedLetters", "showVersePerLine", "showNonCanonical", "showSectionTitles",
-            "showStrongsSeparately", "showFootNotes", "showFootNotesInline", "showXrefs", "showBookmarks", "showMyNotes",
+            "showStrongsSeparately", "showFootNotes", "showFootNotesInline", "showXrefs", "showBookmarks", "showMyNotes", "showAiDocMarkers", "showOrdinals",
             "fontSize", "fontFamily", "hyphenation", "justifyText", "marginSize", "topMargin",
             "showTitleScrollButton"
         ];

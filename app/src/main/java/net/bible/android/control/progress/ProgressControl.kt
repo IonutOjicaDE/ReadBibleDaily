@@ -76,6 +76,17 @@ class ChapterReadStatusChangedEvent(
     val isRead: Boolean,
 )
 
+/** Posted when global reading progress settings change. All BibleViews should update their settings. */
+class ReadingProgressSettingsChangedEvent
+
+/** Posted when the active reading cycle changes. All BibleViews should re-check chapter read status. */
+class ActiveCycleChangedEvent(val cycle: Int)
+
+data class MemorizedVerseRangeWithTimestamp(
+    val verseRange: VerseRange,
+    val latestMemorizedAt: Long,
+)
+
 /** Posted when memorized verses or memorization targets change. All BibleViews should update their indicators. */
 class MemorizationDataChangedEvent(
     val addedMemorized: List<Int> = emptyList(),
@@ -177,10 +188,21 @@ object ProgressControl {
         return readChapters.toFloat() / totalChapters
     }
 
-    fun getCurrentCycle(): Int = dao.getLatestCycle()
+    fun getCurrentCycle(): Int {
+        val stored = ReadingProgressSettings.activeCycle
+        return if (stored > 0) stored else dao.getLatestCycle()
+    }
+
+    fun getLatestCycle(): Int = dao.getLatestCycle()
+
+    fun setActiveCycle(cycle: Int) {
+        ReadingProgressSettings.activeCycle = cycle
+        ABEventBus.post(ActiveCycleChangedEvent(cycle))
+    }
 
     fun startNewCycle(): Int {
-        val newCycle = getCurrentCycle() + 1
+        val newCycle = getLatestCycle() + 1
+        setActiveCycle(newCycle)
         return newCycle
     }
 
@@ -205,8 +227,8 @@ object ProgressControl {
         return dao.getReadChaptersForBook(book.ordinal, cycle)
     }
 
-    fun getReadingCalendar(startMs: Long, endMs: Long): List<DailyReadingCount> {
-        return dao.getReadingCalendar(startMs, endMs)
+    fun getReadingCalendar(startMs: Long, endMs: Long, cycle: Int = getCurrentCycle()): List<DailyReadingCount> {
+        return dao.getReadingCalendar(startMs, endMs, cycle)
     }
 
     fun getBookReadingProgress(cycle: Int = getCurrentCycle()): Map<BibleBook, Float> {
@@ -218,6 +240,53 @@ object ProgressControl {
             val readChapters = dao.countReadChaptersForBook(book.ordinal, cycle)
             if (readChapters > 0) {
                 result[book] = readChapters.toFloat() / totalChapters
+            }
+        }
+        return result
+    }
+
+    fun getMemorizationCalendar(startMs: Long, endMs: Long): List<DailyReadingCount> {
+        return dao.getMemorizationCalendar(startMs, endMs)
+    }
+
+    /**
+     * Returns the set of Bible books that have at least one memorization target overlapping them.
+     */
+    fun getBooksWithMemorizationTargets(): Set<BibleBook> {
+        val targets = dao.allMemorizationTargets()
+        if (targets.isEmpty()) return emptySet()
+        val result = mutableSetOf<BibleBook>()
+        for (book in KJVA.bookIterator) {
+            if (!Scripture.isScripture(book)) continue
+            val startOrdinal = Verse(KJVA, book, 1, 1).ordinal
+            val lastChapter = KJVA.getLastChapter(book)
+            val lastVerse = KJVA.getLastVerse(book, lastChapter)
+            val endOrdinal = Verse(KJVA, book, lastChapter, lastVerse).ordinal
+            if (targets.any { it.kjvOrdinalStart <= endOrdinal && it.kjvOrdinalEnd >= startOrdinal }) {
+                result.add(book)
+            }
+        }
+        return result
+    }
+
+    /**
+     * Returns chapters of a book that have at least one memorization target overlapping them.
+     */
+    fun getChaptersWithMemorizationTargets(book: BibleBook): Set<Int> {
+        val startOrdinal = Verse(KJVA, book, 1, 1).ordinal
+        val lastChapter = KJVA.getLastChapter(book)
+        val lastVerse = KJVA.getLastVerse(book, lastChapter)
+        val endOrdinal = Verse(KJVA, book, lastChapter, lastVerse).ordinal
+        val targets = dao.memorizationTargetsOverlapping(startOrdinal, endOrdinal)
+        if (targets.isEmpty()) return emptySet()
+
+        val result = mutableSetOf<Int>()
+        for (ch in 1..lastChapter) {
+            val chStart = Verse(KJVA, book, ch, 1).ordinal
+            val chLastVerse = KJVA.getLastVerse(book, ch)
+            val chEnd = Verse(KJVA, book, ch, chLastVerse).ordinal
+            if (targets.any { it.kjvOrdinalStart <= chEnd && it.kjvOrdinalEnd >= chStart }) {
+                result.add(ch)
             }
         }
         return result
@@ -235,6 +304,13 @@ object ProgressControl {
         val added = (kjvRange.start.ordinal..kjvRange.end.ordinal).toList()
         ABEventBus.post(MemorizationDataChangedEvent(addedTargets = added))
         return target
+    }
+
+    /** Adds a memorization target only if the exact range is not already a target. */
+    fun addMemorizationTargetIfNeeded(verseRange: VerseRange) {
+        val kjvRange = verseRange.toV11n(KJVA)
+        if (dao.findMemorizationTarget(kjvRange.start.ordinal, kjvRange.end.ordinal) != null) return
+        addMemorizationTarget(verseRange)
     }
 
     fun removeMemorizationTarget(id: IdType) {
@@ -295,25 +371,64 @@ object ProgressControl {
      * Groups consecutive memorized verses into VerseRange objects for display.
      */
     fun getMemorizedVerseRanges(): List<VerseRange> {
+        return getMemorizedVerseRangesWithTimestamps().map { it.verseRange }
+    }
+
+    /**
+     * Groups consecutive memorized verses into VerseRange objects with the latest memorizedAt timestamp per range.
+     * Returns sorted by latestMemorizedAt descending (newest first).
+     */
+    fun getMemorizedVerseRangesWithTimestamps(): List<MemorizedVerseRangeWithTimestamp> {
         val allVerses = dao.allMemorizedVerses().sortedBy { it.kjvOrdinal }
         if (allVerses.isEmpty()) return emptyList()
 
-        val ranges = mutableListOf<VerseRange>()
+        val ranges = mutableListOf<MemorizedVerseRangeWithTimestamp>()
         var rangeStart = allVerses.first().kjvOrdinal
         var rangeEnd = rangeStart
+        var maxTimestamp = allVerses.first().memorizedAt
 
         for (i in 1 until allVerses.size) {
-            val ordinal = allVerses[i].kjvOrdinal
-            if (ordinal == rangeEnd + 1) {
-                rangeEnd = ordinal
+            val verse = allVerses[i]
+            if (verse.kjvOrdinal == rangeEnd + 1) {
+                rangeEnd = verse.kjvOrdinal
+                if (verse.memorizedAt > maxTimestamp) maxTimestamp = verse.memorizedAt
             } else {
-                ranges.add(VerseRange(KJVA, Verse(KJVA, rangeStart), Verse(KJVA, rangeEnd)))
-                rangeStart = ordinal
-                rangeEnd = ordinal
+                ranges.add(MemorizedVerseRangeWithTimestamp(
+                    VerseRange(KJVA, Verse(KJVA, rangeStart), Verse(KJVA, rangeEnd)),
+                    maxTimestamp,
+                ))
+                rangeStart = verse.kjvOrdinal
+                rangeEnd = verse.kjvOrdinal
+                maxTimestamp = verse.memorizedAt
             }
         }
-        ranges.add(VerseRange(KJVA, Verse(KJVA, rangeStart), Verse(KJVA, rangeEnd)))
-        return ranges
+        ranges.add(MemorizedVerseRangeWithTimestamp(
+            VerseRange(KJVA, Verse(KJVA, rangeStart), Verse(KJVA, rangeEnd)),
+            maxTimestamp,
+        ))
+        return ranges.sortedByDescending { it.latestMemorizedAt }
+    }
+
+    /**
+     * Returns memorization progress per Bible book as a map.
+     * Mirrors [getBookReadingProgress] but for memorization.
+     */
+    fun getBookMemorizationProgress(): Map<BibleBook, Float> {
+        val result = mutableMapOf<BibleBook, Float>()
+        for (book in KJVA.bookIterator) {
+            if (!Scripture.isScripture(book)) continue
+            val startOrdinal = Verse(KJVA, book, 1, 1).ordinal
+            val lastChapter = KJVA.getLastChapter(book)
+            val lastVerse = KJVA.getLastVerse(book, lastChapter)
+            val endOrdinal = Verse(KJVA, book, lastChapter, lastVerse).ordinal
+            val totalVerses = endOrdinal - startOrdinal + 1
+            if (totalVerses <= 0) continue
+            val memorized = dao.countMemorizedVersesInRange(startOrdinal, endOrdinal)
+            if (memorized > 0) {
+                result[book] = memorized.toFloat() / totalVerses
+            }
+        }
+        return result
     }
 
     /** Returns memorized KJV ordinals within the given range (for BibleView indicators). */

@@ -21,6 +21,7 @@ import net.bible.android.BibleApplication
 import net.bible.android.activity.R
 import net.bible.android.database.IdType
 import net.bible.service.llm.agent.PermissionMode
+import net.bible.service.llm.tools.ToolRegistry
 import java.util.Locale
 import java.util.UUID
 
@@ -47,6 +48,7 @@ object BuiltInPrompts {
     val TRANSLATE_UI_LANGUAGE_ID = stableId("translate-ui-language")
     val SUMMARY_ID = stableId("summary")
     val EXPLAIN_VERSES_ID = stableId("explain-verses")
+    val EXPLAIN_VERSES_STUDYPAD_ID = stableId("explain-verses-studypad")
     val STRONGS_ANNOTATION_ID = stableId("strongs-annotation")
     val WORD_STUDY_ID = stableId("word-study")
     val CROSS_REFERENCES_ID = stableId("cross-references")
@@ -55,6 +57,7 @@ object BuiltInPrompts {
     val DEVOTIONAL_ID = stableId("devotional")
     val BOOKMARK_ANNOTATE_ID = stableId("bookmark-annotate")
     val STUDY_LAYOUT_ID = stableId("study-layout")
+    val WORKSPACE_ASSISTANT_ID = stableId("workspace-assistant")
     val ENHANCE_NOTE_ID = stableId("enhance-note")
     val ASK_QUESTION_ID = stableId("ask-question")
     val CUSTOM_PROMPT_ID = stableId("custom-prompt")
@@ -98,6 +101,13 @@ object BuiltInPrompts {
      */
     fun productionPrompts(): List<AgentPrompt> = _productionPrompts
 
+    /**
+     * Computes the deny set for a given allow set: all non-structural tools NOT in [allowed].
+     * Used by built-in prompts to restrict tool visibility via [AgentPrompt.deniedTools].
+     */
+    private fun denyExcept(allowed: Set<AgentTool>): Set<AgentTool> =
+        AgentTool.entries.toSet() - allowed - ToolRegistry.STRUCTURAL_TOOLS
+
     /** Bible content read tools — the core set for most read-only prompts. */
     private val BIBLE_READ_TOOLS = setOf(
         AgentTool.GET_VERSE_CONTENT,
@@ -131,6 +141,7 @@ object BuiltInPrompts {
                 showIn = setOf(PromptContext.VERSE_SELECTION, PromptContext.WINDOW_MENU),
                 orderNumber = order++,
                 allowedTools = emptySet(),
+                deniedTools = denyExcept(emptySet()),
             ),
 
             // 2. Summary
@@ -152,6 +163,7 @@ object BuiltInPrompts {
                 showIn = setOf(PromptContext.VERSE_SELECTION, PromptContext.WINDOW_MENU),
                 orderNumber = order++,
                 allowedTools = BIBLE_READ_TOOLS,
+                deniedTools = denyExcept(BIBLE_READ_TOOLS),
             ),
 
             // 3. Explain Verses
@@ -176,10 +188,61 @@ object BuiltInPrompts {
 
                     Base your explanation on the commentaries you retrieve. Cite each source by name.
                     Do not invent interpretations — ground everything in the available reference works.
+
+                    CITATION FORMAT:
+                    Commentary text includes anchor markers like [§5] at each sentence.
+                    When citing a specific section, use anchor(s) in the link:
+                    - Single: [Commentary §N](sword://INITIALS/Verse#oN)
+                    - Range: [Commentary §N-M](sword://INITIALS/Verse#oN-M)
+                    Ranges are highlighted when the user clicks the link.
                 """.trimIndent(),
                 showIn = setOf(PromptContext.VERSE_SELECTION),
                 orderNumber = order++,
                 allowedTools = BIBLE_STUDY_TOOLS,
+                deniedTools = denyExcept(BIBLE_STUDY_TOOLS),
+            ),
+
+            // 3b. Explain Verses → StudyPad
+            AgentPrompt(
+                id = EXPLAIN_VERSES_STUDYPAD_ID,
+                name = context.getString(R.string.default_prompt_explain_verses_studypad),
+                description = context.getString(R.string.default_prompt_explain_verses_studypad_desc),
+                promptTemplate = """
+                    Explain the selected verses and create a StudyPad with the explanation.
+
+                    APPROACH:
+                    1. Use getInstalledDocuments to find available commentaries and dictionaries.
+                    2. Use getCommentaries to retrieve commentary from ALL available commentaries.
+                    3. If Strong's dictionaries are available, use getDictionaryEntry for key theological terms.
+                    4. Build a StudyPad using createStudyPad with these items in order:
+                       - A text entry with historical context (who wrote this, to whom, when)
+                       - For each verse or small group of verses:
+                         a. A bookmark to the verse(s)
+                         b. A text entry explaining that verse, citing commentaries by name
+                       - A text entry summarizing key themes
+                       - A text entry with application for today
+                    5. Call finishWithStudyPad with the returned labelId to open it.
+
+                    Base your explanation on the commentaries you retrieve.
+                    Do not invent interpretations — ground everything in the available reference works.
+
+                    CITATION FORMAT:
+                    Commentary text includes anchor markers like [§5] at each sentence.
+                    When citing a specific section, use anchor(s) in the link:
+                    - Single: [Commentary §N](sword://INITIALS/Verse#oN)
+                    - Range: [Commentary §N-M](sword://INITIALS/Verse#oN-M)
+                    Ranges are highlighted when the user clicks the link.
+                """.trimIndent(),
+                showIn = setOf(PromptContext.VERSE_SELECTION),
+                orderNumber = order++,
+                strictContextMatching = false,
+                permissionMode = PermissionMode.ASK_ONCE_PER_RUN,
+                allowedTools = BIBLE_STUDY_TOOLS + setOf(
+                    AgentTool.CREATE_STUDY_PAD,
+                ),
+                deniedTools = denyExcept(BIBLE_STUDY_TOOLS + setOf(
+                    AgentTool.CREATE_STUDY_PAD,
+                )),
             ),
 
             // 4. Word Study
@@ -209,6 +272,7 @@ object BuiltInPrompts {
                 orderNumber = order++,
                 strictContextMatching = false,
                 allowedTools = BIBLE_STUDY_TOOLS,
+                deniedTools = denyExcept(BIBLE_STUDY_TOOLS),
             ),
 
             // 5. Cross-References
@@ -236,6 +300,7 @@ object BuiltInPrompts {
                 orderNumber = order++,
                 strictContextMatching = false,
                 allowedTools = BIBLE_READ_TOOLS,
+                deniedTools = denyExcept(BIBLE_READ_TOOLS),
             ),
 
             // 6. Compare Translations
@@ -271,6 +336,12 @@ object BuiltInPrompts {
                     AgentTool.GET_DICTIONARY_ENTRY,
                     AgentTool.SEARCH_BIBLE,
                 ),
+                deniedTools = denyExcept(setOf(
+                    AgentTool.GET_VERSE_CONTENT,
+                    AgentTool.GET_INSTALLED_DOCUMENTS,
+                    AgentTool.GET_DICTIONARY_ENTRY,
+                    AgentTool.SEARCH_BIBLE,
+                )),
             ),
 
             // 7. Thematic Study → StudyPad
@@ -283,15 +354,18 @@ object BuiltInPrompts {
 
                     APPROACH:
                     1. Identify the primary theme (e.g., "God's faithfulness", "prayer", "forgiveness").
-                    2. Use searchBible to find 8-12 other passages related to this theme across the Bible.
-                    3. Use getVerseContent to retrieve each passage.
-                    4. Use getCommentaries if available to add depth to key passages.
-                    5. Create a StudyPad:
-                       a. Use createLabel with a descriptive name (e.g., "Thematic Study: God's Faithfulness")
-                       b. For each key passage, use createBookmark + addLabelToBookmark
-                       c. Use addBookmarkNote to add a brief note explaining each passage's relevance
-                       d. Use addStudyPadEntry to add introductory text and section headers
-                    6. Call finishWithStudyPad with the label ID.
+                    2. Identify 8-12 passages related to this theme using your Bible knowledge.
+                       You may use searchBible to supplement, but for thematic connections your own
+                       knowledge of Scripture is usually more effective than keyword search.
+                       If you do search, use the indexed Bible's language (see system context).
+                    3. Use getVerseContent to retrieve each passage from the active document.
+                    4. Use getCommentaries if available to add depth to 2-3 key passages.
+                    5. Build a StudyPad using createStudyPad with a descriptive name
+                       (e.g., "Thematic Study: God's Faithfulness") and items:
+                       - A text entry with an introduction to the theme
+                       - For each key passage: a bookmark with a note explaining its relevance
+                       - A text entry with concluding thoughts
+                    6. Call finishWithStudyPad with the returned labelId to open it.
 
                     Organize passages in a logical progression (e.g., Old Testament → New Testament).
                     Include 8-12 passages total.
@@ -301,14 +375,15 @@ object BuiltInPrompts {
                 strictContextMatching = false,
                 permissionMode = PermissionMode.ASK_ONCE_PER_RUN,
                 allowedTools = BIBLE_READ_TOOLS + setOf(
-                    AgentTool.CREATE_BOOKMARK,
-                    AgentTool.ADD_BOOKMARK_NOTE,
-                    AgentTool.CREATE_LABEL,
-                    AgentTool.ADD_LABEL_TO_BOOKMARK,
-                    AgentTool.ADD_STUDY_PAD_ENTRY,
+                    AgentTool.CREATE_STUDY_PAD,
                     AgentTool.GET_ALL_LABELS,
                     AgentTool.GET_BOOKMARKS_FOR_VERSE,
                 ),
+                deniedTools = denyExcept(BIBLE_READ_TOOLS + setOf(
+                    AgentTool.CREATE_STUDY_PAD,
+                    AgentTool.GET_ALL_LABELS,
+                    AgentTool.GET_BOOKMARKS_FOR_VERSE,
+                )),
             ),
 
             // 8. Devotional Reflection
@@ -333,6 +408,7 @@ object BuiltInPrompts {
                 showIn = setOf(PromptContext.VERSE_SELECTION),
                 orderNumber = order++,
                 allowedTools = BIBLE_READ_TOOLS,
+                deniedTools = denyExcept(BIBLE_READ_TOOLS),
             ),
 
             // 9. Bookmark & Annotate
@@ -367,6 +443,14 @@ object BuiltInPrompts {
                     AgentTool.ADD_BOOKMARK_NOTE,
                     AgentTool.GET_BOOKMARKS_FOR_VERSE,
                 ),
+                deniedTools = denyExcept(setOf(
+                    AgentTool.GET_VERSE_CONTENT,
+                    AgentTool.GET_COMMENTARIES,
+                    AgentTool.GET_INSTALLED_DOCUMENTS,
+                    AgentTool.CREATE_BOOKMARK,
+                    AgentTool.ADD_BOOKMARK_NOTE,
+                    AgentTool.GET_BOOKMARKS_FOR_VERSE,
+                )),
             ),
 
             // 10. Open Study Layout
@@ -389,7 +473,7 @@ object BuiltInPrompts {
                     Create at most 3 windows total (including existing ones) to avoid cluttering the screen.
                     Prefer: 1 Bible + 1 Commentary, or 2 Bibles + 1 Commentary.
                 """.trimIndent(),
-                showIn = setOf(PromptContext.VERSE_SELECTION, PromptContext.WINDOW_MENU),
+                showIn = setOf(PromptContext.VERSE_SELECTION, PromptContext.WINDOW_MENU, PromptContext.WORKSPACE_MENU),
                 orderNumber = order++,
                 noDocumentCreation = true,
                 permissionMode = PermissionMode.ASK_ONCE_PER_RUN,
@@ -401,9 +485,59 @@ object BuiltInPrompts {
                     AgentTool.MANAGE_WINDOW,
                     AgentTool.SET_WINDOW_DOCUMENT,
                 ),
+                deniedTools = denyExcept(setOf(
+                    AgentTool.GET_INSTALLED_DOCUMENTS,
+                    AgentTool.GET_WINDOWS,
+                    AgentTool.GET_VERSE_CONTENT,
+                    AgentTool.CREATE_WINDOW,
+                    AgentTool.MANAGE_WINDOW,
+                    AgentTool.SET_WINDOW_DOCUMENT,
+                )),
             ),
 
-            // 11. Enhance Note
+            // 11. Workspace Assistant
+            AgentPrompt(
+                id = WORKSPACE_ASSISTANT_ID,
+                name = context.getString(R.string.default_prompt_workspace_assistant),
+                description = context.getString(R.string.default_prompt_workspace_assistant_desc),
+                promptTemplate = """
+                    Help the user manage their workspace windows.
+                    The current workspace layout is provided in the system prompt.
+
+                    You can:
+                    - Rearrange, create, close, or minimize windows
+                    - Change documents shown in windows
+                    - Set up study layouts with multiple translations and commentaries
+
+                    User will tell you what they'd like to do.
+                    Use getWindows and getInstalledDocuments to understand the current state,
+                    then use createWindow, manageWindow, and setWindowDocument as needed.
+                    When done, call finishWithoutDocument with a summary of changes made.
+                """.trimIndent(),
+                showIn = setOf(PromptContext.WORKSPACE_MENU),
+                orderNumber = order++,
+                noDocumentCreation = true,
+                specifyBeforeRun = true,
+                permissionMode = PermissionMode.ASK_ONCE_PER_RUN,
+                allowedTools = setOf(
+                    AgentTool.GET_INSTALLED_DOCUMENTS,
+                    AgentTool.GET_WINDOWS,
+                    AgentTool.GET_VERSE_CONTENT,
+                    AgentTool.CREATE_WINDOW,
+                    AgentTool.MANAGE_WINDOW,
+                    AgentTool.SET_WINDOW_DOCUMENT,
+                ),
+                deniedTools = denyExcept(setOf(
+                    AgentTool.GET_INSTALLED_DOCUMENTS,
+                    AgentTool.GET_WINDOWS,
+                    AgentTool.GET_VERSE_CONTENT,
+                    AgentTool.CREATE_WINDOW,
+                    AgentTool.MANAGE_WINDOW,
+                    AgentTool.SET_WINDOW_DOCUMENT,
+                )),
+            ),
+
+            // 12. Enhance Note
             AgentPrompt(
                 id = ENHANCE_NOTE_ID,
                 name = context.getString(R.string.default_prompt_enhance_note),
@@ -444,6 +578,17 @@ object BuiltInPrompts {
                     AgentTool.UPDATE_STUDYPAD_TEXT_ENTRY,
                     AgentTool.EDIT_MY_DOCUMENT_PAGE,
                 ),
+                deniedTools = denyExcept(setOf(
+                    AgentTool.GET_VERSE_CONTENT,
+                    AgentTool.GET_COMMENTARIES,
+                    AgentTool.GET_DICTIONARY_ENTRY,
+                    AgentTool.GET_INSTALLED_DOCUMENTS,
+                    AgentTool.SEARCH_BIBLE,
+                    AgentTool.GET_BOOKMARKS_FOR_VERSE,
+                    AgentTool.UPDATE_BOOKMARK_NOTE,
+                    AgentTool.UPDATE_STUDYPAD_TEXT_ENTRY,
+                    AgentTool.EDIT_MY_DOCUMENT_PAGE,
+                )),
             ),
 
             // 12. Ask a Question
@@ -460,6 +605,7 @@ object BuiltInPrompts {
                 orderNumber = order++,
                 specifyBeforeRun = true,
                 allowedTools = BIBLE_STUDY_TOOLS,
+                deniedTools = denyExcept(BIBLE_STUDY_TOOLS),
             ),
 
             // 13. Custom Prompt

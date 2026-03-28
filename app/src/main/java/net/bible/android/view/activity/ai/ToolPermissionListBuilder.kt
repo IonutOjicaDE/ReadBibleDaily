@@ -34,7 +34,7 @@ import net.bible.service.llm.tools.ToolRegistry
 /**
  * Builds a categorized, expandable tool permission list into a [LinearLayout] container.
  *
- * Used by both [GlobalToolPermissionsActivity] and [PromptToolPermissionsActivity]
+ * Used by [GlobalToolPermissionsActivity] and inline in [PromptEditActivity]
  * to avoid duplicating the category/expand/collapse/toggle logic.
  */
 class ToolPermissionListBuilder(
@@ -325,6 +325,19 @@ class ToolPermissionListBuilder(
             .filter { it.radioGroup.checkedRadioButtonId == R.id.radioDeny }
             .map { it.tool.agentTool }
             .toSet()
+
+    /** Disable all interactive elements for read-only display. */
+    fun setReadOnly() {
+        for (state in categories) {
+            state.headerBinding.readToggle.isEnabled = false
+            state.headerBinding.writeToggle.isEnabled = false
+            for (row in state.readRows + state.writeRows) {
+                for (i in 0 until row.radioGroup.childCount) {
+                    row.radioGroup.getChildAt(i).isEnabled = false
+                }
+            }
+        }
+    }
 
     /** Reset all tools to default state (radioAsk). */
     fun resetAll() {

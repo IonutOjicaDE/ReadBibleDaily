@@ -67,6 +67,7 @@ type TranslatedStrings = {
     clearLog: string
     editTextPlaceholder: string
     myDocumentEdit: string
+    myDocumentEmptyPlaceholder: string
     inputPlaceholder: string
     inputReference: string
     invalidReference: string
@@ -118,6 +119,9 @@ type TranslatedStrings = {
     markAsMemorized: string
     markedAsMemorized: string
     removeFromTargets: string
+    viewReadingProgress: string
+    viewReadingProgressSettings: string
+    listenInLoop: string
     verseNoteLong: string
     verseParagraphBreakLong: string
     addBookmark: string
@@ -143,11 +147,18 @@ type TranslatedStrings = {
     unknownError: string
     subtitlePlaceholder: string
     xmlParseError: string
-    blur: string
-    reset: string
-    peek: string
     wordBlur: string
     wordScramble: string
+    wordType: string
+    wordOrder: string
+    typeEverything: string
+    tapToStartTyping: string
+    wordVisibility: string
+    wordVisibilityLight: string
+    wordVisibilityDim: string
+    wordVisibilityHidden: string
+    errorHeatmap: string
+    hideUsedButtons: string
     more: string
     loadMore: string
     previousChapter: string
@@ -158,8 +169,6 @@ type TranslatedStrings = {
     aiDocumentDelete: string
     aiGeneratedBy: string
     aiGeneratedByWithModel: string
-    markChapterRead: string
-    chapterMarkedRead: string
 }
 
 type Strings = TranslatedStrings & UntranslatedStrings

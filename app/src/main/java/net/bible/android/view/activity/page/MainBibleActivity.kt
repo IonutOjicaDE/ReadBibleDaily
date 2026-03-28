@@ -73,12 +73,11 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import net.bible.android.common.toV11n
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.EmptyBinding
 import net.bible.android.activity.databinding.FrozenBinding
@@ -87,6 +86,8 @@ import net.bible.android.control.backup.BackupControl
 import net.bible.android.control.bookmark.BookmarkControl
 import net.bible.android.control.document.DocumentControl
 import net.bible.android.control.event.ABEventBus
+import net.bible.android.control.progress.ActiveCycleChangedEvent
+import net.bible.android.control.progress.ProgressControl
 import net.bible.android.control.event.ToastEvent
 import net.bible.android.control.event.apptobackground.AppToBackgroundEvent
 import net.bible.android.control.event.passage.CurrentVerseChangedEvent
@@ -154,6 +155,9 @@ import net.bible.service.cloudsync.CloudSyncEvent
 import net.bible.service.cloudsync.WorkspaceRefreshRequired
 import net.bible.service.llm.AgentPrompt
 import net.bible.service.llm.PromptContext
+import net.bible.service.llm.PromptRepository
+import net.bible.service.llm.agent.AgentSessionManager
+import net.bible.service.llm.agent.PendingAgentResult
 import net.bible.service.download.FakeBookFactory
 import net.bible.service.sword.BookAndKey
 import net.bible.service.sword.BookAndKeySerialized
@@ -163,10 +167,12 @@ import org.crosswire.jsword.book.Book
 import org.crosswire.jsword.book.BookCategory
 import org.crosswire.jsword.book.Books
 import org.crosswire.jsword.book.sword.SwordBook
+import org.crosswire.jsword.passage.NoSuchKeyException
 import org.crosswire.jsword.passage.NoSuchVerseException
 import org.crosswire.jsword.passage.PassageKeyFactory
 import org.crosswire.jsword.passage.Verse
 import org.crosswire.jsword.passage.VerseFactory
+import org.crosswire.jsword.passage.VerseRange
 import org.crosswire.jsword.versification.BookName
 import org.crosswire.jsword.versification.system.Versifications
 import javax.inject.Inject
@@ -930,6 +936,29 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
                 val intent = Intent(this, WorkspaceSelectorActivity::class.java)
                 startActivityForResult(intent, WORKSPACE_CHANGED)
             }, opensDialog = true)
+            R.id.llmActionsSubMenu -> SubMenuPreference(
+                onlyBibles = false,
+                visible = CommonUtils.settings.aiTextProcessingEnabled && CommonUtils.settings.llmConfigured
+            )
+            R.id.llmActionItem -> CommandPreference(launch = { _, _, _ ->
+                val prompts = PromptRepository.promptsForContext(PromptContext.WORKSPACE_MENU)
+                if (order < prompts.size) {
+                    val selectedPrompt = prompts[order]
+                    val selection = Selection(
+                        bookInitials = null,
+                        startOrdinal = -1,
+                        startOffset = null,
+                        endOrdinal = -1,
+                        endOffset = null,
+                        bookmarks = emptyList(),
+                    )
+                    if (selectedPrompt.specifyBeforeRun) {
+                        llmDialogHelper.showSpecifyBeforeRunDialog(selectedPrompt, selection)
+                    } else {
+                        executeLlmPrompt(selectedPrompt, selection)
+                    }
+                }
+            })
             else -> throw RuntimeException("Illegal menu item")
         }
     }
@@ -957,6 +986,20 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
                 }
             }
         }
+
+        // Populate LLM actions submenu
+        val llmActionsSubMenu = menu.findItem(R.id.llmActionsSubMenu)
+        if (CommonUtils.settings.aiTextProcessingEnabled && CommonUtils.settings.llmConfigured) {
+            val llmSubMenu = llmActionsSubMenu.subMenu!!
+            llmSubMenu.removeItem(R.id.llmActionItem)
+            val prompts = PromptRepository.promptsForContext(PromptContext.WORKSPACE_MENU)
+            prompts.forEachIndexed { idx, prompt ->
+                llmSubMenu.add(Menu.NONE, R.id.llmActionItem, idx, prompt.name)
+            }
+        } else {
+            llmActionsSubMenu.isVisible = false
+        }
+
         MenuCompat.setGroupDividerEnabled(menu, true)
 
         fun handleMenu(menu: Menu) {
@@ -1903,8 +1946,13 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
                                 val book = Books.installed().getBook(bookInitials)
                                 if (book != null) {
                                     if (pageKey != null) {
-                                        val key = book.getKey(pageKey)
-                                        windowControl.activeWindowPageManager.setCurrentDocumentAndKey(book, key)
+                                        try {
+                                            val key = book.getKey(pageKey)
+                                            windowControl.activeWindowPageManager.setCurrentDocumentAndKey(book, key)
+                                        } catch (e: NoSuchKeyException) {
+                                            Log.e(TAG, "Page key '$pageKey' not found in book $bookInitials, opening book without key", e)
+                                            documentControl.changeDocument(book)
+                                        }
                                     } else {
                                         documentControl.changeDocument(book)
                                     }
@@ -1914,6 +1962,16 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
                             return
                         }
                         in classes -> {
+                            if (className == ReadingProgressActivity::class.java.name
+                                && extras.getString("action") == "memorize") {
+                                val startOrd = extras.getInt("startOrdinal")
+                                val endOrd = extras.getInt("endOrdinal")
+                                val defaultBible = windowControl.defaultBibleDoc(false)
+                                val v11n = (defaultBible as SwordBook).versification
+                                val verseRange = VerseRange(KJVA, Verse(KJVA, startOrd), Verse(KJVA, endOrd)).toV11n(v11n)
+                                linkControl.openMemorize(BookAndKey(verseRange, defaultBible))
+                                return
+                            }
                             val isFromBookmark = className == Bookmarks::class.java.name
                             val verseStr = extras.getString("verse")
                             val keyStr = extras.getString("key")
@@ -2154,6 +2212,23 @@ class MainBibleActivity : CustomTitlebarActivityBase() {
         }
         // allow webView to start monitoring tilt by setting focus which causes tilt-scroll to resume
         documentViewManager.documentView.asView().requestFocus()
+
+        // Check for pending AI agent results that completed while app was backgrounded
+        handlePendingAgentResult()
+    }
+
+    private fun handlePendingAgentResult() {
+        val session = AgentSessionManager.getCurrentSession() ?: return
+        val result = session.pendingResult ?: return
+        session.pendingResult = null
+        when (result) {
+            is PendingAgentResult.OpenDocument -> {
+                linkControl.openAIDocument(result.documentInitials, result.pageKey)
+            }
+            is PendingAgentResult.OpenStudyPad -> {
+                linkControl.openStudyPad(result.labelId, result.scrollToEntryId)
+            }
+        }
     }
 
     private var frozen = false

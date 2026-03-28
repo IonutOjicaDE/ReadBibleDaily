@@ -30,6 +30,7 @@ import java.security.MessageDigest
 /** Context available during agent prompt execution (selected verses, active document, etc.). */
 data class AgentContext(
     val promptId: IdType,
+    val workspaceId: IdType? = null,
     val selectedVerseRange: VerseRange? = null,
     val selectedContent: String? = null,
     val activeDocumentInitials: String? = null,
@@ -47,6 +48,9 @@ data class AgentContext(
     val grantedAllToolsPermission: Boolean = false,
     /** Per-prompt permission mode override (null = use global default) */
     val promptPermissionMode: PermissionMode? = null,
+    /** Overrides global/prompt deny in computeExcludedTools — re-enables tools the prompt needs.
+     *  Separate from promptAllowedTools which controls permission auto-allow in checkPermission. */
+    val promptAvailableTools: Set<AgentTool>? = null,
     /** Per-prompt tool permission overrides (null = no override, use global defaults) */
     val promptAllowedTools: Set<AgentTool>? = null,
     val promptDeniedTools: Set<AgentTool>? = null,
@@ -67,7 +71,9 @@ data class AgentContext(
     /** Current text content in the note editor */
     val noteEditorContent: String? = null,
     /** Content type of the editor: "MARKDOWN" or "HTML" */
-    val noteEditorContentType: String? = null
+    val noteEditorContentType: String? = null,
+    /** Workspace context: summary of all windows for workspace-level prompts */
+    val workspaceWindowsSummary: String? = null
 ) {
     val verseRefString: String?
         get() = selectedVerseRange?.osisRef

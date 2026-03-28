@@ -4,7 +4,8 @@ vi.mock("@/composables", () => ({
   useCommon: () => ({
     strings: {
       wordBlur: "Word Blur",
-      wordScramble: "Word Scramble"
+      wordScramble: "Word Scramble",
+      wordType: "Type"
     },
     android: {
       saveState: vi.fn()
@@ -34,12 +35,21 @@ import { describe, it, expect, vi } from 'vitest';
 import { MemorizeStateModeEnum } from "@/types/documents";
 import { memorizationKey } from "@/types/constants";
 
+// Mock ResizeObserver (not available in jsdom)
+// eslint-disable-next-line no-undef
+globalThis.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
+
 // Mock composables
 vi.mock("@/composables", () => ({
   useCommon: () => ({
     strings: {
       wordBlur: "Word Blur",
-      wordScramble: "Word Scramble"
+      wordScramble: "Word Scramble",
+      wordType: "Type"
     },
     android: {
       saveState: vi.fn()
@@ -81,24 +91,33 @@ describe("MemorizeDocument.vue", () => {
         },
         stubs: {
           WordBlur: true,
-          WordScramble: true
+          WordScramble: true,
+          WordType: true
         }
       }
     });
   };
 
-  it("renders the document title correctly", () => {
+  it("renders the document title by default (includeReference off)", () => {
     const wrapper = createWrapper();
     expect(wrapper.find("h2").text()).toBe("Memory Verse - John 3:16");
+  });
+
+  it("hides the document title when includeReference is on", () => {
+    const wrapper = createWrapper({
+      readingProgressSettings: { memorizeIncludeReference: true }
+    });
+    expect(wrapper.find("h2").exists()).toBe(false);
   });
 
   it("renders the mode selector buttons", () => {
     const wrapper = createWrapper();
     const buttons = wrapper.findAll(".memorize-mode-selector .tab-button");
     
-    expect(buttons.length).toBe(2);
+    expect(buttons.length).toBe(3);
     expect(buttons[0].text()).toBe("Word Blur");
     expect(buttons[1].text()).toBe("Word Scramble");
+    expect(buttons[2].text()).toBe("Type");
   });
 
   it("shows the blur mode component by default", () => {
@@ -137,18 +156,30 @@ describe("MemorizeDocument.vue", () => {
     }
   });
 
-  it("provides the correct props to the child component", () => {
+  it("provides only verse text items by default (includeReference off)", () => {
     const wrapper = createWrapper();
     const childComponent = wrapper.findComponent(WordBlur);
-    
-    // Should pass the text items
+
     expect(childComponent.props('textItems')).toEqual([
       { key: "verse1", text: "For God so loved the world, that he gave his only Son," },
       { key: "verse2", text: "that whoever believes in him should not perish but have eternal life." }
     ]);
-    
+
     // Should pass the mode config
     expect(childComponent.props('modeConfig')).toEqual({});
+  });
+
+  it("provides text items with reference prepended when includeReference is on", () => {
+    const wrapper = createWrapper({
+      readingProgressSettings: { memorizeIncludeReference: true }
+    });
+    const childComponent = wrapper.findComponent(WordBlur);
+
+    expect(childComponent.props('textItems')).toEqual([
+      { key: "verse1", text: "For God so loved the world, that he gave his only Son," },
+      { key: "verse2", text: "that whoever believes in him should not perish but have eternal life." },
+      { key: "__reference__", text: "Memory Verse - John 3:16" }
+    ]);
   });
 
   it("saves state when mode is changed", async () => {
@@ -207,6 +238,40 @@ describe("MemorizeDocument.vue", () => {
     const buttons = wrapper.findAll(".memorize-mode-selector .tab-button");
     if (buttons.length > 1) {
       expect(buttons[1].classes()).toContain("active");
+    }
+  });
+
+  it("switches to type mode when button is clicked", async () => {
+    const wrapper = createWrapper();
+
+    const buttons = wrapper.findAll(".memorize-mode-selector .tab-button");
+    if (buttons.length > 2) {
+      await buttons[2].trigger("click");
+
+      const typePanel = wrapper.find('[id="tabpanel-type"]');
+      expect(typePanel.isVisible()).toBe(true);
+
+      const blurPanel = wrapper.find('[id="tabpanel-blur"]');
+      if (blurPanel.exists()) expect(blurPanel.isVisible()).toBe(false);
+    }
+  });
+
+  it("restores type mode from document state", () => {
+    const wrapper = createWrapper({
+      state: {
+        memorize: {
+          mode: MemorizeStateModeEnum.TYPE,
+          modeConfig: {}
+        }
+      }
+    });
+
+    const typePanel = wrapper.find('[id="tabpanel-type"]');
+    expect(typePanel.isVisible()).toBe(true);
+
+    const buttons = wrapper.findAll(".memorize-mode-selector .tab-button");
+    if (buttons.length > 2) {
+      expect(buttons[2].classes()).toContain("active");
     }
   });
 });

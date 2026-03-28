@@ -18,6 +18,7 @@
 package net.bible.service.llm
 
 import net.bible.android.database.IdType
+import net.bible.service.common.AiSettings
 import net.bible.service.db.DatabaseContainer
 
 enum class ApiFormat { OPENAI, ANTHROPIC }
@@ -43,6 +44,10 @@ enum class LlmProvider(
     val apiFormat: ApiFormat = ApiFormat.OPENAI,
     val tier: ProviderTier = ProviderTier.RECOMMENDED,
     val apiKeyUrl: String? = null,
+    /** Whether this provider supports dynamic model list fetching via GET /v1/models. */
+    val supportsDynamicModels: Boolean = true,
+    /** Whether the /models endpoint works without an API key. */
+    val modelsEndpointPublic: Boolean = false,
 ) {
     GEMINI("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/", listOf(
         "gemini-2.5-flash" to p(0.15, 0.60, 0.15, 0.0375),
@@ -59,7 +64,7 @@ enum class LlmProvider(
         "claude-haiku-4-5" to p(0.80, 4.00, 1.00, 0.08),
         "claude-sonnet-4-6" to p(3.00, 15.00, 3.75, 0.30),
         "claude-opus-4-6" to p(15.00, 75.00, 18.75, 1.50),
-    ), apiFormat = ApiFormat.ANTHROPIC, apiKeyUrl = "https://console.anthropic.com/settings/keys"),
+    ), apiFormat = ApiFormat.ANTHROPIC, apiKeyUrl = "https://console.anthropic.com/settings/keys", supportsDynamicModels = false),
     XAI("xAI (Grok)", "https://api.x.ai/v1", listOf(
         "grok-4-0709" to p(3.00, 15.00),
         "grok-4-1-fast-reasoning" to p(3.00, 15.00),
@@ -87,8 +92,8 @@ enum class LlmProvider(
         "anthropic/claude-sonnet-4" to null,
         "google/gemini-2.5-flash" to null,
         "openai/gpt-5-mini" to null,
-    ), tier = ProviderTier.UNCATEGORIZED, apiKeyUrl = "https://openrouter.ai/keys"),
-    CUSTOM("Custom", "", listOf(), tier = ProviderTier.UNCATEGORIZED);
+    ), apiKeyUrl = "https://openrouter.ai/keys", modelsEndpointPublic = true),
+    CUSTOM("Custom", "", listOf(), tier = ProviderTier.UNCATEGORIZED, supportsDynamicModels = false);
 
     val models: List<String> get() = modelPricing.map { it.first }
 
@@ -120,30 +125,40 @@ enum class LlmProvider(
 /**
  * Transport object that travels through the LLM call chain.
  *
- * Built from an AgentPrompt's DB columns:
- *   `LlmModelConfig(prompt.providerConfigId, prompt.modelOverride)`
- *
- * When both fields are null, the global default provider is used.
+ * Built from an AgentPrompt's `configuredModelId`. When null, the global default
+ * model from [GlobalAiSettings.defaultModelId] is used.
  */
 data class LlmModelConfig(
-    val providerConfigId: IdType? = null,
-    val model: String? = null,
+    val configuredModelId: IdType? = null,
 ) {
+    private val modelDao get() = DatabaseContainer.instance.aiSettingsDb.llmConfiguredModelDao()
+    private val providerDao get() = DatabaseContainer.instance.aiSettingsDb.llmProviderConfigDao()
 
+    /**
+     * Resolve the configured model. Falls back to the global default.
+     * Returns null if the model was deleted or no default is configured.
+     */
+    fun resolveConfiguredModel(): LlmConfiguredModel? {
+        if (configuredModelId != null) {
+            modelDao.getById(configuredModelId)?.let { return it }
+            // Model was deleted → fall back to global default
+        }
+        val defaultId = AiSettings.defaultModelId ?: return null
+        return modelDao.getById(defaultId)
+    }
 
-    private val dao get() = DatabaseContainer.instance.aiSettingsDb.llmProviderConfigDao()
-
-    /** Resolve the LlmProviderConfig from the database. */
-    fun resolveProviderConfig(): LlmProviderConfig? =
-        providerConfigId?.let { dao.getById(it) } ?: dao.getDefault()
+    /** Resolve the provider config via the configured model. */
+    fun resolveProviderConfig(): LlmProviderConfig? {
+        val model = resolveConfiguredModel() ?: return null
+        return providerDao.getById(model.providerConfigId)
+    }
 
     /** Resolve the effective model name. */
-    fun resolveModel(providerConfig: LlmProviderConfig): String =
-        model?.takeIf { it.isNotBlank() } ?: providerConfig.resolveDefaultModel()
+    fun resolveModel(): String? = resolveConfiguredModel()?.modelId
 
     companion object {
-        /** Build from an AgentPrompt's per-prompt overrides. */
+        /** Build from an AgentPrompt's per-prompt model override. */
         fun fromPrompt(prompt: AgentPrompt): LlmModelConfig =
-            LlmModelConfig(prompt.providerConfigId, prompt.modelOverride)
+            LlmModelConfig(prompt.configuredModelId)
     }
 }

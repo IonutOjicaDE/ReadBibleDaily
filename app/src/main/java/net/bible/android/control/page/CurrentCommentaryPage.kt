@@ -20,6 +20,7 @@ import android.content.Intent
 import android.util.Log
 import net.bible.android.common.toV11n
 import net.bible.android.control.progress.ProgressControl
+import net.bible.service.common.ReadingProgressSettings
 import net.bible.android.control.versification.BibleTraverser
 import net.bible.android.database.bookmarks.KJVA
 import net.bible.android.view.activity.navigation.GridChoosePassageBook
@@ -100,10 +101,13 @@ open class CurrentCommentaryPage internal constructor(
                 MemorizeDocument(
                     verseRange.name, texts, pageManager.jsState,
                     bookInitials = doc?.initials,
+                    v11nName = v11n.name,
+                    osisRef = verseRange.osisRef,
                     startOrdinal = verseRange.start.ordinal,
                     endOrdinal = verseRange.end.ordinal,
                     memorizedOrdinals = memorizedOrdinals,
                     targetOrdinals = targetOrdinals,
+                    readingProgressSettingsJson = ReadingProgressSettings.getBundleAsJson(),
                 )
             } else super.currentPageContent
         }

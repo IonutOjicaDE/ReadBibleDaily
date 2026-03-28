@@ -26,8 +26,10 @@ import net.bible.android.control.progress.ProgressControl
 import net.bible.android.control.versification.toVerseRange
 import net.bible.android.database.IdType
 import net.bible.android.database.bookmarks.BookmarkEntities
+import net.bible.android.database.bookmarks.AI_DOC_LABEL_ID
 import net.bible.android.database.bookmarks.KJVA
 import net.bible.android.database.json
+import net.bible.android.database.mydocument.AiDocMarkerInfo
 import net.bible.android.misc.OsisFragment
 import net.bible.android.misc.sanitizeId
 import net.bible.android.misc.uniqueId
@@ -157,6 +159,7 @@ class BibleDocument(
     osisFragment: OsisFragment,
     val swordBook: SwordBook,
     val originalKey: Key?,
+    val aiDocMarkers: List<AiDocMarkerInfo> = emptyList(),
 ): OsisDocument(osisFragment, swordBook, verseRange) {
     override val asHashMap: Map<String, String> get () {
         val bookmarks = bookmarks.map { ClientBibleBookmark(it, swordBook.versification).asJson }
@@ -172,8 +175,10 @@ class BibleDocument(
             .map { Verse(KJVA, it).toV11n(v11n).ordinal }
         val targetOrdinals = ProgressControl.getTargetOrdinalsInRange(kjvRange.start.ordinal, kjvRange.end.ordinal)
             .map { Verse(KJVA, it).toV11n(v11n).ordinal }
+        val aiDocMarkerList = aiDocMarkers.map { ClientAiDocMarker(it, swordBook.versification).asJson }
         return super.asHashMap.toMutableMap().apply {
             put("bookmarks", listToJson(bookmarks))
+            put("aiDocMarkers", listToJson(aiDocMarkerList))
             put("type", wrapString("bible"))
             put("bibleBookName", wrapString(swordBook.versification.getPreferredNameInLocale(verseRange.start.book, Locale.getDefault())))
             put("ordinalRange", json.encodeToString(serializer(), listOf(vrInV11n.start.ordinal, vrInV11n.end.ordinal)))
@@ -217,11 +222,14 @@ class MemorizeDocument(
     private val title: String,
     private val texts: List<Pair<String, String>>,
     private val state: String?,
-    private val bookInitials: String? = null,
+    val bookInitials: String? = null,
+    private val v11nName: String? = null,
+    private val osisRef: String? = null,
     private val startOrdinal: Int = 0,
     private val endOrdinal: Int = 0,
     private val memorizedOrdinals: List<Int> = emptyList(),
     private val targetOrdinals: List<Int> = emptyList(),
+    private val readingProgressSettingsJson: String = "{}",
 ): Document {
     override val asHashMap: Map<String, Any>
         get() = mapOf(
@@ -231,10 +239,13 @@ class MemorizeDocument(
             "texts" to listToJson(texts.map { "{ 'key': " + wrapString(it.first) + ", 'text':" + wrapString(it.second) + "}" }),
             "state" to (state ?: "undefined"),
             "bookInitials" to (if (bookInitials != null) wrapString(bookInitials) else "undefined"),
+            "v11n" to (if (v11nName != null) wrapString(v11nName) else "undefined"),
+            "osisRef" to (if (osisRef != null) wrapString(osisRef) else "undefined"),
             "startOrdinal" to startOrdinal,
             "endOrdinal" to endOrdinal,
             "memorizedOrdinals" to json.encodeToString(serializer(), memorizedOrdinals),
             "targetOrdinals" to json.encodeToString(serializer(), targetOrdinals),
+            "readingProgressSettings" to readingProgressSettingsJson,
         )
 }
 
@@ -404,5 +415,57 @@ data class ClientBookmarkLabel(
         ),
         !label.isSpecialLabel && !label.new,
     )
+}
+
+/**
+ * Serializes an AI document page reference as a pseudo-bookmark for the Vue.js BibleView.
+ * Contains all BaseBookmark fields so it flows through the same rendering pipeline as bookmarks.
+ */
+class ClientAiDocMarker(
+    private val marker: AiDocMarkerInfo,
+    private val v11n: Versification?
+) : Document {
+    override val asHashMap: Map<String, String> get() {
+        val startOrdinal = if (v11n != null) {
+            Verse(KJVA, marker.kjvOrdinalStart).toV11n(v11n).ordinal
+        } else marker.kjvOrdinalStart
+        val endOrdinal = if (v11n != null) {
+            Verse(KJVA, marker.kjvOrdinalEnd).toV11n(v11n).ordinal
+        } else marker.kjvOrdinalEnd
+        val targetV11n = v11n ?: KJVA
+        val startVerse = Verse(targetV11n, startOrdinal)
+        val endVerse = Verse(targetV11n, endOrdinal)
+        val verseRange = VerseRange(targetV11n, startVerse, endVerse)
+        val aiLabelId = AI_DOC_LABEL_ID
+        return mapOf(
+            "id" to wrapString(marker.pageId.toString()),
+            "type" to wrapString("ai-doc-marker"),
+            "hashCode" to kotlin.math.abs(marker.pageId.hashCode()).toString(),
+            "ordinalRange" to json.encodeToString(serializer(), listOf(startOrdinal, endOrdinal)),
+            "offsetRange" to "null",
+            "labels" to json.encodeToString(serializer(), listOf(aiLabelId)),
+            "primaryLabelId" to wrapString(aiLabelId),
+            "bookmarkToLabels" to "[]",
+            "bookInitials" to wrapString(marker.documentInitials),
+            "bookName" to wrapString(marker.documentInitials),
+            "bookAbbreviation" to wrapString(marker.documentInitials),
+            "createdAt" to "0",
+            "lastUpdatedOn" to "0",
+            "text" to wrapString(marker.pageTitle, true),
+            "fullText" to wrapString(marker.pageTitle, true),
+            "notes" to "null",
+            "notesContentType" to "null",
+            "hasNote" to "false",
+            "wholeVerse" to "true",
+            "customIcon" to wrapString("robot"),
+            "editAction" to json.encodeToString(serializer(), BookmarkEntities.EditAction()),
+            "sourcePromptId" to wrapString(marker.sourcePromptId?.toString()),
+            // AI doc marker specific fields
+            "verseRangeAbbreviated" to wrapString(verseRange.abbreviated),
+            "title" to wrapString(marker.pageTitle, true),
+            "documentInitials" to wrapString(marker.documentInitials),
+            "pageKey" to wrapString(marker.pageKey),
+        )
+    }
 }
 
