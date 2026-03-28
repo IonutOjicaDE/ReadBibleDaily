@@ -9,6 +9,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,6 +44,28 @@ class CustomReadingPlanRepositoryPersistenceTest {
 
         assertEquals(2, firstLoad.size)
         assertEquals(firstLoad.map { it.id }, secondLoad.map { it.id })
+        assertTrue(firstLoad.none { it.isActive })
+        assertTrue(secondLoad.none { it.isActive })
+    }
+
+    @Test
+    fun planOrder_isPreservedAcrossRestart() {
+        CustomReadingPlanInMemoryRepository.initialize(context)
+        val baselineOrder = CustomReadingPlanInMemoryRepository.getPlans().map { it.id }
+        val inserted = CustomReadingPlan(
+            title = "Appended",
+            selectionSummary = "Summary",
+            minutesPerSession = 8,
+            periodInDays = 1,
+        )
+        CustomReadingPlanInMemoryRepository.upsert(inserted)
+
+        CustomReadingPlanInMemoryRepository.resetForTesting()
+        DatabaseResetter.resetDatabase()
+        CustomReadingPlanInMemoryRepository.initialize(context)
+
+        val restoredOrder = CustomReadingPlanInMemoryRepository.getPlans().map { it.id }
+        assertEquals(baselineOrder + inserted.id, restoredOrder)
     }
 
     @Test

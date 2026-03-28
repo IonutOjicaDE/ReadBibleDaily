@@ -29,14 +29,21 @@ private val rpTriggers_1_2 = makeMigration(1..2) { db ->
                 `periodInDays` INTEGER NOT NULL,
                 `selectedDaysMask` INTEGER NOT NULL,
                 `isActive` INTEGER NOT NULL,
+                `sortOrder` INTEGER NOT NULL,
                 PRIMARY KEY(`id`)
             )
         """.trimIndent()
     )
 }
 
+private val rpTriggers_2_3 = makeMigration(2..3) { db ->
+    db.execSQL("ALTER TABLE `CustomReadingPlan` ADD COLUMN `sortOrder` INTEGER NOT NULL DEFAULT 0")
+    db.execSQL("UPDATE `CustomReadingPlan` SET `sortOrder` = rowid")
+}
+
 val readingPlanMigrations: Array<Migration> = arrayOf(
     rpTriggers_1_2,
+    rpTriggers_2_3,
 )
 
-const val READING_PLAN_DATABASE_VERSION = 2
+const val READING_PLAN_DATABASE_VERSION = 3

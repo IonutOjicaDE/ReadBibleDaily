@@ -91,7 +91,7 @@ interface ReadingPlanDao {
     //endregion
 
     //region CustomReadingPlan
-    @Query("SELECT * FROM CustomReadingPlan")
+    @Query("SELECT * FROM CustomReadingPlan ORDER BY sortOrder ASC, id ASC")
     suspend fun getAllCustomPlans(): List<CustomReadingPlan>
 
     @Query("SELECT * FROM CustomReadingPlan WHERE id = :id")

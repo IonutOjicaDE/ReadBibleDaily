@@ -55,5 +55,6 @@ class ReadingPlanEntities {
         val periodInDays: Int,
         val selectedDaysMask: Int,
         val isActive: Boolean,
+        val sortOrder: Long,
     )
 }
