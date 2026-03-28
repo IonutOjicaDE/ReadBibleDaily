@@ -44,4 +44,17 @@ class ReadingPlanEntities {
         val readingStatus: String,
         @PrimaryKey val id: IdType = IdType()
     )
+
+    @Entity
+    data class CustomReadingPlan(
+        @PrimaryKey val id: String,
+        val title: String,
+        val selectionSummary: String,
+        val selectionJson: String,
+        val minutesPerSession: Int,
+        val periodInDays: Int,
+        val selectedDaysMask: Int,
+        val isActive: Boolean,
+        val sortOrder: Long,
+    )
 }

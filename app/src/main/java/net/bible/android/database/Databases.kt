@@ -75,6 +75,7 @@ abstract class BookmarkDatabase: SyncableRoomDatabase() {
     entities = [
         ReadingPlanEntities.ReadingPlan::class,
         ReadingPlanEntities.ReadingPlanStatus::class,
+        ReadingPlanEntities.CustomReadingPlan::class,
         LogEntry::class,
         SyncConfiguration::class,
         SyncStatus::class,

@@ -18,7 +18,12 @@
 package net.bible.android.view.activity.readingplan
 
 import android.content.Context
+import kotlinx.coroutines.runBlocking
 import net.bible.android.activity.R
+import net.bible.android.database.readingplan.ReadingPlanEntities
+import net.bible.service.db.DatabaseContainer
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.Serializable
 import java.text.DateFormat
 import java.util.Calendar
@@ -74,41 +79,32 @@ data class CustomReadingPlan(
 
 object CustomReadingPlanInMemoryRepository {
     private val plans = mutableListOf<CustomReadingPlan>()
+    private val planOrders = mutableMapOf<String, Long>()
     private var isInitialized = false
+    private val dao get() = DatabaseContainer.instance.readingPlanDb.readingPlanDao()
 
     fun initialize(context: Context) {
         if (isInitialized) return
+        val persistedEntities = runBlocking { dao.getAllCustomPlans() }
+        val persistedPlans = persistedEntities.map { it.toDomain() }
+
+        val initialPlans = if (persistedPlans.isEmpty()) {
+            val seededPlans = buildSeedPlans(context)
+            runBlocking { dao.insertAllCustomPlans(seededPlans.mapIndexed { index, plan -> plan.toEntity(index.toLong()) }) }
+            seededPlans
+        } else {
+            persistedPlans
+        }
+
+        plans.clear()
+        plans += initialPlans
+        planOrders.clear()
+        if (persistedEntities.isEmpty()) {
+            initialPlans.forEachIndexed { index, plan -> planOrders[plan.id] = index.toLong() }
+        } else {
+            persistedEntities.forEach { planOrders[it.id] = it.sortOrder }
+        }
         isInitialized = true
-
-        val newTestamentSeed = seededSelection(context, "new_testament")
-        val oldTestamentSeed = seededSelection(context, "old_testament")
-
-        plans += CustomReadingPlan(
-            title = context.getString(R.string.custom_reading_plan_new_testament),
-            selection = newTestamentSeed?.first ?: CustomReadingPlanSelection(),
-            selectionSummary = newTestamentSeed?.second ?: defaultSelectionSummary(context),
-            selectedDays = linkedSetOf(
-                ReadingWeekDay.MONDAY,
-                ReadingWeekDay.TUESDAY,
-                ReadingWeekDay.WEDNESDAY,
-                ReadingWeekDay.THURSDAY,
-                ReadingWeekDay.FRIDAY,
-                ReadingWeekDay.SATURDAY,
-            ),
-        )
-        plans += CustomReadingPlan(
-            title = context.getString(R.string.custom_reading_plan_old_testament),
-            selection = oldTestamentSeed?.first ?: CustomReadingPlanSelection(),
-            selectionSummary = oldTestamentSeed?.second ?: defaultSelectionSummary(context),
-            minutesPerSession = 15,
-            periodInDays = 2,
-            selectedDays = linkedSetOf(
-                ReadingWeekDay.MONDAY,
-                ReadingWeekDay.WEDNESDAY,
-                ReadingWeekDay.FRIDAY,
-                ReadingWeekDay.SUNDAY,
-            ),
-        )
     }
 
     fun getPlans(): List<CustomReadingPlan> = plans.toList()
@@ -122,6 +118,8 @@ object CustomReadingPlanInMemoryRepository {
         } else {
             plans += plan
         }
+        val sortOrder = planOrders[plan.id] ?: nextSortOrder().also { planOrders[plan.id] = it }
+        runBlocking { dao.upsertCustomPlan(plan.toEntity(sortOrder)) }
     }
 
     fun updateActive(planId: String, isActive: Boolean) {
@@ -129,15 +127,55 @@ object CustomReadingPlanInMemoryRepository {
         if (index >= 0) {
             plans[index] = plans[index].copy(isActive = isActive)
         }
+        runBlocking { dao.updateCustomPlanActive(planId, isActive) }
     }
 
     fun delete(planId: String) {
         plans.removeAll { it.id == planId }
+        planOrders.remove(planId)
+        runBlocking { dao.deleteCustomPlan(planId) }
     }
 
     internal fun resetForTesting() {
         plans.clear()
+        planOrders.clear()
         isInitialized = false
+    }
+
+    private fun buildSeedPlans(context: Context): List<CustomReadingPlan> {
+        val newTestamentSeed = seededSelection(context, "new_testament")
+        val oldTestamentSeed = seededSelection(context, "old_testament")
+
+        return listOf(
+            CustomReadingPlan(
+                title = context.getString(R.string.custom_reading_plan_new_testament),
+                selection = newTestamentSeed?.first ?: CustomReadingPlanSelection(),
+                selectionSummary = newTestamentSeed?.second ?: defaultSelectionSummary(context),
+                isActive = false,
+                selectedDays = linkedSetOf(
+                    ReadingWeekDay.MONDAY,
+                    ReadingWeekDay.TUESDAY,
+                    ReadingWeekDay.WEDNESDAY,
+                    ReadingWeekDay.THURSDAY,
+                    ReadingWeekDay.FRIDAY,
+                    ReadingWeekDay.SATURDAY,
+                ),
+            ),
+            CustomReadingPlan(
+                title = context.getString(R.string.custom_reading_plan_old_testament),
+                selection = oldTestamentSeed?.first ?: CustomReadingPlanSelection(),
+                selectionSummary = oldTestamentSeed?.second ?: defaultSelectionSummary(context),
+                minutesPerSession = 15,
+                periodInDays = 2,
+                isActive = false,
+                selectedDays = linkedSetOf(
+                    ReadingWeekDay.MONDAY,
+                    ReadingWeekDay.WEDNESDAY,
+                    ReadingWeekDay.FRIDAY,
+                    ReadingWeekDay.SUNDAY,
+                ),
+            ),
+        )
     }
 
     private fun seededSelection(context: Context, testamentKey: String): Pair<CustomReadingPlanSelection, String>? {
@@ -148,6 +186,59 @@ object CustomReadingPlanInMemoryRepository {
         val selection = CustomReadingPlanSelection(selectedKeys)
         val summary = CustomReadingPlanSelectionSummaryFormatter.format(context, selection, treeNodes)
         return selection to summary
+    }
+
+    private fun nextSortOrder(): Long = (planOrders.values.maxOrNull() ?: -1L) + 1L
+}
+
+private fun CustomReadingPlan.toEntity(sortOrder: Long) = ReadingPlanEntities.CustomReadingPlan(
+    id = id,
+    title = title,
+    selectionSummary = selectionSummary,
+    selectionJson = selection.toJson(),
+    minutesPerSession = minutesPerSession,
+    periodInDays = periodInDays,
+    selectedDaysMask = CustomReadingPlanPersistenceCodec.selectedDaysToMask(selectedDays),
+    isActive = isActive,
+    sortOrder = sortOrder,
+)
+
+private fun ReadingPlanEntities.CustomReadingPlan.toDomain() = CustomReadingPlan(
+    id = id,
+    title = title,
+    selectionSummary = selectionSummary,
+    selection = CustomReadingPlanPersistenceCodec.selectionFromJson(selectionJson),
+    minutesPerSession = minutesPerSession,
+    periodInDays = periodInDays,
+    selectedDays = CustomReadingPlanPersistenceCodec.selectedDaysFromMask(selectedDaysMask),
+    isActive = isActive,
+)
+
+private fun CustomReadingPlanSelection.toJson(): String = JSONObject()
+    .put(
+        "selectedNodeKeys",
+        JSONArray().apply {
+            selectedNodeKeys.forEach { put(it) }
+        },
+    )
+    .toString()
+
+private object CustomReadingPlanPersistenceCodec {
+    fun selectedDaysToMask(selectedDays: Set<ReadingWeekDay>): Int = selectedDays
+        .fold(0) { acc, day -> acc or (1 shl day.ordinal) }
+
+    fun selectedDaysFromMask(mask: Int): LinkedHashSet<ReadingWeekDay> = ReadingWeekDay.entries
+        .filter { (mask and (1 shl it.ordinal)) != 0 }
+        .toCollection(linkedSetOf())
+
+    fun selectionFromJson(raw: String): CustomReadingPlanSelection = runCatching {
+        val selected = JSONObject(raw)
+            .optJSONArray("selectedNodeKeys")
+            ?.let { array -> (0 until array.length()).mapNotNull { array.optString(it).takeIf(String::isNotBlank) }.toSet() }
+            ?: emptySet()
+        CustomReadingPlanSelection(selected)
+    }.getOrElse {
+        CustomReadingPlanSelection()
     }
 }
 
