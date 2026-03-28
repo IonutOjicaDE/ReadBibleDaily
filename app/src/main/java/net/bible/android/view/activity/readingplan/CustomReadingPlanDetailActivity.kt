@@ -26,6 +26,7 @@ import android.text.TextWatcher
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.SeekBar
@@ -50,6 +51,9 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
     private lateinit var draftPlan: CustomReadingPlan
     private var isNewPlan = false
     private var bindingState = false
+    private val keyboardLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+        syncAdditionalInfoWithIme()
+    }
     private val selectionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode != RESULT_OK) return@registerForActivityResult
         val data = result.data ?: return@registerForActivityResult
@@ -95,6 +99,9 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
     }
 
     override fun onDestroy() {
+        if (this::binding.isInitialized) {
+            binding.root.viewTreeObserver.removeOnGlobalLayoutListener(keyboardLayoutListener)
+        }
         ABEventBus.unregister(this)
         super.onDestroy()
     }
@@ -137,11 +144,13 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
     }
 
     private fun observeKeyboardVisibility() {
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
-            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
-            updateAdditionalInfoVisibility(imeVisible)
-            insets
-        }
+        binding.root.viewTreeObserver.addOnGlobalLayoutListener(keyboardLayoutListener)
+        binding.root.post { syncAdditionalInfoWithIme() }
+    }
+
+    private fun syncAdditionalInfoWithIme() {
+        val imeVisible = ViewCompat.getRootWindowInsets(binding.root)?.isVisible(WindowInsetsCompat.Type.ime()) ?: false
+        updateAdditionalInfoVisibility(imeVisible)
     }
 
     private fun updateAdditionalInfoVisibility(isKeyboardVisible: Boolean) = binding.apply {
