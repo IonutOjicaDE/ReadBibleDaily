@@ -1507,6 +1507,7 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
                 bibleView.emit('set_config', {
                     config: ${displaySettings.toJson()},
                     appSettings: {
+                        isFullscreen: ${mainBibleActivity.fullScreen},
                         activeWindow: $isActive,
                         isBottomWindow: $isBottomWindow,
                         hasActiveIndicator: $hasActiveIndicator,
@@ -1900,7 +1901,7 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
 
     private fun updateOffsets(immediate: Boolean = false) {
         if(isTopWindow || isBottomWindow && contentVisible && window.isVisible)
-            executeJavascriptOnUiThread("bibleView.emit('set_offsets', $topOffset, $bottomOffset, {immediate: $immediate, imeOpen: ${mainBibleActivity.imeHeight > 0}});")
+            executeJavascriptOnUiThread("bibleView.emit('set_offsets', $topOffset, $bottomOffset, {immediate: $immediate, imeOpen: ${mainBibleActivity.imeHeight > 0}, isFullscreen: ${mainBibleActivity.fullScreen}});")
     }
 
     fun onEvent(event: WebViewsBuiltEvent) {
@@ -1947,7 +1948,7 @@ class BibleView(val mainBibleActivity: MainBibleActivity,
 
     private fun doCheckWindows() {
         if(!htmlLoadingOngoing && checkWindows) {
-            executeJavascript("bibleView.emit('set_offsets', $topOffset, $bottomOffset, {doNotScroll: true});")
+            executeJavascript("bibleView.emit('set_offsets', $topOffset, $bottomOffset, {doNotScroll: true, isFullscreen: ${mainBibleActivity.fullScreen}});")
             if (window.pageManager.currentPage.documentCategory == DocumentCategory.BIBLE) {
                 scrollOrJumpToVerse(window.pageManager.currentBible.currentBibleVerse.verse, true)
             }

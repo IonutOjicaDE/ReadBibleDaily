@@ -103,6 +103,7 @@ export type ModalButtonId = BibleModalButtonId | GenericModalButtonId
 export type Feature = "add_paragraph_break" | "bookmark_edit_actions" | "reading_and_memorization"
 
 export type AppSettings = {
+    isFullscreen: boolean,
     isBottomWindow: boolean,
     topOffset: number,
     bottomOffset: number,
@@ -200,6 +201,7 @@ export function useConfig(documentType: Ref<BibleViewDocumentType>) {
     const rtl = new URLSearchParams(window.location.search).get("rtl") === "true";
     const nightMode = new URLSearchParams(window.location.search).get("night") === "true";
     const appSettings: AppSettings = reactive({
+        isFullscreen: false,
         topOffset: 0,
         isBottomWindow: false,
         bottomOffset: 100,
