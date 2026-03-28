@@ -122,6 +122,7 @@ export function useVisibleChaptersIndicator(
     );
 
     watch(() => [
+        appSettings.isFullscreen,
         appSettings.topOffset,
         calculatedConfig.value.topOffset,
         mounted.value,
