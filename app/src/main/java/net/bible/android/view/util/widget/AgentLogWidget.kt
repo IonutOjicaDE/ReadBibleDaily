@@ -90,6 +90,9 @@ class AgentLogWidget(context: Context, attributeSet: AttributeSet) : LinearLayou
         binding.apply {
             logRecyclerView.layoutManager = LinearLayoutManager(context)
             logRecyclerView.adapter = adapter
+            if (CommonUtils.settings.disableAnimations) {
+                logRecyclerView.itemAnimator = null
+            }
 
             expandButton.setOnClickListener { toggleExpanded() }
             closeButton.setOnClickListener { hide() }
@@ -135,10 +138,10 @@ class AgentLogWidget(context: Context, attributeSet: AttributeSet) : LinearLayou
      * Update background color to match the bottom window's background.
      */
     fun updateBackgroundColor() {
+        val monochromeMode = CommonUtils.settings.monochromeMode
         val lastWindow = windowControl.windowRepository.visibleWindows.lastOrNull()
         val backgroundColor = if (lastWindow != null) {
             val colors = lastWindow.pageManager.actualTextDisplaySettings.colors
-            val monochromeMode = CommonUtils.settings.monochromeMode
             val nightBackground = if (monochromeMode) Color.BLACK else colors?.nightBackground
             val dayBackground = if (monochromeMode) Color.WHITE else colors?.dayBackground
             (if (ScreenSettings.nightMode) nightBackground else dayBackground)
@@ -147,6 +150,17 @@ class AgentLogWidget(context: Context, attributeSet: AttributeSet) : LinearLayou
             UiUtils.bibleViewDefaultBackgroundColor
         }
         binding.rootLayout.setBackgroundColor(backgroundColor)
+
+        if (monochromeMode) {
+            val tint = if (ScreenSettings.nightMode) Color.WHITE else Color.BLACK
+            binding.statusIcon.setColorFilter(tint)
+            binding.expandButton.setColorFilter(tint)
+            binding.closeButton.setColorFilter(tint)
+            binding.statusText.setTextColor(tint)
+            binding.headerCostText.setTextColor(tint)
+            binding.headerCostText.alpha = 1.0f
+            binding.rootLayout.elevation = 0f
+        }
     }
 
     /**
@@ -210,9 +224,14 @@ class AgentLogWidget(context: Context, attributeSet: AttributeSet) : LinearLayou
     /**
      * Refresh the log entries from the session manager.
      */
-    private fun refreshLogEntries() {
+    private fun refreshLogEntries(scrollToBottom: Boolean = false) {
         val entries = AgentSessionManager.getLogEntries(workspaceId)
-        adapter.submitList(entries.toList())
+        // Copy each entry so DiffUtil detects changes to mutable fields (status, costInfo).
+        adapter.submitList(entries.map { it.copy() }) {
+            if (scrollToBottom && adapter.itemCount > 0 && isExpanded) {
+                binding.logRecyclerView.scrollToPosition(adapter.itemCount - 1)
+            }
+        }
 
         // Update status text with latest meaningful entry
         val latestMessage = getLatestMeaningfulMessage(entries)
@@ -287,11 +306,7 @@ class AgentLogWidget(context: Context, attributeSet: AttributeSet) : LinearLayou
      */
     fun onEventMainThread(event: AgentLogUpdatedEvent) {
         if (event.workspaceId == workspaceId) {
-            refreshLogEntries()
-            // Auto-scroll to bottom when new entries are added
-            if (adapter.itemCount > 0 && isExpanded) {
-                binding.logRecyclerView.smoothScrollToPosition(adapter.itemCount - 1)
-            }
+            refreshLogEntries(scrollToBottom = true)
         }
     }
 
@@ -389,7 +404,10 @@ class AgentLogWidget(context: Context, attributeSet: AttributeSet) : LinearLayou
     private fun updateCloseStopButton(isRunning: Boolean) {
         if (isRunning) {
             binding.closeButton.setImageResource(R.drawable.ic_stop_black_24dp)
-            binding.closeButton.setColorFilter(CommonUtils.getResourceColor(R.color.grey_500))
+            val stopColor = if (CommonUtils.settings.monochromeMode) {
+                if (ScreenSettings.nightMode) Color.WHITE else Color.BLACK
+            } else CommonUtils.getResourceColor(R.color.grey_500)
+            binding.closeButton.setColorFilter(stopColor)
             binding.closeButton.contentDescription = context.getString(R.string.agent_log_stop)
             binding.closeButton.setOnClickListener {
                 AgentSessionManager.stopAgent(workspaceId)

@@ -366,12 +366,14 @@ data class GlobalAiSettings(
     @ColumnInfo(defaultValue = "NULL") val permanentlyAllowedTools: Set<AgentTool>? = null,
     @ColumnInfo(defaultValue = "NULL") val permanentlyDeniedTools: Set<AgentTool>? = null,
     val aiExcludedDocuments: Set<String> = emptySet(),
-    @ColumnInfo(defaultValue = "4000") val commentaryMaxResponseTokens: Int = 4000,
+    @ColumnInfo(defaultValue = "15000") val commentaryMaxResponseTokens: Int = 15000,
     val hiddenBuiltInPrompts: Set<IdType> = emptySet(),
     @ColumnInfo(defaultValue = "10") val maxIterations: Int = 10,
     val commentaryDeselected: Set<String> = emptySet(),
     /** Global default model. FK to LlmConfiguredModel (managed in code, not DB constraint). */
     @ColumnInfo(defaultValue = "NULL") val defaultModelId: IdType? = null,
+    /** BCP 47 language tag for AI responses. null = use app language (Locale.getDefault()). */
+    @ColumnInfo(defaultValue = "NULL") val aiLanguage: String? = null,
 ) {
     companion object {
         /** Distinct from GlobalTextDisplaySettings SINGLETON_ID (…0001) in WorkspaceDB. */
