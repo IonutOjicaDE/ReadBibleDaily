@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 7,
-    "identityHash": "b24fda31be8676081773448004a5d749",
+    "identityHash": "88b2b4917efc2d4f16e845b48b9b51ee",
     "entities": [
       {
         "tableName": "MemorizedVerse",
@@ -107,6 +107,72 @@
         ]
       },
       {
+        "tableName": "ChapterReadCounter",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `bookOrdinal` INTEGER NOT NULL, `chapter` INTEGER NOT NULL, `readCount` INTEGER NOT NULL, `firstReadAt` INTEGER NOT NULL, `lastReadAt` INTEGER NOT NULL, `source` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bookOrdinal",
+            "columnName": "bookOrdinal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapter",
+            "columnName": "chapter",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "readCount",
+            "columnName": "readCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firstReadAt",
+            "columnName": "firstReadAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastReadAt",
+            "columnName": "lastReadAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ChapterReadCounter_bookOrdinal_chapter",
+            "unique": true,
+            "columnNames": [
+              "bookOrdinal",
+              "chapter"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_ChapterReadCounter_bookOrdinal_chapter` ON `${TABLE_NAME}` (`bookOrdinal`, `chapter`)"
+          }
+        ]
+      },
+      {
         "tableName": "MemorizationTarget",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `kjvOrdinalStart` INTEGER NOT NULL, `kjvOrdinalEnd` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
@@ -141,6 +207,184 @@
             "id"
           ]
         }
+      },
+      {
+        "tableName": "WordCountIndexRecord",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `moduleInitials` TEXT NOT NULL, `moduleVersion` TEXT NOT NULL, `versification` TEXT NOT NULL, `scope` TEXT NOT NULL, `bookOrdinal` INTEGER NOT NULL, `chapter` INTEGER NOT NULL, `wordCount` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moduleInitials",
+            "columnName": "moduleInitials",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moduleVersion",
+            "columnName": "moduleVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "versification",
+            "columnName": "versification",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scope",
+            "columnName": "scope",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bookOrdinal",
+            "columnName": "bookOrdinal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapter",
+            "columnName": "chapter",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wordCount",
+            "columnName": "wordCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_WordCountIndexRecord_moduleInitials_versification_bookOrdinal_chapter",
+            "unique": true,
+            "columnNames": [
+              "moduleInitials",
+              "versification",
+              "bookOrdinal",
+              "chapter"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_WordCountIndexRecord_moduleInitials_versification_bookOrdinal_chapter` ON `${TABLE_NAME}` (`moduleInitials`, `versification`, `bookOrdinal`, `chapter`)"
+          },
+          {
+            "name": "index_WordCountIndexRecord_moduleInitials_updatedAt",
+            "unique": false,
+            "columnNames": [
+              "moduleInitials",
+              "updatedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_WordCountIndexRecord_moduleInitials_updatedAt` ON `${TABLE_NAME}` (`moduleInitials`, `updatedAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "ReadingPlanChapterProgress",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` BLOB NOT NULL, `planId` TEXT NOT NULL, `moduleInitials` TEXT NOT NULL, `bookOrdinal` INTEGER NOT NULL, `chapter` INTEGER NOT NULL, `completionPercent` REAL NOT NULL, `lastReadOrdinal` INTEGER, `chapterAnchor` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "planId",
+            "columnName": "planId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moduleInitials",
+            "columnName": "moduleInitials",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bookOrdinal",
+            "columnName": "bookOrdinal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapter",
+            "columnName": "chapter",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completionPercent",
+            "columnName": "completionPercent",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastReadOrdinal",
+            "columnName": "lastReadOrdinal",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "chapterAnchor",
+            "columnName": "chapterAnchor",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_ReadingPlanChapterProgress_planId_moduleInitials_bookOrdinal_chapter",
+            "unique": true,
+            "columnNames": [
+              "planId",
+              "moduleInitials",
+              "bookOrdinal",
+              "chapter"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_ReadingPlanChapterProgress_planId_moduleInitials_bookOrdinal_chapter` ON `${TABLE_NAME}` (`planId`, `moduleInitials`, `bookOrdinal`, `chapter`)"
+          },
+          {
+            "name": "index_ReadingPlanChapterProgress_planId_updatedAt",
+            "unique": false,
+            "columnNames": [
+              "planId",
+              "updatedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_ReadingPlanChapterProgress_planId_updatedAt` ON `${TABLE_NAME}` (`planId`, `updatedAt`)"
+          }
+        ]
       },
       {
         "tableName": "GlobalReadingProgressSettings",
@@ -360,7 +604,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b24fda31be8676081773448004a5d749')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '88b2b4917efc2d4f16e845b48b9b51ee')"
     ]
   }
 }
