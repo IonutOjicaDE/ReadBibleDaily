@@ -26,6 +26,7 @@ import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SwitchCompat
 import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import net.bible.android.activity.R
@@ -39,7 +40,10 @@ private data class CustomReadingPlanListRow(
     val description: String? = null,
     val hasToggle: Boolean = true,
     val opensAsCreate: Boolean = false,
-)
+) {
+    val isMovable: Boolean
+        get() = plan != null && !opensAsCreate
+}
 
 private class CustomReadingPlanViewHolder(
     val binding: CustomReadingPlanListItemBinding,
@@ -53,6 +57,7 @@ class CustomReadingPlansActivity : ActivityBase() {
     private val editPlanLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         refreshPlanItems()
     }
+    private var isDragReorderActive = false
 
     private inner class CustomReadingPlanAdapter : RecyclerView.Adapter<CustomReadingPlanViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CustomReadingPlanViewHolder {
@@ -85,6 +90,7 @@ class CustomReadingPlansActivity : ActivityBase() {
                 addItemDecoration(DividerItemDecoration(context, linearLayoutManager.orientation))
             }
         }
+        ItemTouchHelper(planReorderTouchHelperCallback()).attachToRecyclerView(binding.recyclerView)
         refreshPlanItems()
     }
 
@@ -118,7 +124,11 @@ class CustomReadingPlansActivity : ActivityBase() {
         summary.visibility = if (item.description.isNullOrBlank()) View.GONE else View.VISIBLE
 
         configureToggle(toggle, item)
-        root.setOnClickListener { openPlan(item) }
+        root.setOnClickListener {
+            if (!isDragReorderActive) {
+                openPlan(item)
+            }
+        }
     }
 
     private fun configureToggle(toggle: SwitchCompat, item: CustomReadingPlanListRow) {
@@ -156,5 +166,83 @@ class CustomReadingPlansActivity : ActivityBase() {
             }
         }
         editPlanLauncher.launch(intent)
+    }
+
+    private fun planReorderTouchHelperCallback(): ItemTouchHelper.Callback = object : ItemTouchHelper.SimpleCallback(
+        ItemTouchHelper.UP or ItemTouchHelper.DOWN,
+        0,
+    ) {
+        private var hasMovedDuringDrag = false
+
+        override fun onMove(
+            recyclerView: RecyclerView,
+            viewHolder: RecyclerView.ViewHolder,
+            target: RecyclerView.ViewHolder,
+        ): Boolean {
+            val fromPosition = viewHolder.bindingAdapterPosition
+            val targetPosition = target.bindingAdapterPosition
+            if (fromPosition == RecyclerView.NO_POSITION || targetPosition == RecyclerView.NO_POSITION) {
+                return false
+            }
+
+            val movingRow = planItems.getOrNull(fromPosition) ?: return false
+            val targetRow = planItems.getOrNull(targetPosition) ?: return false
+            if (!movingRow.isMovable || !targetRow.isMovable || fromPosition == targetPosition) {
+                return false
+            }
+
+            val moveAfterTarget = fromPosition < targetPosition
+            val insertedAt = movePlanItem(fromPosition, targetPosition, moveAfterTarget)
+            adapter.notifyItemMoved(fromPosition, insertedAt)
+            hasMovedDuringDrag = true
+            return true
+        }
+
+        override fun getMovementFlags(
+            recyclerView: RecyclerView,
+            viewHolder: RecyclerView.ViewHolder,
+        ): Int {
+            val position = viewHolder.bindingAdapterPosition
+            val row = planItems.getOrNull(position) ?: return 0
+            if (!row.isMovable) return 0
+            return super.getMovementFlags(recyclerView, viewHolder)
+        }
+
+        override fun isLongPressDragEnabled(): Boolean = true
+
+        override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
+
+        override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+            super.onSelectedChanged(viewHolder, actionState)
+            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+                hasMovedDuringDrag = false
+                isDragReorderActive = true
+            }
+        }
+
+        override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+            super.clearView(recyclerView, viewHolder)
+            isDragReorderActive = false
+            if (hasMovedDuringDrag) {
+                persistPlanOrder()
+            }
+        }
+    }
+
+    private fun movePlanItem(fromPosition: Int, targetPosition: Int, moveAfterTarget: Boolean): Int {
+        val movedItem = planItems.removeAt(fromPosition)
+        val insertPosition = when {
+            moveAfterTarget && fromPosition < targetPosition -> targetPosition
+            moveAfterTarget -> targetPosition + 1
+            !moveAfterTarget && fromPosition < targetPosition -> targetPosition - 1
+            else -> targetPosition
+        }.coerceIn(0, planItems.size)
+        planItems.add(insertPosition, movedItem)
+        return insertPosition
+    }
+
+    private fun persistPlanOrder() {
+        val orderedIds = planItems.mapNotNull { it.plan?.id }
+        CustomReadingPlanInMemoryRepository.reorder(orderedIds)
     }
 }

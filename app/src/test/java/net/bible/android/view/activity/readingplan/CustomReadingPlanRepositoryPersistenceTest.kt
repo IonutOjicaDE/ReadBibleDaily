@@ -100,6 +100,29 @@ class CustomReadingPlanRepositoryPersistenceTest {
         assertFalse(CustomReadingPlanInMemoryRepository.getPlans().any { it.id == updated.id })
     }
 
+    @Test
+    fun reorder_persistsAcrossRepositoryReset() {
+        CustomReadingPlanInMemoryRepository.initialize(context)
+        val inserted = CustomReadingPlan(
+            title = "Movable plan",
+            selectionSummary = "Summary",
+            minutesPerSession = 11,
+            periodInDays = 1,
+        )
+        CustomReadingPlanInMemoryRepository.upsert(inserted)
+
+        val originalOrder = CustomReadingPlanInMemoryRepository.getPlans().map { it.id }
+        val reordered = listOf(originalOrder.last()) + originalOrder.dropLast(1)
+        CustomReadingPlanInMemoryRepository.reorder(reordered)
+
+        CustomReadingPlanInMemoryRepository.resetForTesting()
+        DatabaseResetter.resetDatabase()
+        CustomReadingPlanInMemoryRepository.initialize(context)
+
+        val restored = CustomReadingPlanInMemoryRepository.getPlans().map { it.id }
+        assertEquals(reordered, restored)
+    }
+
     private fun resetState() {
         CustomReadingPlanInMemoryRepository.resetForTesting()
         DatabaseResetter.resetDatabase()
