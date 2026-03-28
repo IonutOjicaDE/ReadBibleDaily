@@ -42,6 +42,7 @@ const indicatorStyle = computed(() => ({
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: 400ms ease-out;
 }
 
 .primary {
@@ -49,6 +50,6 @@ const indicatorStyle = computed(() => ({
 }
 
 .secondary {
-  opacity: 0.7;
+  opacity: 0.8;
 }
 </style>
