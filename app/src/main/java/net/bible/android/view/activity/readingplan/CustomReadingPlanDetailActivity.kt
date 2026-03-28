@@ -24,9 +24,15 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.MenuItem
+import android.view.MotionEvent
+import android.view.View
 import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanDetailActivityBinding
@@ -72,7 +78,15 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
 
         setupViews()
         bindDraftToViews()
+        observeKeyboardVisibility()
         renderDraft()
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_DOWN) {
+            dismissKeyboardIfTouchOutsideInput(event)
+        }
+        return super.dispatchTouchEvent(event)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -120,6 +134,32 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
             selection = selection,
             selectionSummary = if (tree.isEmpty()) defaultSelectionSummary(this) else CustomReadingPlanSelectionSummaryFormatter.format(this, selection, tree),
         )
+    }
+
+    private fun observeKeyboardVisibility() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            updateAdditionalInfoVisibility(imeVisible)
+            insets
+        }
+    }
+
+    private fun updateAdditionalInfoVisibility(isKeyboardVisible: Boolean) = binding.apply {
+        val additionalInfoVisibility = if (isKeyboardVisible) View.GONE else View.VISIBLE
+        additionalInfoPrimary.visibility = additionalInfoVisibility
+        additionalInfoSecondary.visibility = additionalInfoVisibility
+    }
+
+    private fun dismissKeyboardIfTouchOutsideInput(event: MotionEvent) {
+        val focusedView = currentFocus as? EditText ?: return
+        if (focusedView !== binding.titleInput) return
+
+        val bounds = android.graphics.Rect()
+        focusedView.getGlobalVisibleRect(bounds)
+        if (!bounds.contains(event.rawX.toInt(), event.rawY.toInt())) {
+            focusedView.clearFocus()
+            WindowInsetsControllerCompat(window, binding.root).hide(WindowInsetsCompat.Type.ime())
+        }
     }
 
     private fun setupViews() = binding.apply {
