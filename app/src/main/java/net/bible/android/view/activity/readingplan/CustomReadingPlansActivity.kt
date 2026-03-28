@@ -29,6 +29,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.util.Collections
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanListItemBinding
 import net.bible.android.activity.databinding.CustomReadingPlansActivityBinding
@@ -191,9 +192,17 @@ class CustomReadingPlansActivity : ActivityBase() {
                 return false
             }
 
-            val moveAfterTarget = fromPosition < targetPosition
-            val insertedAt = movePlanItem(fromPosition, targetPosition, moveAfterTarget)
-            adapter.notifyItemMoved(fromPosition, insertedAt)
+            if (fromPosition < targetPosition) {
+                for (index in fromPosition until targetPosition) {
+                    Collections.swap(planItems, index, index + 1)
+                }
+            } else {
+                for (index in fromPosition downTo targetPosition + 1) {
+                    Collections.swap(planItems, index, index - 1)
+                }
+            }
+
+            adapter.notifyItemMoved(fromPosition, targetPosition)
             hasMovedDuringDrag = true
             return true
         }
@@ -212,6 +221,16 @@ class CustomReadingPlansActivity : ActivityBase() {
 
         override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
 
+        override fun canDropOver(
+            recyclerView: RecyclerView,
+            current: RecyclerView.ViewHolder,
+            target: RecyclerView.ViewHolder,
+        ): Boolean {
+            val targetPosition = target.bindingAdapterPosition
+            val targetRow = planItems.getOrNull(targetPosition) ?: return false
+            return targetRow.isMovable
+        }
+
         override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
             super.onSelectedChanged(viewHolder, actionState)
             if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
@@ -227,18 +246,6 @@ class CustomReadingPlansActivity : ActivityBase() {
                 persistPlanOrder()
             }
         }
-    }
-
-    private fun movePlanItem(fromPosition: Int, targetPosition: Int, moveAfterTarget: Boolean): Int {
-        val movedItem = planItems.removeAt(fromPosition)
-        val insertPosition = when {
-            moveAfterTarget && fromPosition < targetPosition -> targetPosition
-            moveAfterTarget -> targetPosition + 1
-            !moveAfterTarget && fromPosition < targetPosition -> targetPosition - 1
-            else -> targetPosition
-        }.coerceIn(0, planItems.size)
-        planItems.add(insertPosition, movedItem)
-        return insertPosition
     }
 
     private fun persistPlanOrder() {
