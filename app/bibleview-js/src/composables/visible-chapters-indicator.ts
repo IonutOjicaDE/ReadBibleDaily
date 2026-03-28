@@ -65,7 +65,10 @@ export function useVisibleChaptersIndicator(
                 return;
             }
             const topBoundary = Math.max(0, calculatedConfig.value.topOffset + (lineHeight.value * 0.2));
-            const bottomBoundary = window.innerHeight;
+            const bottomBoundary = Math.max(
+                topBoundary + 1,
+                window.innerHeight - appSettings.bottomOffset
+            );
 
             const chapters: VisibleChapter[] = [];
             const chapterKeys = new Set<string>();
