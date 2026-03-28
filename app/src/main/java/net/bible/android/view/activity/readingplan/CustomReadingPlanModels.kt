@@ -133,7 +133,10 @@ object CustomReadingPlanInMemoryRepository {
     fun delete(planId: String) {
         plans.removeAll { it.id == planId }
         planOrders.remove(planId)
-        runBlocking { dao.deleteCustomPlan(planId) }
+        runBlocking {
+            dao.deleteCustomPlan(planId)
+            DatabaseContainer.instance.progressDb.progressDao().deleteCustomPlanChapterStates(planId)
+        }
     }
 
     fun reorder(planIdsInOrder: List<String>) {

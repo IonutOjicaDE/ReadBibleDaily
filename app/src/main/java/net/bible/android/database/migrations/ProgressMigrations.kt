@@ -58,6 +58,22 @@ private val addMemorizeIncludeReference = makeMigration(6..7) { db ->
     db.execSQL("ALTER TABLE GlobalReadingProgressSettings ADD COLUMN memorizeIncludeReference INTEGER NOT NULL DEFAULT 0")
 }
 
+private val addCustomPlanChapterState = makeMigration(7..8) { db ->
+    db.execSQL("""
+        CREATE TABLE IF NOT EXISTS CustomPlanChapterState (
+            planId TEXT NOT NULL,
+            bookOrdinal INTEGER NOT NULL,
+            chapter INTEGER NOT NULL,
+            isRead INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL,
+            PRIMARY KEY(planId, bookOrdinal, chapter)
+        )
+    """)
+    db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_CustomPlanChapterState_planId_bookOrdinal_chapter ON CustomPlanChapterState(planId, bookOrdinal, chapter)")
+    db.execSQL("CREATE INDEX IF NOT EXISTS index_CustomPlanChapterState_planId_isRead ON CustomPlanChapterState(planId, isRead)")
+    db.execSQL("CREATE INDEX IF NOT EXISTS index_CustomPlanChapterState_planId_updatedAt ON CustomPlanChapterState(planId, updatedAt)")
+}
+
 private val addCustomReadingPlanProgress = makeMigration(3..4) { db ->
     db.execSQL("""
         CREATE TABLE IF NOT EXISTS ChapterReadCounter (
@@ -139,6 +155,7 @@ val progressMigrations: Array<Migration> = arrayOf(
     addActiveCycle,
     addScrambleHideUsed,
     addMemorizeIncludeReference,
+    addCustomPlanChapterState,
     addCustomReadingPlanProgress,
     addModuleIdentityToPlanProgress,
 )

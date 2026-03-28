@@ -18,23 +18,38 @@
 package net.bible.android.view.activity.readingplan
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.ViewGroup
 import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.checkbox.MaterialCheckBox
+import com.google.android.material.color.MaterialColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanSelectionPlaceholderActivityBinding
 import net.bible.android.activity.databinding.CustomReadingPlanTreeItemBinding
 import net.bible.android.view.activity.base.ActivityBase
+import net.bible.service.sword.SwordDocumentFacade
+import org.crosswire.jsword.book.basic.AbstractPassageBook
+import org.crosswire.jsword.versification.BibleBook
 
 private data class TreeRowRenderModel(
     val visibleNode: VisibleCustomReadingPlanTreeNode,
     val selectionState: CustomReadingPlanSelectionState,
     val isExpanded: Boolean,
+    val readState: ReadStateUiModel? = null,
+)
+
+private data class ReadStateUiModel(
+    val isRead: Boolean,
+    val isEnabled: Boolean,
 )
 
 private class TreeRowViewHolder(val binding: CustomReadingPlanTreeItemBinding) : RecyclerView.ViewHolder(binding.root)
@@ -47,6 +62,9 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private var expandedKeys: MutableSet<String> = mutableSetOf()
     private var pendingSelection: Set<String> = emptySet()
     private lateinit var initialSelection: CustomReadingPlanSelection
+    private var planId: String? = null
+    private var readKeys: Set<CanonicalChapterKey> = emptySet()
+    private var bookChapterKeysByNode: Map<String, List<CanonicalChapterKey>> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,10 +77,12 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         initialSelection = savedInstanceState?.getSerializable(STATE_INITIAL_SELECTION) as? CustomReadingPlanSelection
             ?: intent.getSerializableExtra(EXTRA_SELECTION) as? CustomReadingPlanSelection
             ?: CustomReadingPlanSelection()
+        planId = intent.getStringExtra(EXTRA_PLAN_ID)
         pendingSelection = savedInstanceState?.getStringArrayList(STATE_PENDING_SELECTION)?.toSet()
             ?: initialSelection.selectedNodeKeys
 
         treeNodes = CustomReadingPlanTreeFactory.build(this)
+        bookChapterKeysByNode = buildBookChapterKeysByNode(treeNodes)
         val validKeys = CustomReadingPlanTreeSelection.validNodeKeys(treeNodes)
         expandedKeys = CustomReadingPlanExpansionStateStore.loadAndPrune(validKeys).toMutableSet()
         pendingSelection = pendingSelection.intersect(validKeys)
@@ -71,6 +91,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         renderSummary()
         refreshVisibleRows()
         setupButtons()
+        loadReadState()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -95,6 +116,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         treeAdapter = CustomReadingPlanTreeAdapter(
             onExpandToggle = ::toggleExpanded,
             onSelectionToggle = ::toggleSelection,
+            onReadToggle = ::toggleRead,
         )
         binding.selectionTree.apply {
             layoutManager = LinearLayoutManager(this@CustomReadingPlanSelectionPlaceholderActivity)
@@ -110,10 +132,12 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private fun refreshVisibleRows() {
         visibleRows = CustomReadingPlanTreeSelection.flattenVisible(treeNodes, expandedKeys)
             .map { visibleNode ->
+                val selectionState = CustomReadingPlanTreeSelection.selectionState(visibleNode.node, pendingSelection)
                 TreeRowRenderModel(
                     visibleNode = visibleNode,
-                    selectionState = CustomReadingPlanTreeSelection.selectionState(visibleNode.node, pendingSelection),
+                    selectionState = selectionState,
                     isExpanded = visibleNode.node.key in expandedKeys,
+                    readState = visibleNode.node.toReadState(selectionState),
                 )
             }
         treeAdapter.submit(visibleRows)
@@ -145,6 +169,40 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         refreshVisibleRows()
     }
 
+    private fun toggleRead(node: CustomReadingPlanTreeNode, read: Boolean) {
+        val activePlanId = planId ?: return
+        val chapterKeys = bookChapterKeysByNode[node.key].orEmpty()
+        if (chapterKeys.isEmpty()) return
+        val bookOrdinal = chapterKeys.first().bookOrdinal
+
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                CustomPlanChapterStateService.markBookRead(
+                    planId = activePlanId,
+                    bookOrdinal = bookOrdinal,
+                    isRead = read,
+                )
+            }
+            loadReadState()
+        }
+    }
+
+    private fun loadReadState() {
+        val activePlanId = planId ?: run {
+            readKeys = emptySet()
+            refreshVisibleRows()
+            return
+        }
+
+        lifecycleScope.launch {
+            val chapterStates = withContext(Dispatchers.IO) {
+                CustomPlanChapterStateService.loadPlanChapterStates(activePlanId)
+            }
+            readKeys = chapterStates.filter { it.isRead }.map { it.key }.toSet()
+            refreshVisibleRows()
+        }
+    }
+
     private fun confirmSelection() {
         val selection = CustomReadingPlanSelection(pendingSelection)
         setResult(RESULT_OK, Intent().apply {
@@ -165,6 +223,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private inner class CustomReadingPlanTreeAdapter(
         private val onExpandToggle: (CustomReadingPlanTreeNode) -> Unit,
         private val onSelectionToggle: (CustomReadingPlanTreeNode, Boolean) -> Unit,
+        private val onReadToggle: (CustomReadingPlanTreeNode, Boolean) -> Unit,
     ) : RecyclerView.Adapter<TreeRowViewHolder>() {
         private val items = mutableListOf<TreeRowRenderModel>()
 
@@ -201,15 +260,72 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                     val shouldCheck = item.selectionState != CustomReadingPlanSelectionState.CHECKED
                     onSelectionToggle(node, shouldCheck)
                 }
+
+                readStateToggle.isVisible = item.readState != null
+                item.readState?.let { readState ->
+                    readStateToggle.setOnCheckedChangeListener(null)
+                    readStateToggle.isChecked = readState.isRead
+                    readStateToggle.isEnabled = readState.isEnabled
+                    readStateToggle.buttonTintList = readToggleTint()
+                    readStateToggle.setOnClickListener { onReadToggle(node, !readState.isRead) }
+                    label.alpha = if (readState.isRead) 0.55f else 1f
+                } ?: run {
+                    label.alpha = 1f
+                    readStateToggle.setOnClickListener(null)
+                }
+
                 root.setOnClickListener {
                     if (node.isExpandable) onExpandToggle(node) else onSelectionToggle(node, item.selectionState != CustomReadingPlanSelectionState.CHECKED)
                 }
             }
         }
+
+        private fun readToggleTint(): ColorStateList {
+            val checkedColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
+            val uncheckedColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOutline)
+            return ColorStateList(
+                arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                intArrayOf(checkedColor, uncheckedColor),
+            )
+        }
+    }
+
+    private fun CustomReadingPlanTreeNode.toReadState(selectionState: CustomReadingPlanSelectionState): ReadStateUiModel? {
+        if (type != CustomReadingPlanNodeType.BIBLE_BOOK) return null
+        val chapterKeys = bookChapterKeysByNode[key].orEmpty()
+        if (chapterKeys.isEmpty()) return null
+        val isRead = chapterKeys.all { it in readKeys }
+        return ReadStateUiModel(
+            isRead = isRead,
+            isEnabled = selectionState == CustomReadingPlanSelectionState.CHECKED && planId != null,
+        )
+    }
+
+    private fun buildBookChapterKeysByNode(nodes: List<CustomReadingPlanTreeNode>): Map<String, List<CanonicalChapterKey>> {
+        val allNodes = CustomReadingPlanTreeSelection
+            .flattenVisible(nodes, CustomReadingPlanTreeSelection.validNodeKeys(nodes))
+            .map { it.node }
+
+        return allNodes
+            .asSequence()
+            .filter { it.type == CustomReadingPlanNodeType.BIBLE_BOOK }
+            .mapNotNull { node ->
+                val moduleInitials = node.key.split(':').getOrNull(1) ?: return@mapNotNull null
+                val bookName = node.key.split(':').lastOrNull() ?: return@mapNotNull null
+                val bibleBook = runCatching { BibleBook.valueOf(bookName) }.getOrNull() ?: return@mapNotNull null
+                val document = SwordDocumentFacade.getDocumentByInitials(moduleInitials) as? AbstractPassageBook ?: return@mapNotNull null
+                val chapterCount = document.versification.getLastChapter(bibleBook)
+                val chapterKeys = (1..chapterCount).map { chapter ->
+                    CanonicalChapterKey(bookOrdinal = bibleBook.ordinal, chapter = chapter)
+                }
+                node.key to chapterKeys
+            }
+            .toMap()
     }
 
     companion object {
         const val EXTRA_PLAN_TITLE = "plan_title"
+        const val EXTRA_PLAN_ID = "plan_id"
         const val EXTRA_SELECTION_SUMMARY = "selection_summary"
         const val EXTRA_SELECTION = "selection"
         const val EXTRA_RESULT_SELECTION = "result_selection"

@@ -25,7 +25,7 @@ import net.bible.android.database.SyncConfiguration
 import net.bible.android.database.SyncStatus
 import net.bible.android.database.SyncableRoomDatabase
 
-const val PROGRESS_DATABASE_VERSION = 7
+const val PROGRESS_DATABASE_VERSION = 8
 
 @Database(
     entities = [
@@ -35,6 +35,7 @@ const val PROGRESS_DATABASE_VERSION = 7
         MemorizationTarget::class,
         WordCountIndexRecord::class,
         ReadingPlanChapterProgress::class,
+        CustomPlanChapterState::class,
         GlobalReadingProgressSettings::class,
         LogEntry::class,
         SyncConfiguration::class,

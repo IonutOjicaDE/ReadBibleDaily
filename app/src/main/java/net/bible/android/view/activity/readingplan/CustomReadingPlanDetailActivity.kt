@@ -35,6 +35,10 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanDetailActivityBinding
 import net.bible.android.control.event.ABEventBus
@@ -186,6 +190,7 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
 
         selectedBooksValue.setOnClickListener {
             selectionLauncher.launch(Intent(this@CustomReadingPlanDetailActivity, CustomReadingPlanSelectionPlaceholderActivity::class.java).apply {
+                putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_PLAN_ID, draftPlan.id)
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_PLAN_TITLE, draftPlan.title)
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_SELECTION_SUMMARY, draftPlan.selectionSummary)
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_SELECTION, draftPlan.selection)
@@ -287,12 +292,19 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
             return
         }
 
-        CustomReadingPlanInMemoryRepository.upsert(draftPlan)
-        setResult(RESULT_OK, Intent().apply {
-            putExtra(EXTRA_RESULT_ACTION, RESULT_ACTION_SAVED)
-            putExtra(EXTRA_RESULT_PLAN_ID, draftPlan.id)
-        })
-        finish()
+        binding.confirmButton.isEnabled = false
+        val treeNodes = CustomReadingPlanTreeFactory.build(this)
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                CustomReadingPlanInMemoryRepository.upsert(draftPlan)
+                CustomPlanChapterStateService.reconcileFromConfirmedSelection(draftPlan, treeNodes)
+            }
+            setResult(RESULT_OK, Intent().apply {
+                putExtra(EXTRA_RESULT_ACTION, RESULT_ACTION_SAVED)
+                putExtra(EXTRA_RESULT_PLAN_ID, draftPlan.id)
+            })
+            finish()
+        }
     }
 
     private fun cancelEditing() {

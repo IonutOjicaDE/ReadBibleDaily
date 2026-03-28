@@ -21,6 +21,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import net.bible.android.database.IdType
 
 data class DailyReadingCount(
@@ -34,6 +35,11 @@ data class ReadCountAggregate(
 
 data class ChapterReadCountResult(
     val readCount: Int,
+)
+
+data class PlanChapterReadSummary(
+    val totalChapters: Int,
+    val readChapters: Int,
 )
 
 @Dao
@@ -167,6 +173,145 @@ interface ProgressDao {
 
     @Query("SELECT * FROM ReadingPlanChapterProgress WHERE planId = :planId")
     fun loadReadingPlanChapterProgressForPlan(planId: String): List<ReadingPlanChapterProgress>
+
+    // Custom plan canonical chapter checklist
+    @Query("SELECT * FROM CustomPlanChapterState WHERE planId = :planId ORDER BY bookOrdinal ASC, chapter ASC")
+    fun loadCustomPlanChapterStates(planId: String): List<CustomPlanChapterState>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertCustomPlanChapterStates(states: List<CustomPlanChapterState>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertCustomPlanChapterState(state: CustomPlanChapterState)
+
+    @Query("DELETE FROM CustomPlanChapterState WHERE planId = :planId")
+    fun deleteCustomPlanChapterStates(planId: String)
+
+    @Query("""
+        UPDATE CustomPlanChapterState
+        SET isRead = :isRead, updatedAt = :updatedAt
+        WHERE planId = :planId AND bookOrdinal = :bookOrdinal AND chapter = :chapter
+    """)
+    fun markCustomPlanChapterRead(
+        planId: String,
+        bookOrdinal: Int,
+        chapter: Int,
+        isRead: Boolean,
+        updatedAt: Long,
+    ): Int
+
+    @Query("""
+        UPDATE CustomPlanChapterState
+        SET isRead = :isRead, updatedAt = :updatedAt
+        WHERE planId = :planId AND bookOrdinal = :bookOrdinal
+    """)
+    fun markCustomPlanBookRead(
+        planId: String,
+        bookOrdinal: Int,
+        isRead: Boolean,
+        updatedAt: Long,
+    ): Int
+
+    @Query("""
+        SELECT
+            COUNT(*) AS totalChapters,
+            COALESCE(SUM(CASE WHEN isRead = 1 THEN 1 ELSE 0 END), 0) AS readChapters
+        FROM CustomPlanChapterState
+        WHERE planId = :planId
+    """)
+    fun getCustomPlanChapterReadSummary(planId: String): PlanChapterReadSummary
+
+    @Query("""
+        SELECT * FROM CustomPlanChapterState
+        WHERE planId = :planId AND isRead = 0
+        ORDER BY bookOrdinal ASC, chapter ASC
+        LIMIT 1
+    """)
+    fun getFirstUnreadCustomPlanChapterState(planId: String): CustomPlanChapterState?
+
+    @Query("""
+        SELECT * FROM CustomPlanChapterState
+        WHERE planId = :planId AND bookOrdinal = :bookOrdinal AND chapter = :chapter
+        LIMIT 1
+    """)
+    fun getCustomPlanChapterState(planId: String, bookOrdinal: Int, chapter: Int): CustomPlanChapterState?
+
+    @Query("UPDATE CustomPlanChapterState SET isRead = 0, updatedAt = :updatedAt WHERE planId = :planId")
+    fun resetCustomPlanChapterStatesUnread(planId: String, updatedAt: Long)
+
+    @Transaction
+    fun replaceCustomPlanChapterStates(planId: String, states: List<CustomPlanChapterState>) {
+        deleteCustomPlanChapterStates(planId)
+        if (states.isNotEmpty()) {
+            upsertCustomPlanChapterStates(states)
+        }
+    }
+
+    @Transaction
+    fun updateCustomPlanChapterReadAndResetIfNeeded(
+        planId: String,
+        bookOrdinal: Int,
+        chapter: Int,
+        isRead: Boolean,
+        updatedAt: Long = System.currentTimeMillis(),
+    ): Boolean {
+        val updatedRows = markCustomPlanChapterRead(planId, bookOrdinal, chapter, isRead, updatedAt)
+        if (updatedRows == 0) {
+            upsertCustomPlanChapterState(
+                CustomPlanChapterState(
+                    planId = planId,
+                    bookOrdinal = bookOrdinal,
+                    chapter = chapter,
+                    isRead = isRead,
+                    updatedAt = updatedAt,
+                )
+            )
+        }
+        val summary = getCustomPlanChapterReadSummary(planId)
+        val shouldReset = summary.totalChapters > 0 && summary.totalChapters == summary.readChapters
+        if (shouldReset) {
+            resetCustomPlanChapterStatesUnread(planId, updatedAt)
+        }
+        return shouldReset
+    }
+
+    @Transaction
+    fun toggleCustomPlanChapterReadAndResetIfNeeded(
+        planId: String,
+        bookOrdinal: Int,
+        chapter: Int,
+        updatedAt: Long = System.currentTimeMillis(),
+    ): Boolean {
+        val current = getCustomPlanChapterState(planId, bookOrdinal, chapter)
+        return updateCustomPlanChapterReadAndResetIfNeeded(
+            planId = planId,
+            bookOrdinal = bookOrdinal,
+            chapter = chapter,
+            isRead = !(current?.isRead ?: false),
+            updatedAt = updatedAt,
+        )
+    }
+
+    @Transaction
+    fun updateCustomPlanBookReadAndResetIfNeeded(
+        planId: String,
+        bookOrdinal: Int,
+        isRead: Boolean,
+        updatedAt: Long = System.currentTimeMillis(),
+    ): Boolean {
+        markCustomPlanBookRead(
+            planId = planId,
+            bookOrdinal = bookOrdinal,
+            isRead = isRead,
+            updatedAt = updatedAt,
+        )
+        val summary = getCustomPlanChapterReadSummary(planId)
+        val shouldReset = summary.totalChapters > 0 && summary.totalChapters == summary.readChapters
+        if (shouldReset) {
+            resetCustomPlanChapterStatesUnread(planId, updatedAt)
+        }
+        return shouldReset
+    }
 }
 
 @Dao
