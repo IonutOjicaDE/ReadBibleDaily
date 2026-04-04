@@ -36,6 +36,17 @@
             android:minWidth="40dp"
             android:minHeight="40dp" />
 
+        <ImageButton
+            android:id="@+id/partialIndicator"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/custom_reading_plan_partial_selection"
+            android:padding="8dp"
+            android:src="@drawable/ic_baseline_minimise_24"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/label"
             android:layout_width="0dp"

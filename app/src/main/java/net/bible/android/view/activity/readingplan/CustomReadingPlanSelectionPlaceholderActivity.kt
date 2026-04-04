@@ -445,6 +445,9 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                     node.type == CustomReadingPlanNodeType.BIBLE_SUBSECTION ||
                     node.type == CustomReadingPlanNodeType.BIBLE_TESTAMENT
                 menuButton.setOnClickListener { onNodeMenuClick(it, item) }
+                val showPartialIndicator = item.selectionState == CustomReadingPlanSelectionState.PARTIAL
+                checkbox.isVisible = !showPartialIndicator
+                partialIndicator.isVisible = showPartialIndicator
                 checkbox.setOnCheckedChangeListener(null)
                 checkbox.checkedState = when (item.selectionState) {
                     CustomReadingPlanSelectionState.CHECKED -> MaterialCheckBox.STATE_CHECKED
@@ -454,6 +457,9 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                 checkbox.setOnClickListener {
                     val shouldCheck = item.selectionState != CustomReadingPlanSelectionState.CHECKED
                     onSelectionToggle(node, shouldCheck)
+                }
+                partialIndicator.setOnClickListener {
+                    onSelectionToggle(node, true)
                 }
                 root.setOnClickListener {
                     if (node.isExpandable) onExpandToggle(node) else onSelectionToggle(node, item.selectionState != CustomReadingPlanSelectionState.CHECKED)

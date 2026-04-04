@@ -1991,6 +1991,7 @@
     <string name="custom_reading_plan_duration_months_days">%1$d months and %2$d days</string>
     <string name="custom_reading_plan_selection_empty">No installed Bible modules are available yet for Custom Reading Plans.</string>
     <string name="custom_reading_plan_toggle_expand">Expand or collapse section</string>
+    <string name="custom_reading_plan_partial_selection">Partially selected</string>
     <string name="custom_reading_plan_menu_include_book">Include book in selection</string>
     <string name="custom_reading_plan_menu_exclude_book">Exclude book from selection</string>
     <string name="custom_reading_plan_menu_mark_read">Mark as read</string>
