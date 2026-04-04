@@ -64,7 +64,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private lateinit var initialSelection: CustomReadingPlanSelection
     private var planId: String? = null
     private var readKeys: Set<CanonicalChapterKey> = emptySet()
-    private var bookChapterKeysByNode: Map<String, List<CanonicalChapterKey>> = emptyMap()
+    private var nodeChapterKeysByNode: Map<String, List<CanonicalChapterKey>> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,7 +82,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             ?: initialSelection.selectedNodeKeys
 
         treeNodes = CustomReadingPlanTreeFactory.build(this)
-        bookChapterKeysByNode = buildBookChapterKeysByNode(treeNodes)
+        nodeChapterKeysByNode = buildNodeChapterKeysByNode(treeNodes)
         val validKeys = CustomReadingPlanTreeSelection.validNodeKeys(treeNodes)
         expandedKeys = CustomReadingPlanExpansionStateStore.loadAndPrune(validKeys).toMutableSet()
         pendingSelection = pendingSelection.intersect(validKeys)
@@ -171,17 +171,21 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
 
     private fun toggleRead(node: CustomReadingPlanTreeNode, read: Boolean) {
         val activePlanId = planId ?: return
-        val chapterKeys = bookChapterKeysByNode[node.key].orEmpty()
+        val chapterKeys = nodeChapterKeysByNode[node.key].orEmpty()
         if (chapterKeys.isEmpty()) return
-        val bookOrdinal = chapterKeys.first().bookOrdinal
 
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                CustomPlanChapterStateService.markBookRead(
-                    planId = activePlanId,
-                    bookOrdinal = bookOrdinal,
-                    isRead = read,
-                )
+                chapterKeys
+                    .map { it.bookOrdinal }
+                    .distinct()
+                    .forEach { bookOrdinal ->
+                        CustomPlanChapterStateService.markBookRead(
+                            planId = activePlanId,
+                            bookOrdinal = bookOrdinal,
+                            isRead = read,
+                        )
+                    }
             }
             loadReadState()
         }
@@ -281,8 +285,8 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         }
 
         private fun readToggleTint(): ColorStateList {
-            val checkedColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
-            val uncheckedColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOutline)
+            val checkedColor = MaterialColors.getColor(root, com.google.android.material.R.attr.colorPrimary, 0xFF2E7D32.toInt())
+            val uncheckedColor = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurfaceVariant, 0xFF757575.toInt())
             return ColorStateList(
                 arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
                 intArrayOf(checkedColor, uncheckedColor),
@@ -291,36 +295,42 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     }
 
     private fun CustomReadingPlanTreeNode.toReadState(selectionState: CustomReadingPlanSelectionState): ReadStateUiModel? {
-        if (type != CustomReadingPlanNodeType.BIBLE_BOOK) return null
-        val chapterKeys = bookChapterKeysByNode[key].orEmpty()
+        val chapterKeys = nodeChapterKeysByNode[key].orEmpty()
         if (chapterKeys.isEmpty()) return null
         val isRead = chapterKeys.all { it in readKeys }
         return ReadStateUiModel(
             isRead = isRead,
-            isEnabled = selectionState == CustomReadingPlanSelectionState.CHECKED && planId != null,
+            isEnabled = selectionState != CustomReadingPlanSelectionState.UNCHECKED && planId != null,
         )
     }
 
-    private fun buildBookChapterKeysByNode(nodes: List<CustomReadingPlanTreeNode>): Map<String, List<CanonicalChapterKey>> {
-        val allNodes = CustomReadingPlanTreeSelection
-            .flattenVisible(nodes, CustomReadingPlanTreeSelection.validNodeKeys(nodes))
-            .map { it.node }
+    private fun buildNodeChapterKeysByNode(nodes: List<CustomReadingPlanTreeNode>): Map<String, List<CanonicalChapterKey>> {
+        val map = mutableMapOf<String, List<CanonicalChapterKey>>()
 
-        return allNodes
-            .asSequence()
-            .filter { it.type == CustomReadingPlanNodeType.BIBLE_BOOK }
-            .mapNotNull { node ->
-                val moduleInitials = node.key.split(':').getOrNull(1) ?: return@mapNotNull null
-                val bookName = node.key.split(':').lastOrNull() ?: return@mapNotNull null
-                val bibleBook = runCatching { BibleBook.valueOf(bookName) }.getOrNull() ?: return@mapNotNull null
-                val document = SwordDocumentFacade.getDocumentByInitials(moduleInitials) as? AbstractPassageBook ?: return@mapNotNull null
-                val chapterCount = document.versification.getLastChapter(bibleBook)
-                val chapterKeys = (1..chapterCount).map { chapter ->
-                    CanonicalChapterKey(bookOrdinal = bibleBook.ordinal, chapter = chapter)
+        fun visit(node: CustomReadingPlanTreeNode): List<CanonicalChapterKey> {
+            val keys = if (node.type == CustomReadingPlanNodeType.BIBLE_BOOK) {
+                val moduleInitials = node.key.split(':').getOrNull(1)
+                val bookName = node.key.split(':').lastOrNull()
+                val bibleBook = runCatching { BibleBook.valueOf(bookName.orEmpty()) }.getOrNull()
+                val document = moduleInitials?.let { SwordDocumentFacade.getDocumentByInitials(it) as? AbstractPassageBook }
+                if (bibleBook == null || document == null) {
+                    emptyList()
+                } else {
+                    val chapterCount = document.versification.getLastChapter(bibleBook)
+                    (1..chapterCount).map { chapter ->
+                        CanonicalChapterKey(bookOrdinal = bibleBook.ordinal, chapter = chapter)
+                    }
                 }
-                node.key to chapterKeys
-            }
-            .toMap()
+            } else {
+                node.children.flatMap { child -> visit(child) }
+            }.distinct().sortedWith(compareBy({ it.bookOrdinal }, { it.chapter }))
+
+            map[node.key] = keys
+            return keys
+        }
+
+        nodes.forEach { visit(it) }
+        return map
     }
 
     companion object {
