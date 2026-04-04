@@ -56,6 +56,8 @@ private enum class AggregateState {
     EMPTY,
 }
 
+private const val PARTIAL_CHECKBOX_ALPHA = 0.55f
+
 private class TreeRowViewHolder(val binding: CustomReadingPlanTreeItemBinding) : RecyclerView.ViewHolder(binding.root)
 
 class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
@@ -445,21 +447,20 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                     node.type == CustomReadingPlanNodeType.BIBLE_SUBSECTION ||
                     node.type == CustomReadingPlanNodeType.BIBLE_TESTAMENT
                 menuButton.setOnClickListener { onNodeMenuClick(it, item) }
-                val showPartialIndicator = item.selectionState == CustomReadingPlanSelectionState.PARTIAL
-                checkbox.isVisible = !showPartialIndicator
-                partialIndicator.isVisible = showPartialIndicator
                 checkbox.setOnCheckedChangeListener(null)
                 checkbox.checkedState = when (item.selectionState) {
                     CustomReadingPlanSelectionState.CHECKED -> MaterialCheckBox.STATE_CHECKED
-                    CustomReadingPlanSelectionState.PARTIAL -> MaterialCheckBox.STATE_INDETERMINATE
+                    CustomReadingPlanSelectionState.PARTIAL -> MaterialCheckBox.STATE_CHECKED
                     CustomReadingPlanSelectionState.UNCHECKED -> MaterialCheckBox.STATE_UNCHECKED
+                }
+                checkbox.alpha = if (item.selectionState == CustomReadingPlanSelectionState.PARTIAL) {
+                    PARTIAL_CHECKBOX_ALPHA
+                } else {
+                    1.0f
                 }
                 checkbox.setOnClickListener {
                     val shouldCheck = item.selectionState != CustomReadingPlanSelectionState.CHECKED
                     onSelectionToggle(node, shouldCheck)
-                }
-                partialIndicator.setOnClickListener {
-                    onSelectionToggle(node, true)
                 }
                 root.setOnClickListener {
                     if (node.isExpandable) onExpandToggle(node) else onSelectionToggle(node, item.selectionState != CustomReadingPlanSelectionState.CHECKED)
