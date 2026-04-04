@@ -132,6 +132,7 @@ enum class SyncableDatabaseDefinition {
             Table(tableName = "ChapterReadCounter"),
             Table(tableName = "WordCountIndexRecord"),
             Table(tableName = "ReadingPlanChapterProgress"),
+            Table(tableName = "CustomPlanChapterState"),
         )
     }
 

@@ -131,6 +131,20 @@ data class ReadingPlanChapterProgress(
     val updatedAt: Long = System.currentTimeMillis(),
 )
 
+@Entity(
+    primaryKeys = ["planId", "bookId", "chapter"],
+    indices = [
+        Index(value = ["planId", "updatedAt"]),
+    ]
+)
+data class CustomPlanChapterState(
+    val planId: String,
+    val bookId: Int,
+    val chapter: Int,
+    val isRead: Boolean = false,
+    val updatedAt: Long = System.currentTimeMillis(),
+)
+
 @Entity
 data class GlobalReadingProgressSettings(
     @PrimaryKey val id: IdType = SINGLETON_ID,
