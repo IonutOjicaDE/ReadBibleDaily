@@ -49,6 +49,13 @@ private data class TreeRowRenderModel(
     val isExpanded: Boolean,
 )
 
+private enum class AggregateState {
+    ALL_ON,
+    ALL_OFF,
+    PARTIAL,
+    EMPTY,
+}
+
 private class TreeRowViewHolder(val binding: CustomReadingPlanTreeItemBinding) : RecyclerView.ViewHolder(binding.root)
 
 class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
@@ -63,6 +70,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private lateinit var initialSelection: CustomReadingPlanSelection
     private lateinit var planId: String
     private var chapterKeysByNodeKey: Map<String, List<Pair<Int, Int>>> = emptyMap()
+    private var bookNodeKeysByNodeKey: Map<String, List<String>> = emptyMap()
     private var bookReadStateByNodeKey: Map<String, Boolean> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -129,7 +137,9 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             }
             treeNodes = loadedNodes
             treeIndex = CustomReadingPlanTreeSelection.buildIndex(treeNodes)
-            chapterKeysByNodeKey = withContext(Dispatchers.Default) { buildChapterKeysByNode(treeNodes, treeIndex) }
+            val chapterCache = withContext(Dispatchers.Default) { buildNodeChapterCache(treeNodes, treeIndex) }
+            chapterKeysByNodeKey = chapterCache.chapterKeysByNodeKey
+            bookNodeKeysByNodeKey = chapterCache.bookNodeKeysByNodeKey
             expandedKeys = CustomReadingPlanExpansionStateStore.loadAndPrune(treeIndex.validKeys).toMutableSet()
             pendingSelection = pendingSelection.intersect(treeIndex.validKeys)
             refreshReadStateCache()
@@ -215,10 +225,48 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             CustomReadingPlanNodeType.BIBLE_SUBSECTION,
             CustomReadingPlanNodeType.BIBLE_TESTAMENT,
             -> {
-                popupMenu.menu.add(Menu.NONE, MENU_INCLUDE_SECTION, Menu.NONE, getString(R.string.custom_reading_plan_menu_include_books))
-                popupMenu.menu.add(Menu.NONE, MENU_EXCLUDE_SECTION, Menu.NONE, getString(R.string.custom_reading_plan_menu_exclude_books))
-                popupMenu.menu.add(Menu.NONE, MENU_MARK_ALL_READ, Menu.NONE, getString(R.string.custom_reading_plan_menu_mark_all_read))
-                popupMenu.menu.add(Menu.NONE, MENU_MARK_ALL_UNREAD, Menu.NONE, getString(R.string.custom_reading_plan_menu_mark_all_unread))
+                val includeItem = popupMenu.menu.add(Menu.NONE, MENU_INCLUDE_SECTION, Menu.NONE, getString(R.string.custom_reading_plan_menu_include_books))
+                val excludeItem = popupMenu.menu.add(Menu.NONE, MENU_EXCLUDE_SECTION, Menu.NONE, getString(R.string.custom_reading_plan_menu_exclude_books))
+                val markReadItem = popupMenu.menu.add(Menu.NONE, MENU_MARK_ALL_READ, Menu.NONE, getString(R.string.custom_reading_plan_menu_mark_all_read))
+                val markUnreadItem = popupMenu.menu.add(Menu.NONE, MENU_MARK_ALL_UNREAD, Menu.NONE, getString(R.string.custom_reading_plan_menu_mark_all_unread))
+
+                when (selectionAggregateState(node)) {
+                    AggregateState.ALL_ON -> {
+                        includeItem.isEnabled = false
+                        excludeItem.isEnabled = true
+                    }
+                    AggregateState.ALL_OFF -> {
+                        includeItem.isEnabled = true
+                        excludeItem.isEnabled = false
+                    }
+                    AggregateState.PARTIAL -> {
+                        includeItem.isEnabled = true
+                        excludeItem.isEnabled = true
+                    }
+                    AggregateState.EMPTY -> {
+                        includeItem.isEnabled = false
+                        excludeItem.isEnabled = false
+                    }
+                }
+
+                when (readAggregateState(node)) {
+                    AggregateState.ALL_ON -> {
+                        markReadItem.isEnabled = false
+                        markUnreadItem.isEnabled = true
+                    }
+                    AggregateState.ALL_OFF -> {
+                        markReadItem.isEnabled = true
+                        markUnreadItem.isEnabled = false
+                    }
+                    AggregateState.PARTIAL -> {
+                        markReadItem.isEnabled = true
+                        markUnreadItem.isEnabled = true
+                    }
+                    AggregateState.EMPTY -> {
+                        markReadItem.isEnabled = false
+                        markUnreadItem.isEnabled = false
+                    }
+                }
             }
             else -> Unit
         }
@@ -285,10 +333,34 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             }
     }
 
-    private fun buildChapterKeysByNode(
+    private fun selectionAggregateState(node: CustomReadingPlanTreeNode): AggregateState {
+        return when (CustomReadingPlanTreeSelection.selectionState(node, pendingSelection, treeIndex)) {
+            CustomReadingPlanSelectionState.CHECKED -> AggregateState.ALL_ON
+            CustomReadingPlanSelectionState.UNCHECKED -> AggregateState.ALL_OFF
+            CustomReadingPlanSelectionState.PARTIAL -> AggregateState.PARTIAL
+        }
+    }
+
+    private fun readAggregateState(node: CustomReadingPlanTreeNode): AggregateState {
+        val includedBookKeys = bookNodeKeysByNodeKey[node.key].orEmpty()
+        if (includedBookKeys.isEmpty()) return AggregateState.EMPTY
+        val readCount = includedBookKeys.count { bookReadStateByNodeKey[it] == true }
+        return when {
+            readCount == 0 -> AggregateState.ALL_OFF
+            readCount == includedBookKeys.size -> AggregateState.ALL_ON
+            else -> AggregateState.PARTIAL
+        }
+    }
+
+    private data class NodeChapterCache(
+        val chapterKeysByNodeKey: Map<String, List<Pair<Int, Int>>>,
+        val bookNodeKeysByNodeKey: Map<String, List<String>>,
+    )
+
+    private fun buildNodeChapterCache(
         nodes: List<CustomReadingPlanTreeNode>,
         index: CustomReadingPlanTreeIndex,
-    ): Map<String, List<Pair<Int, Int>>> {
+    ): NodeChapterCache {
         val nodesByKey = CustomReadingPlanTreeSelection
             .flattenVisible(nodes, index.validKeys)
             .map { it.node }
@@ -303,7 +375,15 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             return (1..document.versification.getLastChapter(bibleBook)).map { chapter -> bibleBook.ordinal to chapter }
         }
 
-        return nodesByKey.mapValues { (key, _) ->
+        val bookNodeKeysByNode = nodesByKey.mapValues { (key, _) ->
+            val subtreeKeys = setOf(key) + index.descendantKeysByNode[key].orEmpty()
+            subtreeKeys
+                .mapNotNull { nodesByKey[it] }
+                .filter { it.type == CustomReadingPlanNodeType.BIBLE_BOOK }
+                .map { it.key }
+        }
+
+        val chapterKeysByNode = nodesByKey.mapValues { (key, _) ->
             val subtreeKeys = setOf(key) + index.descendantKeysByNode[key].orEmpty()
             subtreeKeys
                 .mapNotNull { nodesByKey[it] }
@@ -312,6 +392,11 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                 .distinct()
                 .sortedWith(compareBy<Pair<Int, Int>> { it.first }.thenBy { it.second })
         }
+
+        return NodeChapterCache(
+            chapterKeysByNodeKey = chapterKeysByNode,
+            bookNodeKeysByNodeKey = bookNodeKeysByNode,
+        )
     }
 
     private fun confirmSelection() {
