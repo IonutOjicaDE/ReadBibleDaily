@@ -188,6 +188,7 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
 
         selectedBooksValue.setOnClickListener {
             selectionLauncher.launch(Intent(this@CustomReadingPlanDetailActivity, CustomReadingPlanSelectionPlaceholderActivity::class.java).apply {
+                putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_PLAN_ID, draftPlan.id)
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_PLAN_TITLE, draftPlan.title)
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_SELECTION_SUMMARY, draftPlan.selectionSummary)
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_SELECTION, draftPlan.selection)

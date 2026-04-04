@@ -43,5 +43,14 @@
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:textAppearance="?android:attr/textAppearanceMedium" />
+
+        <ImageButton
+            android:id="@+id/menuButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/menu"
+            android:padding="8dp"
+            android:src="@drawable/ic_more_vert_black_24dp" />
     </LinearLayout>
 </LinearLayout>

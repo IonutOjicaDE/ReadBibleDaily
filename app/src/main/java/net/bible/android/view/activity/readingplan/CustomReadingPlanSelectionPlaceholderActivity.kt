@@ -20,8 +20,11 @@ package net.bible.android.view.activity.readingplan
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DiffUtil
@@ -36,6 +39,9 @@ import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanSelectionPlaceholderActivityBinding
 import net.bible.android.activity.databinding.CustomReadingPlanTreeItemBinding
 import net.bible.android.view.activity.base.ActivityBase
+import net.bible.service.sword.SwordDocumentFacade
+import org.crosswire.jsword.book.basic.AbstractPassageBook
+import org.crosswire.jsword.versification.BibleBook
 
 private data class TreeRowRenderModel(
     val visibleNode: VisibleCustomReadingPlanTreeNode,
@@ -55,6 +61,9 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private var treeLoading = false
     private lateinit var treeIndex: CustomReadingPlanTreeIndex
     private lateinit var initialSelection: CustomReadingPlanSelection
+    private lateinit var planId: String
+    private var chapterKeysByNodeKey: Map<String, List<Pair<Int, Int>>> = emptyMap()
+    private var bookReadStateByNodeKey: Map<String, Boolean> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,6 +76,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         initialSelection = savedInstanceState?.getSerializable(STATE_INITIAL_SELECTION) as? CustomReadingPlanSelection
             ?: intent.getSerializableExtra(EXTRA_SELECTION) as? CustomReadingPlanSelection
             ?: CustomReadingPlanSelection()
+        planId = intent.getStringExtra(EXTRA_PLAN_ID).orEmpty()
         pendingSelection = savedInstanceState?.getStringArrayList(STATE_PENDING_SELECTION)?.toSet()
             ?: initialSelection.selectedNodeKeys
 
@@ -98,6 +108,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         treeAdapter = CustomReadingPlanTreeAdapter(
             onExpandToggle = ::toggleExpanded,
             onSelectionToggle = ::toggleSelection,
+            onNodeMenuClick = ::showNodeMenu,
         )
         binding.selectionTree.apply {
             layoutManager = LinearLayoutManager(this@CustomReadingPlanSelectionPlaceholderActivity)
@@ -118,8 +129,10 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             }
             treeNodes = loadedNodes
             treeIndex = CustomReadingPlanTreeSelection.buildIndex(treeNodes)
+            chapterKeysByNodeKey = withContext(Dispatchers.Default) { buildChapterKeysByNode(treeNodes, treeIndex) }
             expandedKeys = CustomReadingPlanExpansionStateStore.loadAndPrune(treeIndex.validKeys).toMutableSet()
             pendingSelection = pendingSelection.intersect(treeIndex.validKeys)
+            refreshReadStateCache()
             updateLoadingState(false)
             refreshVisibleRows()
         }
@@ -174,6 +187,133 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         refreshVisibleRows()
     }
 
+    private fun showNodeMenu(anchor: View, row: TreeRowRenderModel) {
+        val node = row.visibleNode.node
+        if (node.type != CustomReadingPlanNodeType.BIBLE_BOOK && node.type != CustomReadingPlanNodeType.BIBLE_SUBSECTION && node.type != CustomReadingPlanNodeType.BIBLE_TESTAMENT) {
+            return
+        }
+
+        val popupMenu = PopupMenu(this, anchor)
+        val isChecked = row.selectionState == CustomReadingPlanSelectionState.CHECKED
+
+        when (node.type) {
+            CustomReadingPlanNodeType.BIBLE_BOOK -> {
+                popupMenu.menu.add(
+                    Menu.NONE,
+                    MENU_INCLUDE_EXCLUDE,
+                    Menu.NONE,
+                    if (isChecked) getString(R.string.custom_reading_plan_menu_exclude_book) else getString(R.string.custom_reading_plan_menu_include_book),
+                )
+                val isFullyRead = bookReadStateByNodeKey[node.key] == true
+                popupMenu.menu.add(
+                    Menu.NONE,
+                    MENU_MARK_SINGLE_BOOK,
+                    Menu.NONE,
+                    if (isFullyRead) getString(R.string.custom_reading_plan_menu_mark_unread) else getString(R.string.custom_reading_plan_menu_mark_read),
+                )
+            }
+            CustomReadingPlanNodeType.BIBLE_SUBSECTION,
+            CustomReadingPlanNodeType.BIBLE_TESTAMENT,
+            -> {
+                popupMenu.menu.add(Menu.NONE, MENU_INCLUDE_SECTION, Menu.NONE, getString(R.string.custom_reading_plan_menu_include_books))
+                popupMenu.menu.add(Menu.NONE, MENU_EXCLUDE_SECTION, Menu.NONE, getString(R.string.custom_reading_plan_menu_exclude_books))
+                popupMenu.menu.add(Menu.NONE, MENU_MARK_ALL_READ, Menu.NONE, getString(R.string.custom_reading_plan_menu_mark_all_read))
+                popupMenu.menu.add(Menu.NONE, MENU_MARK_ALL_UNREAD, Menu.NONE, getString(R.string.custom_reading_plan_menu_mark_all_unread))
+            }
+            else -> Unit
+        }
+
+        popupMenu.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                MENU_INCLUDE_EXCLUDE -> {
+                    toggleSelection(node, !isChecked)
+                    true
+                }
+                MENU_MARK_SINGLE_BOOK -> {
+                    lifecycleScope.launch {
+                        val isFullyRead = bookReadStateByNodeKey[node.key] == true
+                        markNodeChapters(node, !isFullyRead)
+                    }
+                    true
+                }
+                MENU_INCLUDE_SECTION -> {
+                    toggleSelection(node, true)
+                    true
+                }
+                MENU_EXCLUDE_SECTION -> {
+                    toggleSelection(node, false)
+                    true
+                }
+                MENU_MARK_ALL_READ -> {
+                    lifecycleScope.launch { markNodeChapters(node, true) }
+                    true
+                }
+                MENU_MARK_ALL_UNREAD -> {
+                    lifecycleScope.launch { markNodeChapters(node, false) }
+                    true
+                }
+                else -> false
+            }
+        }
+        popupMenu.show()
+    }
+
+    private suspend fun markNodeChapters(node: CustomReadingPlanTreeNode, isRead: Boolean) {
+        if (planId.isBlank()) return
+        val chapterKeys = chapterKeysByNodeKey[node.key].orEmpty()
+        if (chapterKeys.isEmpty()) return
+        CustomReadingPlanChapterStateService.setChaptersRead(planId, chapterKeys, isRead)
+        refreshReadStateCache()
+        refreshVisibleRows()
+    }
+
+    private suspend fun refreshReadStateCache() {
+        if (planId.isBlank()) {
+            bookReadStateByNodeKey = emptyMap()
+            return
+        }
+
+        val statesByBookId = CustomReadingPlanChapterStateService.loadPlanChapterStates(planId)
+            .groupBy { it.bookId }
+
+        bookReadStateByNodeKey = chapterKeysByNodeKey
+            .filterKeys { it.contains(":book:") }
+            .mapValues { (_, chapterKeys) ->
+                val bookId = chapterKeys.firstOrNull()?.first ?: return@mapValues false
+                val chaptersById = statesByBookId[bookId].orEmpty().associateBy { it.chapter }
+                chapterKeys.isNotEmpty() && chapterKeys.all { (_, chapter) -> chaptersById[chapter]?.isRead == true }
+            }
+    }
+
+    private fun buildChapterKeysByNode(
+        nodes: List<CustomReadingPlanTreeNode>,
+        index: CustomReadingPlanTreeIndex,
+    ): Map<String, List<Pair<Int, Int>>> {
+        val nodesByKey = CustomReadingPlanTreeSelection
+            .flattenVisible(nodes, index.validKeys)
+            .map { it.node }
+            .associateBy { it.key }
+
+        fun chapterKeysForBook(node: CustomReadingPlanTreeNode): List<Pair<Int, Int>> {
+            val parts = node.key.split(':')
+            val moduleInitials = parts.getOrNull(1) ?: return emptyList()
+            val bookName = parts.lastOrNull() ?: return emptyList()
+            val bibleBook = runCatching { BibleBook.valueOf(bookName) }.getOrNull() ?: return emptyList()
+            val document = SwordDocumentFacade.getDocumentByInitials(moduleInitials) as? AbstractPassageBook ?: return emptyList()
+            return (1..document.versification.getLastChapter(bibleBook)).map { chapter -> bibleBook.ordinal to chapter }
+        }
+
+        return nodesByKey.mapValues { (key, _) ->
+            val subtreeKeys = setOf(key) + index.descendantKeysByNode[key].orEmpty()
+            subtreeKeys
+                .mapNotNull { nodesByKey[it] }
+                .filter { it.type == CustomReadingPlanNodeType.BIBLE_BOOK }
+                .flatMap(::chapterKeysForBook)
+                .distinct()
+                .sortedWith(compareBy<Pair<Int, Int>> { it.first }.thenBy { it.second })
+        }
+    }
+
     private fun confirmSelection() {
         val selection = CustomReadingPlanSelection(pendingSelection)
         setResult(RESULT_OK, Intent().apply {
@@ -194,6 +334,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private inner class CustomReadingPlanTreeAdapter(
         private val onExpandToggle: (CustomReadingPlanTreeNode) -> Unit,
         private val onSelectionToggle: (CustomReadingPlanTreeNode, Boolean) -> Unit,
+        private val onNodeMenuClick: (View, TreeRowRenderModel) -> Unit,
     ) : ListAdapter<TreeRowRenderModel, TreeRowViewHolder>(TreeRowDiffCallback) {
 
         fun submit(rows: List<TreeRowRenderModel>) {
@@ -215,6 +356,10 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                 expandButton.setImageResource(if (item.isExpanded) R.drawable.ic_expand_less_24 else R.drawable.ic_expand_more_24)
                 expandButton.setOnClickListener { onExpandToggle(node) }
                 label.text = node.label
+                menuButton.isVisible = node.type == CustomReadingPlanNodeType.BIBLE_BOOK ||
+                    node.type == CustomReadingPlanNodeType.BIBLE_SUBSECTION ||
+                    node.type == CustomReadingPlanNodeType.BIBLE_TESTAMENT
+                menuButton.setOnClickListener { onNodeMenuClick(it, item) }
                 checkbox.setOnCheckedChangeListener(null)
                 checkbox.checkedState = when (item.selectionState) {
                     CustomReadingPlanSelectionState.CHECKED -> MaterialCheckBox.STATE_CHECKED
@@ -234,12 +379,20 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
 
     companion object {
         const val EXTRA_PLAN_TITLE = "plan_title"
+        const val EXTRA_PLAN_ID = "plan_id"
         const val EXTRA_SELECTION_SUMMARY = "selection_summary"
         const val EXTRA_SELECTION = "selection"
         const val EXTRA_RESULT_SELECTION = "result_selection"
         const val EXTRA_RESULT_SELECTION_SUMMARY = "result_selection_summary"
         private const val STATE_INITIAL_SELECTION = "initial_selection"
         private const val STATE_PENDING_SELECTION = "pending_selection"
+
+        private const val MENU_INCLUDE_EXCLUDE = 1
+        private const val MENU_MARK_SINGLE_BOOK = 2
+        private const val MENU_INCLUDE_SECTION = 3
+        private const val MENU_EXCLUDE_SECTION = 4
+        private const val MENU_MARK_ALL_READ = 5
+        private const val MENU_MARK_ALL_UNREAD = 6
     }
 }
 

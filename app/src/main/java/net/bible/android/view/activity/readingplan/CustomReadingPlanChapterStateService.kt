@@ -86,6 +86,29 @@ object CustomReadingPlanChapterStateService {
         )
     }
 
+    /**
+     * Applies a single read flag to many chapters atomically for one custom plan.
+     *
+     * Existing rows are preserved and only the read flag/timestamp are updated. Missing rows are created so callers
+     * can bulk-mark directly from the tree without requiring a prior full reconcile pass.
+     */
+    suspend fun setChaptersRead(planId: String, chapters: Collection<Pair<Int, Int>>, isRead: Boolean) = withContext(Dispatchers.IO) {
+        if (chapters.isEmpty()) return@withContext
+        val existingByKey = dao.loadCustomPlanChapterStates(planId).associateBy { it.bookId to it.chapter }
+        val now = System.currentTimeMillis()
+        val updates = chapters
+            .distinct()
+            .map { (bookId, chapter) ->
+                val existing = existingByKey[bookId to chapter]
+                    ?: CustomPlanChapterState(planId = planId, bookId = bookId, chapter = chapter)
+                existing.copy(
+                    isRead = isRead,
+                    updatedAt = now,
+                )
+            }
+        dao.upsertCustomPlanChapterStates(updates)
+    }
+
     suspend fun countTotalChapters(planId: String): Int = withContext(Dispatchers.IO) {
         dao.countCustomPlanChapters(planId)
     }
