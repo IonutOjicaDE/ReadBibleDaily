@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Piibliuurimine</string>
-  <string name="app_name_medium">Piibliuurimine (AndBible)</string>
-  <string name="app_name_long">AndBible: Piibliuurimine</string>
-  <string name="project">AndBible avatud lähtekoodiga projekt</string>
+  <string name="app_name_medium">Piibliuurimine (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Piibliuurimine</string>
+  <string name="project">ReadBibleDaily avatud lähtekoodiga projekt</string>
   <string name="version_text">Versioon %s</string>
   <string name="no_sdcard_error">Palun sisesta SD-kaart ja taaskäivita rakendus.</string>
   <!--Main menu-->

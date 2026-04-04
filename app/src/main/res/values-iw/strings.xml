@@ -1,12 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">לימוד הכתובים</string>
-  <string name="app_name_medium">Bible Study (AndBible)</string>
-  <string name="app_name_long">לתנ\"ך, :AndBible
+  <string name="app_name_medium">Bible Study (ReadBibleDaily)</string>
+  <string name="app_name_long">לתנ\"ך, :ReadBibleDaily
 
 </string>
-  <string name="project">פרוייקט הקוד הפתוח AndBible</string>
+  <string name="project">פרוייקט הקוד הפתוח ReadBibleDaily</string>
   <string name="version_text">גרסה %s</string>
   <string name="no_sdcard_error">אנא הכנס כרטיס זכרון והפעל מחדש את המכשיר</string>
   <!--Main menu-->

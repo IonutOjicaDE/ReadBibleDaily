@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Studi Biblion</string>
-  <string name="app_name_medium">Studi Biblion (AndBible)</string>
-  <string name="app_name_long">AndBible: Studi Biblion</string>
-  <string name="project">Malfermkoda projekto AndBible</string>
+  <string name="app_name_medium">Studi Biblion (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Studi Biblion</string>
+  <string name="project">Malfermkoda projekto ReadBibleDaily</string>
   <string name="version_text">Versio %s</string>
   <string name="no_sdcard_error">Enmetu SD‑karton kaj restartigu la aplikaĵon.</string>
   <!--Main menu-->

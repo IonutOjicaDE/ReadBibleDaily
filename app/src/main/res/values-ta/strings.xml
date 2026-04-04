@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">ஆண்ட் பைபில்</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">விவிலிய ஆய்வு</string>
-  <string name="app_name_medium">விவிலிய ஆய்வு (ஆண்ட் பைபில்)</string>
-  <string name="app_name_long">ஆண்ட் பைபில்: பைபில் ஸ்டடி</string>
-  <string name="project">ஆண்ட் பைபில் திறவூற்று திட்டம்</string>
+  <string name="app_name_medium">விவிலிய ஆய்வு (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: பைபில் ஸ்டடி</string>
+  <string name="project">ReadBibleDaily திறவூற்று திட்டம்</string>
   <string name="version_text">பதிப்பு %s</string>
   <string name="no_sdcard_error">SD கார்டை உள்ளிட்டு மீண்டும் தொடங்கவும்.</string>
   <!--Main menu-->

@@ -1,1 +1,1 @@
-AndBible: 성경 공부
+ReadBibleDaily: 성경 공부

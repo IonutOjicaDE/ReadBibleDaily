@@ -24,7 +24,7 @@
 
 <b>Хајде да заједно направимо најбољу Библијску апликацију!</b>
 
-AndBible је пројекат заједнице отвореног-кода. У пракси, ово значи да свако ко има одређени низ вештина може, уз охрабрење, да допринесе пројекту:
+ReadBibleDaily је пројекат заједнице отвореног-кода. У пракси, ово значи да свако ко има одређени низ вештина може, уз охрабрење, да допринесе пројекту:
 
  * развијањем нових функција
  * тестирањем још увек не објављених функција
@@ -41,8 +41,8 @@ AndBible је пројекат заједнице отвореног-кода. �
 
 <b>Линкови</b>
 
- * Почетна страница: https://andbible.org
- * Лајкујкте AndBible на Фејсбуку: https://www.facebook.com/AndBible/
- * Наш Јутјуб канал: https://www.youtube.com/c/AndBible
+ * Почетна страница: https://ionutojica.ro
+ * Лајкујкте ReadBibleDaily на Фејсбуку: https://facebook.com/ionutojicade
+ * Наш Јутјуб канал: https://youtube.com/@IonutOjicaDE
  * Често постављена питања: https://git.io/JJm8E
- * Страница пројекта на Github-у: https://github.com/AndBible/and-bible
+ * Страница пројекта на Github-у: https://github.com/IonutOjicaDE/ReadBibleDaily

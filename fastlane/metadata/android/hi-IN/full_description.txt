@@ -1,6 +1,6 @@
 <b>बाइबिल पढ़ने की शक्तिशाली उपकरण</b>
 
-"AndBible: बाइबिल" एंड्रॉइड के लिए एक शक्तिशाली, उपयोग में आसान, ऑफ़लाइन बाइबिल अध्ययन उपकरण है। ऐप का उद्देश्य केवल एक बाइबल पाठक बनना नहीं है, बल्कि गहन व्यक्तिगत बाइबल अध्ययन करने के लिए एक उच्च उपकरण होने पर ध्यान केंद्रित करता है।
+"ReadBibleDaily: बाइबिल" एंड्रॉइड के लिए एक शक्तिशाली, उपयोग में आसान, ऑफ़लाइन बाइबिल अध्ययन उपकरण है। ऐप का उद्देश्य केवल एक बाइबल पाठक बनना नहीं है, बल्कि गहन व्यक्तिगत बाइबल अध्ययन करने के लिए एक उच्च उपकरण होने पर ध्यान केंद्रित करता है।
 
 यह एप्लिकेशन बाइबिल पाठकों द्वारा बाइबिल पाठकों के लिए बनाया गया है। इसका उद्देश्य आपके बाइबल अध्ययन को सुविधाजनक, गहन और मनोरंजक बनाने में आपकी मदद करना है। इस गैर-लाभकारी सामुदायिक परियोजना के बारे में सबसे अच्छी बात यह है कि यह खुला स्रोत है, पूरी तरह से मुफ़्त है, और इसमें कोई विज्ञापन नहीं है। एंड्रॉइड के लिए बनाया गया , यह एक छोटा डाउनलोड है, और इसलिए बहुत ही कुशल और उल्लेखनीय रूप से तेज़ है ।
 
@@ -35,14 +35,14 @@
 
 <b>Support by sponsoring development time!</b>
 
-If you don't have time or skills for code contribution, you can support AndBible by sponsoring development time.
+If you don't have time or skills for code contribution, you can support ReadBibleDaily by sponsoring development time.
 
 See sponsorship options here:: https://shop.andbible.org/
 
 <b>लिंक</b>
 
- * होमपेज: https://andbible.org
- * फेसबुक पर ऐंड बाइबिल को लाइक करे: https://www.facebook.com/AndBible/
- * हमारी यूटूब चैनल: https://www.youtube.com/c/AndBible
+ * होमपेज: https://ionutojica.ro
+ * फेसबुक पर ऐंड बाइबिल को लाइक करे: https://facebook.com/ionutojicade
+ * हमारी यूटूब चैनल: https://youtube.com/@IonutOjicaDE
  * सामान्यतःपूछे जाने वाले प्रश्न: https://git.io/JJm8E
- * गिटहब पर प्रोजेक्ट पेज: https://github.com/AndBible/and-bible
+ * गिटहब पर प्रोजेक्ट पेज: https://github.com/IonutOjicaDE/ReadBibleDaily

@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Biblia</string>
-  <string name="app_name_medium">Biblia (AndBible)</string>
-  <string name="app_name_long">AndBible: Biblia</string>
-  <string name="project">AndBible Nyílt Forráskódú Projekt</string>
+  <string name="app_name_medium">Biblia (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Biblia</string>
+  <string name="project">ReadBibleDaily Nyílt Forráskódú Projekt</string>
   <string name="version_text">Verzió: %s</string>
   <string name="no_sdcard_error">Helyezzen be egy SD-kártyát és indítsa újra az alkalmazást!</string>
   <!--Main menu-->

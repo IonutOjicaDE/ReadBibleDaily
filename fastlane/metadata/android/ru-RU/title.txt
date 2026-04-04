@@ -1,1 +1,1 @@
-AndBible: Изучение Библии
+ReadBibleDaily: Изучение Библии

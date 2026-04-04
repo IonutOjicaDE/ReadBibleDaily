@@ -1,1 +1,1 @@
-AndBible: Studera Bibeln
+ReadBibleDaily: Studera Bibeln

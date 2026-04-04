@@ -24,7 +24,7 @@
 
 <b>আসুন একসাথে সেরা বাইবেল অ্যাপ তৈরি করি!</b>
 
-AndBible হল একটি ওপেন সোর্স কমিউনিটি প্রজেক্ট। বাস্তবে, এর মানে হল যে উপযুক্ত দক্ষতার অধিকারী যে কেউ এই প্রকল্পে অবদান রাখতে পারে এবং উৎসাহিত করা হয়:
+ReadBibleDaily হল একটি ওপেন সোর্স কমিউনিটি প্রজেক্ট। বাস্তবে, এর মানে হল যে উপযুক্ত দক্ষতার অধিকারী যে কেউ এই প্রকল্পে অবদান রাখতে পারে এবং উৎসাহিত করা হয়:
 
  * নতুন বৈশিষ্ট্য বিকাশ,
  * এখনও প্রকাশিত হয়নি এমন বৈশিষ্ট্যগুলি পরীক্ষা করা,
@@ -41,8 +41,8 @@ If you are a professional software engineer or tester, please consider contribut
 
 <b>লিঙ্ক</b>
 
- * হোমপেজ: https://andbible.org
- * Facebook-এ AndBible লাইক করুন: https://www.facebook.com/AndBible/
- * আমাদের ইউটিউব চ্যানেল: https://www.youtube.com/c/AndBible
+ * হোমপেজ: https://ionutojica.ro
+ * Facebook-এ ReadBibleDaily লাইক করুন: https://facebook.com/ionutojicade
+ * আমাদের ইউটিউব চ্যানেল: https://youtube.com/@IonutOjicaDE
  * প্রায়শই জিজ্ঞাসিত প্রশ্ন: https://git.io/JJm8E
- * Github-এ প্রকল্প পৃষ্ঠা: https://github.com/AndBible/and-bible
+ * Github-এ প্রকল্প পৃষ্ঠা: https://github.com/IonutOjicaDE/ReadBibleDaily

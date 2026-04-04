@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
   <string name="app_name_short">ကျမ်းစာလေ့လာခြင်း</string>
-  <string name="app_name_long">AndBible: သမ္မာကျမ်းစာ</string>
+  <string name="app_name_long">ReadBibleDaily: သမ္မာကျမ်းစာ</string>
   <string name="version_text">ဗားရှင်း %s</string>
   <string name="no_sdcard_error">ကျေးဇူးပြုပြီး အက်စ်ဒီကဒ်ကို ထည့်ပါ၊ ထို့နောက် အက်ပ်ကို ပိတ်ပြီးပြန်ဖွင့်ပါ။</string>
   <!--Main menu-->

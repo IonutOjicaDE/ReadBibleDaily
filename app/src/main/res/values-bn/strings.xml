@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">এ্যন্ড বাইবেল</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">বাইবেল অধ্যায়ণ</string>
   <string name="app_name_medium">বাইবেল অধ্যায়ণ ( এ্যন্ড বাইবেল) </string>
   <string name="app_name_long">এ্যন্ড বাইবেল: বাইবেল অধ্যায়ণ</string>

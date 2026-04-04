@@ -1,1 +1,1 @@
-AndBible: သမ္မာကျမ်းစာ
+ReadBibleDaily: သမ္မာကျမ်းစာ

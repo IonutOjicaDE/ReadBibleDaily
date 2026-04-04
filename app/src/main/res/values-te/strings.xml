@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">అండ్ బైబిల్</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">బైబిల్ అధ్యయనం</string>
-  <string name="app_name_medium">బైబిల్ అధ్యయనం (అండ్ బైబిల్)</string>
-  <string name="app_name_long">అండ్ బైబిల్: బైబిల్ స్టడీ</string>
-  <string name="project">అండ్ బైబిల్ ఒపెన్ సోర్స్ ప్రాజెక్ట్</string>
+  <string name="app_name_medium">బైబిల్ అధ్యయనం (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: బైబిల్ స్టడీ</string>
+  <string name="project">ReadBibleDaily ఒపెన్ సోర్స్ ప్రాజెక్ట్</string>
   <string name="version_text">వర్షన్ %s</string>
   <string name="no_sdcard_error">దయచేసి SD కార్డ్‌ని చొప్పించి, అప్లికేషన్‌ను పునఃప్రారంభించండి.</string>
   <!--Main menu-->

@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Biblija Studij</string>
-  <string name="app_name_medium">Biblija Studij (AndBible)</string>
-  <string name="app_name_long">AndBible: Biblija Studij</string>
-  <string name="project">AndBible projekt otvorenog koda</string>
+  <string name="app_name_medium">Biblija Studij (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Biblija Studij</string>
+  <string name="project">ReadBibleDaily projekt otvorenog koda</string>
   <string name="version_text">Verzija %s</string>
   <string name="no_sdcard_error">Molimo umetnite SD karticu i ponovno pokrenite aplikaciju.</string>
   <!--Main menu-->

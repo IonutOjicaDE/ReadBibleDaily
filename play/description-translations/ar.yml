@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: دراسة الكتاب المقدس"
+title: "ReadBibleDaily: دراسة الكتاب المقدس"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: اقرأ الكتاب المقدس أو ادرس التفسيرات أو القواميس أو اقرأ الكتب بدون انترنت.
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -46,7 +46,7 @@ feature_13: >
   وسادات دراسية لإضافة الملاحظات ومراجع الكتاب المقدس أثناء الاستماع إلى الخطب.
 subtitle_3: فلنصنع معًا أفضل تطبيق للكتاب المقدس!
 paragraph_3_1: >
-  AndBible هو مشروع مجتمعي مفتوح المصدر. عملياً، هذا يعني أن أي شخص لديه المهارات المناسبة يمكنه المساهمة في المشروع، ويتم تشجيعه على ذلك، من خلال:
+  ReadBibleDaily هو مشروع مجتمعي مفتوح المصدر. عملياً، هذا يعني أن أي شخص لديه المهارات المناسبة يمكنه المساهمة في المشروع، ويتم تشجيعه على ذلك، من خلال:
 contr_1: تطوير ميزات جديدة،
 contr_2: اختبار ميزات لم يتم إصدارها بعد،
 contr_3: المحافظة على تحديث ترجمات واجهة المستخدم، و
@@ -58,7 +58,7 @@ subtitle_4: الروابط
 link_1: >
   الصفحة الرئيسية: {{homepage_url}}
 link_2: >
-  سجل اعجابك بـ AndBible على فيسبوك: {{facebook_url}}
+  سجل اعجابك بـ ReadBibleDaily على فيسبوك: {{facebook_url}}
 link_3: >
   قناة يوتيوب الخاصة بنا: {{youtube_url}}
 link_4: >

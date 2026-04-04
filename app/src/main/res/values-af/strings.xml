@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Bybel Studie</string>
-  <string name="app_name_medium">Bybel Studie (AndBible)</string>
-  <string name="app_name_long">AndBible: Bybel Studie</string>
-  <string name="project">AndBible Oop Bron Projek </string>
+  <string name="app_name_medium">Bybel Studie (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Bybel Studie</string>
+  <string name="project">ReadBibleDaily Oop Bron Projek </string>
   <string name="version_text">Weergawe %s</string>
   <string name="no_sdcard_error">Please insert an SD card and restart application.</string>
   <!--Main menu-->

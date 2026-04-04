@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: Bibel+"
+title: "ReadBibleDaily: Bibel+"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: "Bibeln, Kommentare, Wörterbücher und Bücher, auch ohne Internet."
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -60,7 +60,7 @@ subtitle_4: Links
 link_1: >
   Homepage: {{homepage_url}}
 link_2: >
-  Like AndBible on Facebook: {{facebook_url}}
+  Like ReadBibleDaily on Facebook: {{facebook_url}}
 link_3: >
   Unser Youtube Kanal: {{youtube_url}}
 link_4: >

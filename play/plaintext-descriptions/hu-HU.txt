@@ -1,6 +1,6 @@
 Bibliatanulmányozó alkalmazás
 
-" AndBible: Biblia" funkciógazdag, mégis egyszerűen kezelhető, folyamatos internetkapcsolatot nem igénylő bibliatanulmányozó alkalmazás Android operációs rendszerre. Az alkalmazás nem csak egy egyszerű bibliaolvasó, hanem fejlett funkciókkal támogatja a személyes bibliatanulmányozást.
+" ReadBibleDaily: Biblia" funkciógazdag, mégis egyszerűen kezelhető, folyamatos internetkapcsolatot nem igénylő bibliatanulmányozó alkalmazás Android operációs rendszerre. Az alkalmazás nem csak egy egyszerű bibliaolvasó, hanem fejlett funkciókkal támogatja a személyes bibliatanulmányozást.
 
 Az alkalmazást bibliaolvasó emberek fejlesztik bibliaolvasó embereknek. A cél az, hogy a Biblia tanulmányozása egyszerű, szórakoztató, de alapos is legyen. A non-profit közösségi modell előnye, hogy az alkalmazás nyílt forráskódú, teljesen ingyenes és nem tartalmaz hirdetéseket. Az alkalmazást teljesen az alapoktól készítettük Androidra, így kifejezetten kicsi a mérete, erőforrásbarát és meglepően gyors.
 
@@ -24,7 +24,7 @@ Az app számos különleges funkcióval rendelkezik, amelyek az öszetett és al
 
 Segítsen az alkalmazás jobbá tételében!
 
-Az And Bible nyílt forráskódú közösségi projekt. Bárkit, aki megfelelő képességekkel rendelkezik, bátorítunk a közreműködésre:
+Az ReadBibleDaily nyílt forráskódú közösségi projekt. Bárkit, aki megfelelő képességekkel rendelkezik, bátorítunk a közreműködésre:
 
  * új funkciók kifejlesztésével
  * újonnan fejlesztett funkciók tesztelésével
@@ -41,8 +41,8 @@ Lehetőségek: https://shop.andbible.org/
 
 Hivatkozások
 
- * Internetcím: https://andbible.org
- * Kövesd az AndBible-t Facbookon: https://www.facebook.com/AndBible/
- * YouTube csatornánk: https://www.youtube.com/c/AndBible
+ * Internetcím: https://ionutojica.ro
+ * Kövesd az ReadBibleDaily-t Facbookon: https://facebook.com/ionutojicade
+ * YouTube csatornánk: https://youtube.com/@IonutOjicaDE
  * Gyakori kérdések (FAQ): https://git.io/JJm8E
- * A projekt GitHub oldala: https://github.com/AndBible/and-bible
+ * A projekt GitHub oldala: https://github.com/IonutOjicaDE/ReadBibleDaily

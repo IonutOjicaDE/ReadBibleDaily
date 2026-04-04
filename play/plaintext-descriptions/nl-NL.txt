@@ -1,6 +1,6 @@
 Krachtig Bijbelstudie-hulpmiddel
 
-"AndBible: Bijbelstudie" is een krachtige, maar toch eenvoudig te gebruiken Android app voor offline bijbelstudie. De app is niet gemaakt als een eenvoudig bijbel-leesprogramma, maar biedt vergaande mogelijkheden om de diepte in te gaan tijdens de persoonlijke bijbelstudie.
+"ReadBibleDaily: Bijbelstudie" is een krachtige, maar toch eenvoudig te gebruiken Android app voor offline bijbelstudie. De app is niet gemaakt als een eenvoudig bijbel-leesprogramma, maar biedt vergaande mogelijkheden om de diepte in te gaan tijdens de persoonlijke bijbelstudie.
 
 Deze applicatie is ontwikkeld door bijbellezers voor bijbellezers. Hij is bedoeld om je bijbelstudie makkelijk, grondig en plezierig te laten zijn. Het mooiste van dit gemeenschappelijke non-profit project is dat het open-source is, gratis, en zonder advertenties.
 
@@ -24,7 +24,7 @@ De applicatie heeft veel handige, originele functies die complexe en grondige bi
 
 Help mee dit de beste bijbelapp te maken!
 
-And Bible is een open-source project. Dat betekent in de praktijk dat iedereen met passende vaardigheden kan en mag bijdragen (graag zelfs!) aan het project door:
+ReadBibleDaily is een open-source project. Dat betekent in de praktijk dat iedereen met passende vaardigheden kan en mag bijdragen (graag zelfs!) aan het project door:
 
  * nieuwe functionaliteit te ontwikkelen,
  * nog uit-te-komen functionaliteit te testen,
@@ -41,8 +41,8 @@ Zie de opties: https://shop.andbible.org/
 
 Links
 
- * Homepagina: https://andbible.org
- * Vind And Bible leuk op Facebook: https://www.facebook.com/AndBible/
- * Ons Youtube-kanaal: https://www.youtube.com/c/AndBible
+ * Homepagina: https://ionutojica.ro
+ * Vind ReadBibleDaily leuk op Facebook: https://facebook.com/ionutojicade
+ * Ons Youtube-kanaal: https://youtube.com/@IonutOjicaDE
  * Meest gestelde vragen: https://git.io/JJm8E
- * Project pagina op Github: https://github.com/AndBible/and-bible
+ * Project pagina op Github: https://github.com/IonutOjicaDE/ReadBibleDaily

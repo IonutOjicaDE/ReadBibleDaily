@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
   <string name="app_name_short">دراسة الكتاب المقدس</string>
-  <string name="app_name_long">دراسة الكتاب المقدس :AndBible</string>
+  <string name="app_name_long">دراسة الكتاب المقدس :ReadBibleDaily</string>
   <string name="version_text">إصدار %s</string>
   <string name="no_sdcard_error">برجاء وضع شريحة الذاكرة وإعادة تشغيل التطبيق.</string>
   <!--Main menu-->

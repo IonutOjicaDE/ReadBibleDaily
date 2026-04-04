@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Bible Study</string>
-  <string name="app_name_medium">Βιβλική Μελέτη (AndBible)</string>
-  <string name="app_name_long">AndBible: Bible Study</string>
-  <string name="project">And Bible Εφαρμογή Ανοιχτού Κώδικα</string>
+  <string name="app_name_medium">Βιβλική Μελέτη (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Bible Study</string>
+  <string name="project">ReadBibleDaily Εφαρμογή Ανοιχτού Κώδικα</string>
   <string name="version_text">Έκδοση %s</string>
   <string name="no_sdcard_error">Εισάγετε κάρτα μνήμης και επαννεκινήστε την εφαρμογή</string>
   <!--Main menu-->

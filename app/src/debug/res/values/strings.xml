@@ -14,11 +14,21 @@
   ~
   ~ You should have received a copy of the GNU General Public License along with AndBible.
   ~ If not, see http://www.gnu.org/licenses/.
+  ~
+  ~ Additional changes for this fork:
+  ~
+  ~ This file is also part of ReadBibleDaily, a fork of AndBible: Bible Study.
+  ~ ReadBibleDaily is maintained by Ionut Ojica and includes project-specific
+  ~ changes such as customized reading plans, Orthodox Bible support,
+  ~ and project-specific branding.
+  ~
+  ~ Fork repository:
+  ~ https://github.com/IonutOjicaDE/ReadBibleDaily
   -->
 
 <resources>
     <string name="app_name_short">Bible Study *Debug*</string>
-    <string name="app_name_medium">Bible Study (AndBible) *Debug*</string>
-    <string name="app_name_long">AndBible: Bible Study *Debug*</string>
+    <string name="app_name_medium">Bible Study (ReadBibleDaily) *Debug*</string>
+    <string name="app_name_long">ReadBibleDaily: Bible Study *Debug*</string>
     <string name="install_zip_module">Install Bible Module *Debug*</string>
 </resources>

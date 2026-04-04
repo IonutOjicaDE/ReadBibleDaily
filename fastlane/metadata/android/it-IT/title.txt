@@ -1,1 +1,1 @@
-AndBible: Studi Biblici
+ReadBibleDaily: Studi Biblici

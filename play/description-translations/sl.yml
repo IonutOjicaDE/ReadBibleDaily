@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: Proučevanje Biblije"
+title: "ReadBibleDaily: Proučevanje Biblije"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: "Berite Biblijo, komentarje, slovarje ali knjige v načinu brez povezave."
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -46,7 +46,7 @@ feature_13: >
   Študijske beležnice za dodajanje opomb in biblijskih referenc med poslušanjem pridig.
 subtitle_3: Skupaj naredimo najboljšo biblijsko aplikacijo!
 paragraph_3_1: >
-  And Bible je projekt odprtokodne skupnosti. V praksi to pomeni, da lahko vsak, ki ima ustrezna znanja, k projektu prispeva in ga spodbuja z:
+  ReadBibleDaily je projekt odprtokodne skupnosti. V praksi to pomeni, da lahko vsak, ki ima ustrezna znanja, k projektu prispeva in ga spodbuja z:
 contr_1: "razvojem novih funkcij,"
 contr_2: "testiranjem še neobjavljenih funkcij,"
 contr_3: posodabljanjem prevodov uporabniškega vmesnika in
@@ -58,7 +58,7 @@ subtitle_4: Povezave
 link_1: >
   Domača stran: {{homepage_url}}
 link_2: >
-  Like AndBible on Facebook: {{facebook_url}}
+  Like ReadBibleDaily on Facebook: {{facebook_url}}
 link_3: >
   Naš Youtube kanal: {{youtube_url}}
 link_4: >

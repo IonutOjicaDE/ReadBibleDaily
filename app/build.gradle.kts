@@ -13,6 +13,16 @@
  *
  * You should have received a copy of the GNU General Public License along with AndBible.
  * If not, see http://www.gnu.org/licenses/.
+ *
+ * Additional changes for this fork:
+ *
+ * This file is also part of ReadBibleDaily, a fork of AndBible: Bible Study.
+ * ReadBibleDaily is maintained by Ionut Ojica and includes project-specific
+ * changes such as customized reading plans, Orthodox Bible support,
+ * and project-specific branding.
+ *
+ * Fork repository:
+ * https://github.com/IonutOjicaDE/ReadBibleDaily
  */
 
 import java.io.ByteArrayOutputStream
@@ -35,11 +45,11 @@ val discreteFlavorName = "discrete"
 // This is the "standard" applicationId.
 // This value must remain the same as it has been since the original
 // release in 2010 for continuity of updates for existing users.
-val applicationIdStandard = "net.bible.android.activity"
+val applicationIdStandard = "ro.ionutojica.readbibledaily"
 // An alternative applicationId, to be used for the "discrete" flavor.
 val applicationIdDiscrete = "com.app.calculator"
 // An alternative applicationId, to be used for the "accrescent" flavor.
-val applicationIdAccrescent = "org.andbible.andbible"
+val applicationIdAccrescent = "ro.ionutojica.readbibledaily.accrescent"
 
 // The flavor dimension for the app's distribution channel
 val dimDistributionChannelName = "distchannel"
@@ -541,4 +551,3 @@ if (gradle.startParameter.taskNames.any { it.contains("Fdroid", ignoreCase = tru
         maven { url = uri("https://repo.boox.com/repository/maven-public/") }
     }
 }
-

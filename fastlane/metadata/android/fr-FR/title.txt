@@ -1,1 +1,1 @@
-AndBible : Bible Study
+ReadBibleDaily : Bible Study

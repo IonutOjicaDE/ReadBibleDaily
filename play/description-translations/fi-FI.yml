@@ -1,5 +1,5 @@
 # Long version of app name that will be displayed on Play Store. (max 50 characters)
-title: "AndBible: Raamattu"
+title: "ReadBibleDaily: Raamattu"
 # Short promotional text, shown in Play Store (max 80 characters)
 short_description: "Lue raamattua, tutki kommentaareja ja sanakirjoja ja lue kirjallisuutta."
 # Main (first) subtitle of the Play Store main (long) description text.
@@ -46,7 +46,7 @@ feature_13: >
   Opintoalustat joihin voi kirjoittaa merkintöjä ja raamattuviitteitä saarnoja kuunnellessa.
 subtitle_3: Tehdään yhdessä paras Raamattusovellus!
 paragraph_3_1: >
-  AndBible on yhteisöllinen avoimen lähdekoodin projekti. Käytännössä se tarkoittaa että rohkaisemme kaikkia, jolla on tarvittava osaaminen, antamaan panoksensa projektiin:
+  ReadBibleDaily on yhteisöllinen avoimen lähdekoodin projekti. Käytännössä se tarkoittaa että rohkaisemme kaikkia, jolla on tarvittava osaaminen, antamaan panoksensa projektiin:
 contr_1: "kehittämällä uusia ominaisuuksia,"
 contr_2: "testaamalla ominaisuuksia joita ei ole vielä julkaistu,"
 contr_3: "pitämällä käyttöliittymän käännökset ajan tasalla, ja"
@@ -58,7 +58,7 @@ subtitle_4: Linkkejä
 link_1: >
   Kotisivu: {{homepage_url}}
 link_2: >
-  Tykkää AndBiblesta Facebookissa: {{facebook_url}}
+  Tykkää ReadBibleDailysta Facebookissa: {{facebook_url}}
 link_3: >
   Meidän Youtube-kanava: {{youtube_url}}
 link_4: >

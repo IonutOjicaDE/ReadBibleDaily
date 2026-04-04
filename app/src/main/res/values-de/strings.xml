@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible: Bibel+</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Bibel+</string>
-  <string name="app_name_medium">Bibel+ (AndBible)</string>
-  <string name="app_name_long">AndBible: Bibel+</string>
-  <string name="project">AndBible Open Source Project</string>
+  <string name="app_name_medium">Bibel+ (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Bibel+</string>
+  <string name="project">ReadBibleDaily Open Source Project</string>
   <string name="version_text">Version %s</string>
   <string name="no_sdcard_error">Bitte setzen Sie eine SD-Karte ein und starten das Programm neu.</string>
   <!--Main menu-->

@@ -1,1 +1,1 @@
-AndBible: Studi Biblion
+ReadBibleDaily: Studi Biblion

@@ -1,1 +1,1 @@
-AndBible: Studium Bible
+ReadBibleDaily: Studium Bible

@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <resources>
-  <string name="app_name_andbible">AndBible</string>
+  <string name="app_name_andbible">ReadBibleDaily</string>
   <string name="app_name_short">Biblia</string>
-  <string name="app_name_medium">Biblia (AndBible)</string>
-  <string name="app_name_long">AndBible: Biblia</string>
-  <string name="project">AndBible, Proiect cu cod sursă public</string>
+  <string name="app_name_medium">Biblia (ReadBibleDaily)</string>
+  <string name="app_name_long">ReadBibleDaily: Biblia</string>
+  <string name="project">ReadBibleDaily, Proiect cu cod sursă public</string>
   <string name="version_text">Versiunea %s</string>
   <string name="no_sdcard_error">Introdu o memorie SD și repornește aplicația.</string>
   <!--Main menu-->
