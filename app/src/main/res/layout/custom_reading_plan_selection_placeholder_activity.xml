@@ -36,6 +36,15 @@
         android:clipToPadding="false"
         android:paddingBottom="12dp" />
 
+    <ProgressBar
+        android:id="@+id/loadingState"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:contentDescription="@string/please_wait"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/emptyState"
         android:layout_width="match_parent"
