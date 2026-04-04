@@ -22,6 +22,7 @@ import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MenuItem
+import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -270,7 +271,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                     readStateToggle.setOnCheckedChangeListener(null)
                     readStateToggle.isChecked = readState.isRead
                     readStateToggle.isEnabled = readState.isEnabled
-                    readStateToggle.buttonTintList = readToggleTint()
+                    readStateToggle.buttonTintList = readToggleTint(root)
                     readStateToggle.setOnClickListener { onReadToggle(node, !readState.isRead) }
                     label.alpha = if (readState.isRead) 0.55f else 1f
                 } ?: run {
@@ -284,9 +285,9 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             }
         }
 
-        private fun readToggleTint(): ColorStateList {
-            val checkedColor = MaterialColors.getColor(root, com.google.android.material.R.attr.colorPrimary, 0xFF2E7D32.toInt())
-            val uncheckedColor = MaterialColors.getColor(root, com.google.android.material.R.attr.colorOnSurfaceVariant, 0xFF757575.toInt())
+        private fun readToggleTint(view: View): ColorStateList {
+            val checkedColor = MaterialColors.getColor(view, com.google.android.material.R.attr.colorPrimary, 0xFF2E7D32.toInt())
+            val uncheckedColor = MaterialColors.getColor(view, com.google.android.material.R.attr.colorOnSurfaceVariant, 0xFF757575.toInt())
             return ColorStateList(
                 arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
                 intArrayOf(checkedColor, uncheckedColor),
