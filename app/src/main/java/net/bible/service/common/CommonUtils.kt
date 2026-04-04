@@ -130,11 +130,13 @@ import net.bible.service.download.DownloadManager
 import net.bible.service.sword.BookAndKey
 import net.bible.service.sword.SwordContentFacade
 import net.bible.service.sword.epub.addManuallyInstalledEpubBooks
+import net.bible.service.sword.esword.addManuallyInstalledESwordBooks
 import net.bible.service.sword.epub.isEpub
 import net.bible.service.sword.mydocument.isMyDocument
 import net.bible.service.sword.mybible.addManuallyInstalledMyBibleBooks
 import net.bible.service.sword.mydocument.MyDocumentBookManager
 import net.bible.service.sword.mysword.addManuallyInstalledMySwordBooks
+import net.bible.service.sword.csvprompt.addManuallyInstalledCsvPromptBooks
 import net.bible.service.sword.ttf.addManuallyInstalledTtfBooks
 import org.apache.commons.lang3.StringUtils
 import org.crosswire.common.util.IOUtil
@@ -1172,8 +1174,10 @@ object CommonUtils : CommonUtilsBase() {
 
             addManuallyInstalledMyBibleBooks()
             addManuallyInstalledMySwordBooks()
+            addManuallyInstalledESwordBooks()
             addManuallyInstalledEpubBooks()
             addManuallyInstalledTtfBooks()
+            addManuallyInstalledCsvPromptBooks()
             MyDocumentBookManager.registerAllDocuments()
 
             // IN practice we don't need to restore this data, because it is stored by JSword in book
@@ -1227,8 +1231,10 @@ object CommonUtils : CommonUtilsBase() {
             withContext(Dispatchers.IO) {
                 addManuallyInstalledMyBibleBooks()
                 addManuallyInstalledMySwordBooks()
+                addManuallyInstalledESwordBooks()
                 addManuallyInstalledEpubBooks()
                 addManuallyInstalledTtfBooks()
+                addManuallyInstalledCsvPromptBooks()
                 MyDocumentBookManager.registerAllDocuments()
             }
             initializeOnyx()

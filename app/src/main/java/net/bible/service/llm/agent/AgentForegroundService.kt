@@ -78,7 +78,8 @@ class AgentForegroundService : Service() {
             promptId: IdType,
             selection: Selection,
             workspaceId: IdType,
-            userSpecification: String? = null
+            userSpecification: String? = null,
+            modelOverrideId: IdType? = null
         ) {
             val intent = Intent(context, AgentForegroundService::class.java).apply {
                 action = START_AGENT
@@ -86,6 +87,7 @@ class AgentForegroundService : Service() {
                 putExtra("selectionJson", json.encodeToString(Selection.serializer(), selection))
                 putExtra("workspaceId", workspaceId.toString())
                 userSpecification?.let { putExtra("userSpecification", it) }
+                modelOverrideId?.let { putExtra("modelOverrideId", it.toString()) }
             }
             startServiceCompat(context, intent)
         }
@@ -96,7 +98,9 @@ class AgentForegroundService : Service() {
             workspaceId: IdType,
             targetWindowId: IdType? = null,
             additionalInstructions: String? = null,
-            keepPrevious: Boolean = false
+            keepPrevious: Boolean = false,
+            freshRun: Boolean = false,
+            modelOverrideId: IdType? = null
         ) {
             val intent = Intent(context, AgentForegroundService::class.java).apply {
                 action = START_REGENERATE
@@ -105,6 +109,8 @@ class AgentForegroundService : Service() {
                 targetWindowId?.let { putExtra("targetWindowId", it.toString()) }
                 additionalInstructions?.let { putExtra("additionalInstructions", it) }
                 putExtra("keepPrevious", keepPrevious)
+                putExtra("freshRun", freshRun)
+                modelOverrideId?.let { putExtra("modelOverrideId", it.toString()) }
             }
             startServiceCompat(context, intent)
         }
@@ -167,6 +173,7 @@ class AgentForegroundService : Service() {
             return
         })
         val userSpecification = intent.getStringExtra("userSpecification")
+        val modelOverrideId = intent.getStringExtra("modelOverrideId")?.let { IdType(it) }
 
         val selection = try {
             json.decodeFromString(Selection.serializer(), selectionJson)
@@ -190,7 +197,8 @@ class AgentForegroundService : Service() {
                 }
                 AgentSessionManager.executePrompt(
                     prompt, selection,
-                    userSpecification = userSpecification
+                    userSpecification = userSpecification,
+                    modelOverrideId = modelOverrideId
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Agent execution failed", e)
@@ -213,6 +221,8 @@ class AgentForegroundService : Service() {
         val targetWindowId = intent.getStringExtra("targetWindowId")?.let { IdType(it) }
         val additionalInstructions = intent.getStringExtra("additionalInstructions")
         val keepPrevious = intent.getBooleanExtra("keepPrevious", false)
+        val freshRun = intent.getBooleanExtra("freshRun", false)
+        val modelOverrideId = intent.getStringExtra("modelOverrideId")?.let { IdType(it) }
 
         currentWorkspaceId = workspaceId
         startForegroundWithNotification()
@@ -224,7 +234,9 @@ class AgentForegroundService : Service() {
                     pageId,
                     targetWindowId = targetWindowId,
                     additionalInstructions = additionalInstructions,
-                    keepPrevious = keepPrevious
+                    keepPrevious = keepPrevious,
+                    freshRun = freshRun,
+                    modelOverrideId = modelOverrideId
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Regeneration failed", e)

@@ -49,6 +49,7 @@ import net.bible.service.llm.AgentTool
 import net.bible.service.llm.BuiltInPrompts
 import net.bible.service.llm.LlmCostTracker
 import net.bible.service.llm.ModelPricing
+import net.bible.service.llm.PromptCategory
 import net.bible.service.llm.PromptContext
 import net.bible.service.llm.PromptRepository
 import net.bible.service.llm.agent.PermissionMode
@@ -67,6 +68,8 @@ class PromptEditActivity : ActivityBase() {
     private var prompt: AgentPrompt? = null
     private var isNewPrompt = true
     private var isBuiltIn = false
+    private var isReadOnly = false
+    private var sourceModule: String? = null
     private var initialName = ""
     private var initialDescription = ""
     private var initialTemplate = ""
@@ -74,8 +77,11 @@ class PromptEditActivity : ActivityBase() {
     private var initialPermissionModeIndex = 0
     private var initialAllowedTools: Set<AgentTool>? = null
     private var initialDeniedTools: Set<AgentTool>? = null
-    private var initialSpecifyBeforeRun = false
-    private var initialNoDocumentCreation = false
+    private var initialIsTextTransformation = false
+    private var initialCategoryPosition = 0
+
+    /** Category list for spinner: null entry at index 0 = "No category" */
+    private var categoryList: List<PromptCategory?> = emptyList()
 
     /** Initial state snapshot for Advanced tab (from the in-memory DataStore) */
     private var initialAdvancedSnapshot = AdvancedDataStore.Snapshot()
@@ -120,6 +126,8 @@ class PromptEditActivity : ActivityBase() {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
 
+        setupCategorySpinner()
+
         listBuilder = ToolPermissionListBuilder(this, binding.toolListContainer, ToolPermissionListBuilder.Mode.PROMPT)
         binding.btnResetToolPermissions.setOnClickListener { listBuilder.resetAll() }
 
@@ -161,10 +169,27 @@ class PromptEditActivity : ActivityBase() {
             advancedDataStore.modelOverrideId = null
             advancedDataStore.maxIterations = null
 
+            binding.checkTextTransformation.setOnCheckedChangeListener { _, _ -> updateTextTransformationDependentState() }
             buildToolPermissions(emptySet(), emptySet())
             captureInitialState()
         }
     }
+
+    private fun setupCategorySpinner() {
+        val categories = PromptRepository.allCategories()
+        categoryList = listOf(null) + categories
+        val displayNames = categoryList.map { it?.name ?: getString(R.string.category_none) }
+        binding.categorySpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, displayNames).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+    }
+
+    private fun selectCategoryInSpinner(categoryId: IdType?) {
+        val index = if (categoryId == null) 0 else categoryList.indexOfFirst { it?.id == categoryId }.coerceAtLeast(0)
+        binding.categorySpinner.setSelection(index)
+    }
+
+    private fun getSelectedCategoryId(): IdType? = categoryList.getOrNull(binding.categorySpinner.selectedItemPosition)?.id
 
     private fun setupTabs() {
         binding.tabLayout.apply {
@@ -182,9 +207,12 @@ class PromptEditActivity : ActivityBase() {
     }
 
     private fun showTab(position: Int) {
+        val hasPermissionsTab = binding.tabLayout.tabCount > 2
         binding.promptContent.visibility = if (position == 0) View.VISIBLE else View.GONE
-        binding.permissionsContent.visibility = if (position == 1) View.VISIBLE else View.GONE
-        binding.advancedContent.visibility = if (position == 2) View.VISIBLE else View.GONE
+        binding.permissionsContent.visibility = if (hasPermissionsTab && position == 1) View.VISIBLE else View.GONE
+        binding.advancedContent.visibility =
+            if ((hasPermissionsTab && position == 2) || (!hasPermissionsTab && position == 1))
+                View.VISIBLE else View.GONE
     }
 
     private fun loadPrompt(id: IdType) {
@@ -196,15 +224,17 @@ class PromptEditActivity : ActivityBase() {
             if (loadedPrompt != null) {
                 prompt = loadedPrompt
                 isBuiltIn = BuiltInPrompts.isBuiltIn(loadedPrompt.id)
+                sourceModule = loadedPrompt.sourceModule
+                isReadOnly = PromptRepository.isReadOnly(loadedPrompt.id)
 
-                if (isBuiltIn) {
-                    title = getString(R.string.built_in_prompt)
-                } else {
-                    title = getString(R.string.edit_prompt)
+                title = when {
+                    isBuiltIn -> getString(R.string.built_in_prompt)
+                    sourceModule != null -> getString(R.string.addon_prompt_badge, sourceModule)
+                    else -> getString(R.string.edit_prompt)
                 }
 
                 populateFields(loadedPrompt)
-                if (isBuiltIn) setReadOnlyMode()
+                if (isReadOnly) setReadOnlyMode()
                 captureInitialState()
                 invalidateOptionsMenu()
             } else {
@@ -226,10 +256,16 @@ class PromptEditActivity : ActivityBase() {
             checkWindowMenu.isEnabled = false
             checkWorkspaceMenu.isEnabled = false
             checkNoteEditor.isEnabled = false
-            checkEditBeforeRun.isEnabled = false
-            checkNoDocumentCreation.isEnabled = false
+            checkBibleOnly.isEnabled = false
+            checkTextTransformation.isEnabled = false
+            categorySpinner.isEnabled = false
             permissionModeSpinner.isEnabled = false
             btnResetToolPermissions.visibility = View.GONE
+            builtInNotice.text = if (sourceModule != null) {
+                getString(R.string.addon_prompt_notice, sourceModule)
+            } else {
+                getString(R.string.built_in_prompt_notice)
+            }
             builtInNotice.visibility = View.VISIBLE
         }
         listBuilder.setReadOnly()
@@ -256,10 +292,16 @@ class PromptEditActivity : ActivityBase() {
             checkWindowMenu.isChecked = PromptContext.WINDOW_MENU in prompt.showIn
             checkWorkspaceMenu.isChecked = PromptContext.WORKSPACE_MENU in prompt.showIn
             checkNoteEditor.isChecked = PromptContext.NOTE_EDITOR in prompt.showIn
-            checkEditBeforeRun.isChecked = prompt.specifyBeforeRun
-            checkNoDocumentCreation.isChecked = prompt.noDocumentCreation
+            checkBibleOnly.isChecked = prompt.bibleOnly
+            checkTextTransformation.isChecked = prompt.isTextTransformation
+            updateBibleOnlyDependentState()
+            updateTextTransformationDependentState()
+            checkBibleOnly.setOnCheckedChangeListener { _, _ -> updateBibleOnlyDependentState() }
+            checkTextTransformation.setOnCheckedChangeListener { _, _ -> updateTextTransformationDependentState() }
             permissionModeSpinner.setSelection(permissionModeValues.indexOf(prompt.permissionMode).coerceAtLeast(0))
         }
+
+        selectCategoryInSpinner(PromptRepository.getCategoryForPrompt(prompt)?.id)
 
         buildToolPermissions(
             prompt.allowedTools ?: emptySet(),
@@ -270,6 +312,37 @@ class PromptEditActivity : ActivityBase() {
         advancedDataStore.modelOverrideId = prompt.configuredModelId
         advancedDataStore.strictContextMatching = prompt.strictContextMatching
         advancedDataStore.maxIterations = prompt.maxIterations
+        advancedDataStore.specifyBeforeRun = prompt.specifyBeforeRun
+        advancedDataStore.noDocumentCreation = prompt.noDocumentCreation
+        advancedDataStore.autoIncludeDocuments = prompt.autoIncludeDocuments
+        advancedDataStore.autoIncludeCommentaries = prompt.autoIncludeCommentaries
+    }
+
+    private fun updateBibleOnlyDependentState() {
+        val bibleOnly = binding.checkBibleOnly.isChecked
+        binding.checkWorkspaceMenu.isEnabled = !bibleOnly
+        binding.checkNoteEditor.isEnabled = !bibleOnly
+        if (bibleOnly) {
+            binding.checkWorkspaceMenu.isChecked = false
+            binding.checkNoteEditor.isChecked = false
+        }
+    }
+
+    /** Hide or show the Permissions tab and irrelevant Advanced settings based on text transformation mode. */
+    private fun updateTextTransformationDependentState() {
+        val isTextTransformation = binding.checkTextTransformation.isChecked
+
+        // Remove Permissions tab when text transformation is enabled
+        if (isTextTransformation && binding.tabLayout.tabCount > 2) {
+            binding.tabLayout.removeTabAt(1)
+        } else if (!isTextTransformation && binding.tabLayout.tabCount < 3) {
+            binding.tabLayout.addTab(
+                binding.tabLayout.newTab().setText(R.string.prompt_tab_permissions), 1
+            )
+        }
+
+        // Hide irrelevant Advanced settings
+        advancedFragment?.setTextTransformationMode(isTextTransformation)
     }
 
     private fun collectShowIn(): Set<PromptContext> = binding.run {
@@ -302,27 +375,27 @@ class PromptEditActivity : ActivityBase() {
             initialDescription = promptDescription.text.toString()
             initialTemplate = promptTemplate.text.toString()
             initialShowIn = collectShowIn()
-            initialSpecifyBeforeRun = checkEditBeforeRun.isChecked
-            initialNoDocumentCreation = checkNoDocumentCreation.isChecked
             initialPermissionModeIndex = permissionModeSpinner.selectedItemPosition
             initialAllowedTools = currentToolAllowed
             initialDeniedTools = currentToolDenied
+            initialIsTextTransformation = checkTextTransformation.isChecked
+            initialCategoryPosition = categorySpinner.selectedItemPosition
         }
         initialAdvancedSnapshot = advancedDataStore.snapshot()
     }
 
     private fun isDirty(): Boolean {
-        if (isBuiltIn) return false
+        if (isReadOnly) return false
         val basicDirty = binding.run {
             promptName.text.toString() != initialName ||
                 promptDescription.text.toString() != initialDescription ||
                 promptTemplate.text.toString() != initialTemplate ||
                 collectShowIn() != initialShowIn ||
-                checkEditBeforeRun.isChecked != initialSpecifyBeforeRun ||
-                checkNoDocumentCreation.isChecked != initialNoDocumentCreation ||
                 permissionModeSpinner.selectedItemPosition != initialPermissionModeIndex ||
                 currentToolAllowed != initialAllowedTools ||
-                currentToolDenied != initialDeniedTools
+                currentToolDenied != initialDeniedTools ||
+                checkTextTransformation.isChecked != initialIsTextTransformation ||
+                categorySpinner.selectedItemPosition != initialCategoryPosition
         }
         return basicDirty || advancedDataStore.snapshot() != initialAdvancedSnapshot
     }
@@ -340,7 +413,7 @@ class PromptEditActivity : ActivityBase() {
     }
 
     private fun validateAndSave() {
-        if (isBuiltIn) return
+        if (isReadOnly) return
 
         val name = binding.promptName.text.toString().trim()
         val template = binding.promptTemplate.text.toString().trim()
@@ -364,8 +437,11 @@ class PromptEditActivity : ActivityBase() {
         val selectedPermissionMode = permissionModeValues[binding.permissionModeSpinner.selectedItemPosition]
         val allowedTools = currentToolAllowed
         val deniedTools = currentToolDenied
-        val specifyBeforeRun = binding.checkEditBeforeRun.isChecked
-        val noDocumentCreation = binding.checkNoDocumentCreation.isChecked
+        val specifyBeforeRun = advancedDataStore.specifyBeforeRun
+        val noDocumentCreation = advancedDataStore.noDocumentCreation
+        val autoIncludeDocuments = advancedDataStore.autoIncludeDocuments
+        val autoIncludeCommentaries = advancedDataStore.autoIncludeCommentaries
+        val selectedCategoryId = getSelectedCategoryId()
 
         // Read Advanced settings from the data store
         val strictContextMatching = advancedDataStore.strictContextMatching
@@ -389,6 +465,11 @@ class PromptEditActivity : ActivityBase() {
                         specifyBeforeRun = specifyBeforeRun,
                         noDocumentCreation = noDocumentCreation,
                         maxIterations = maxIterations,
+                        autoIncludeDocuments = autoIncludeDocuments,
+                        autoIncludeCommentaries = autoIncludeCommentaries,
+                        bibleOnly = binding.checkBibleOnly.isChecked,
+                        isTextTransformation = binding.checkTextTransformation.isChecked,
+                        categoryId = selectedCategoryId,
                     )
                     PromptRepository.insertPrompt(newPrompt)
                     savedPromptId = newPrompt.id
@@ -406,6 +487,11 @@ class PromptEditActivity : ActivityBase() {
                         it.specifyBeforeRun = specifyBeforeRun
                         it.noDocumentCreation = noDocumentCreation
                         it.maxIterations = maxIterations
+                        it.autoIncludeDocuments = autoIncludeDocuments
+                        it.autoIncludeCommentaries = autoIncludeCommentaries
+                        it.bibleOnly = binding.checkBibleOnly.isChecked
+                        it.isTextTransformation = binding.checkTextTransformation.isChecked
+                        it.categoryId = selectedCategoryId
                         PromptRepository.updatePrompt(it)
                         savedPromptId = it.id
                     }
@@ -420,7 +506,7 @@ class PromptEditActivity : ActivityBase() {
     }
 
     private fun deletePrompt() {
-        if (isBuiltIn) return
+        if (isReadOnly) return
         val currentPrompt = prompt ?: return
 
         AlertDialog.Builder(this)
@@ -464,7 +550,7 @@ class PromptEditActivity : ActivityBase() {
     }
 
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        if (isBuiltIn) {
+        if (isReadOnly) {
             menu.findItem(R.id.save_prompt)?.isVisible = false
             menu.findItem(R.id.delete_prompt)?.isVisible = false
             menu.findItem(R.id.copy_to_customize)?.isVisible = true
@@ -521,6 +607,10 @@ class AdvancedDataStore : PreferenceDataStore() {
     var modelOverrideId: IdType? = null
     var strictContextMatching: Boolean = true
     var maxIterations: Int? = null
+    var specifyBeforeRun: Boolean = false
+    var noDocumentCreation: Boolean = false
+    var autoIncludeDocuments: Boolean = false
+    var autoIncludeCommentaries: Boolean = false
 
     /** Serialized model ID for the ListPreference ("" = default/null) */
     private var modelOverrideValue: String
@@ -548,11 +638,19 @@ class AdvancedDataStore : PreferenceDataStore() {
     override fun putBoolean(key: String, value: Boolean) {
         when (key) {
             "strict_context_matching" -> strictContextMatching = value
+            "specify_before_run" -> specifyBeforeRun = value
+            "no_document_creation" -> noDocumentCreation = value
+            "auto_include_documents" -> autoIncludeDocuments = value
+            "auto_include_commentaries" -> autoIncludeCommentaries = value
         }
     }
 
     override fun getBoolean(key: String, defValue: Boolean): Boolean = when (key) {
         "strict_context_matching" -> strictContextMatching
+        "specify_before_run" -> specifyBeforeRun
+        "no_document_creation" -> noDocumentCreation
+        "auto_include_documents" -> autoIncludeDocuments
+        "auto_include_commentaries" -> autoIncludeCommentaries
         else -> defValue
     }
 
@@ -560,9 +658,16 @@ class AdvancedDataStore : PreferenceDataStore() {
         val modelOverrideId: IdType? = null,
         val strictContextMatching: Boolean = true,
         val maxIterations: Int? = null,
+        val specifyBeforeRun: Boolean = false,
+        val noDocumentCreation: Boolean = false,
+        val autoIncludeDocuments: Boolean = false,
+        val autoIncludeCommentaries: Boolean = false,
     )
 
-    fun snapshot() = Snapshot(modelOverrideId, strictContextMatching, maxIterations)
+    fun snapshot() = Snapshot(
+        modelOverrideId, strictContextMatching, maxIterations,
+        specifyBeforeRun, noDocumentCreation, autoIncludeDocuments, autoIncludeCommentaries,
+    )
 }
 
 /**
@@ -668,5 +773,17 @@ class PromptAdvancedSettingsFragment : PreferenceFragmentCompat() {
         findPreference<ListPreference>("model_override")?.isEnabled = false
         findPreference<SwitchPreference>("strict_context_matching")?.isEnabled = false
         findPreference<EditTextPreference>("max_iterations")?.isEnabled = false
+        findPreference<SwitchPreference>("specify_before_run")?.isEnabled = false
+        findPreference<SwitchPreference>("no_document_creation")?.isEnabled = false
+        findPreference<SwitchPreference>("auto_include_documents")?.isEnabled = false
+        findPreference<SwitchPreference>("auto_include_commentaries")?.isEnabled = false
+    }
+
+    /** Hide preferences that are irrelevant for text transformation prompts. */
+    fun setTextTransformationMode(isTextTransformation: Boolean) {
+        findPreference<EditTextPreference>("max_iterations")?.isVisible = !isTextTransformation
+        findPreference<SwitchPreference>("no_document_creation")?.isVisible = !isTextTransformation
+        findPreference<SwitchPreference>("auto_include_documents")?.isVisible = !isTextTransformation
+        findPreference<SwitchPreference>("auto_include_commentaries")?.isVisible = !isTextTransformation
     }
 }

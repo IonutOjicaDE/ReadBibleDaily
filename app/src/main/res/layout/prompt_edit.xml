@@ -103,37 +103,19 @@
                 android:inputType="textMultiLine"
                 android:minLines="5" />
 
-            <!-- Specify before run -->
-            <CheckBox
-                android:id="@+id/checkEditBeforeRun"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/prompt_edit_before_run" />
-
+            <!-- Category -->
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginBottom="16dp"
-                android:text="@string/prompt_edit_before_run_description"
+                android:text="@string/prompt_category"
                 android:textAppearance="?android:attr/textAppearanceSmall"
-                android:textColor="?android:attr/textColorSecondary" />
+                android:textStyle="bold" />
 
-            <!-- No document creation -->
-            <CheckBox
-                android:id="@+id/checkNoDocumentCreation"
+            <Spinner
+                android:id="@+id/categorySpinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/prompt_no_document_creation" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="32dp"
-                android:layout_marginBottom="16dp"
-                android:text="@string/prompt_no_document_creation_description"
-                android:textAppearance="?android:attr/textAppearanceSmall"
-                android:textColor="?android:attr/textColorSecondary" />
+                android:layout_marginBottom="16dp" />
 
             <!-- Show in contexts -->
             <TextView
@@ -143,6 +125,13 @@
                 android:text="@string/prompt_show_in"
                 android:textAppearance="?android:attr/textAppearanceSmall"
                 android:textStyle="bold" />
+
+            <CheckBox
+                android:id="@+id/checkBibleOnly"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:text="@string/prompt_bible_only" />
 
             <CheckBox
                 android:id="@+id/checkVerseSelection"
@@ -173,6 +162,21 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/prompt_context_note_editor" />
+
+            <CheckBox
+                android:id="@+id/checkTextTransformation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/prompt_is_text_transformation" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:text="@string/prompt_is_text_transformation_description"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:textColor="?android:attr/textColorSecondary" />
 
         </LinearLayout>
     </ScrollView>

@@ -188,4 +188,40 @@ private val addAiLanguage = makeMigration(10..11) { db ->
     db.execSQL("ALTER TABLE `GlobalAiSettings` ADD COLUMN `aiLanguage` TEXT DEFAULT NULL")
 }
 
-val aiSettingsMigrations: Array<Migration> = arrayOf(addEditBeforeRun, addNoDocumentCreation, addGlobalAiSettingsAndUsage, setCommentaryTokenDefault, addHiddenBuiltInPrompts, addMaxIterations, addCommentaryDeselected, addConfiguredModels, raiseCommentaryTokenDefault, addAiLanguage)
+private val addAutoIncludeFields = makeMigration(11..12) { db ->
+    db.execSQL("ALTER TABLE `AgentPrompt` ADD COLUMN `autoIncludeDocuments` INTEGER NOT NULL DEFAULT 0")
+    db.execSQL("ALTER TABLE `AgentPrompt` ADD COLUMN `autoIncludeCommentaries` INTEGER NOT NULL DEFAULT 0")
+}
+
+private val addAskModelBeforeRun = makeMigration(12..13) { db ->
+    db.execSQL("ALTER TABLE `GlobalAiSettings` ADD COLUMN `askModelBeforeRun` INTEGER NOT NULL DEFAULT 0")
+}
+
+private val addBibleOnly = makeMigration(13..14) { db ->
+    db.execSQL("ALTER TABLE `AgentPrompt` ADD COLUMN `bibleOnly` INTEGER NOT NULL DEFAULT 0")
+}
+
+private val addIsTextTransformation = makeMigration(14..15) { db ->
+    db.execSQL("ALTER TABLE `AgentPrompt` ADD COLUMN `isTextTransformation` INTEGER NOT NULL DEFAULT 0")
+}
+
+private val addAiDisclaimerAccepted = makeMigration(15..16) { db ->
+    db.execSQL("ALTER TABLE `GlobalAiSettings` ADD COLUMN `aiDisclaimerAccepted` INTEGER NOT NULL DEFAULT 0")
+}
+
+private val addPromptCategories = makeMigration(16..17) { db ->
+    db.execSQL("""CREATE TABLE IF NOT EXISTS `PromptCategory` (
+        `id` BLOB NOT NULL PRIMARY KEY,
+        `name` TEXT NOT NULL,
+        `orderNumber` INTEGER NOT NULL DEFAULT 0
+    )""")
+    db.execSQL("ALTER TABLE `AgentPrompt` ADD COLUMN `categoryId` BLOB DEFAULT NULL")
+    db.execSQL("CREATE INDEX IF NOT EXISTS `index_AgentPrompt_categoryId` ON `AgentPrompt` (`categoryId`)")
+}
+
+private val addCategoryHidden = makeMigration(17..18) { db ->
+    db.execSQL("ALTER TABLE `PromptCategory` ADD COLUMN `hidden` INTEGER NOT NULL DEFAULT 0")
+    db.execSQL("ALTER TABLE `GlobalAiSettings` ADD COLUMN `hiddenBuiltInCategories` TEXT NOT NULL DEFAULT ''")
+}
+
+val aiSettingsMigrations: Array<Migration> = arrayOf(addEditBeforeRun, addNoDocumentCreation, addGlobalAiSettingsAndUsage, setCommentaryTokenDefault, addHiddenBuiltInPrompts, addMaxIterations, addCommentaryDeselected, addConfiguredModels, raiseCommentaryTokenDefault, addAiLanguage, addAutoIncludeFields, addAskModelBeforeRun, addBibleOnly, addIsTextTransformation, addAiDisclaimerAccepted, addPromptCategories, addCategoryHidden)

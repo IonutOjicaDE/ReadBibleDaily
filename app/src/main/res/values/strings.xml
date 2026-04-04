@@ -211,6 +211,7 @@
     <string name="prefs_margin_size_title">Change margin size</string>
     <string name="prefs_margin_size_mm_title">Margin size (%1$d/%2$d/%3$d mm)</string>
     <string name="prefs_advanced_settings_cat">Advanced settings</string>
+    <string name="prefs_features_cat">Features</string>
     <string name="prefs_display_customization_cat">Look &amp; feel</string>
     <string name="prefs_behavior_customization_cat">Application behavior</string>
 
@@ -947,8 +948,10 @@
     <string name="format_zip">Zip file containing Sword module(s), or documents backup file (*.abmd) created by %s</string>
     <string name="format_mysword">MySword documents (*.mybible)</string>
     <string name="format_mybible">MyBible documents (*.SQLite3)</string>
+    <string name="format_esword">e-Sword documents (*.bblx, *.bbli)</string>
     <string name="format_epub">EPUB documents (*.epub)</string>
     <string name="format_ttf">TTF fonts (*.ttf)</string>
+    <string name="format_csv_prompts">AI prompt add-ons (*.csv)</string>
     <string name="format_studypads">StudyPads from AndBible databases (*.abdb)</string>
     <string name="redownload_message">
         A list of previous books/documents was found. Click below to easily download them again.
@@ -1515,6 +1518,9 @@
     <string name="llm_continue_iterations_message">The AI agent has reached its limit of %1$d iterations without completing. Continue for %2$d more iterations?</string>
     <string name="agent_max_iterations_title">Max agent iterations</string>
     <string name="agent_max_iterations_summary">Maximum iterations before asking to continue (0 = unlimited)</string>
+    <string name="ask_model_before_run_title">Ask model before run</string>
+    <string name="ask_model_before_run_summary">Show a model selection dialog before executing a prompt (skipped when the prompt has an explicit model override)</string>
+    <string name="select_model_before_run_title">Select model</string>
     <string name="prompt_max_iterations">Max iterations override</string>
     <string name="prompt_max_iterations_hint">Leave empty for global default</string>
     <string name="prompt_max_iterations_description">Override the global max iterations for this prompt. Empty = global default, 0 = unlimited.</string>
@@ -1535,10 +1541,11 @@
     <string name="ai_provider_tier_community">Other providers (not tested)</string>
 
     <!-- Multi-provider settings -->
+    <string name="ai_providers_models_category">Providers &amp; Models</string>
     <string name="ai_providers_category">Providers</string>
+    <string name="ai_providers_summary_none">No providers configured</string>
+    <string name="ai_models_summary_none">No models configured</string>
     <string name="ai_add_provider">Add provider</string>
-    <string name="ai_add_provider_summary">Configure a new AI service provider</string>
-    <string name="ai_no_providers">No providers configured. Tap \"Add provider\" to get started.</string>
     <string name="ai_provider_edit">Edit</string>
     <string name="ai_provider_delete">Delete</string>
     <string name="ai_provider_delete_confirm">Delete provider \"%1$s\"? Prompts using this provider will revert to the default.</string>
@@ -1562,7 +1569,6 @@
     <string name="llm_openrouter_model">Model</string>
     <!-- Configured models management -->
     <string name="ai_models_category">Models</string>
-    <string name="ai_add_model_summary">Add a pre-configured model from a provider</string>
     <string name="add_model">Add model</string>
     <string name="add_model_title">Add model</string>
     <string name="edit_model_title">Edit model</string>
@@ -1594,6 +1600,25 @@
     <string name="easy_setup_anthropic_desc">Affordable, excellent quality</string>
     <string name="easy_setup_openai_desc">Well-known, reliable</string>
 
+    <!-- AI Disclaimer -->
+    <string name="ai_disclaimer_warning_title">Important: Read before using AI tools</string>
+    <string name="ai_disclaimer_warning_summary">Risks and responsibilities of using AI</string>
+    <string name="ai_disclaimer_dialog_title">AI Tools — Important Information</string>
+    <string name="ai_disclaimer_intro">AI tools can greatly enrich your Bible study experience and open new ways to engage with Scripture.</string>
+    <string name="ai_disclaimer_approach">AndBible primarily uses AI to process text from the documents you have installed — commentaries, dictionaries, and other modules — rather than relying on the model\'s own training data.</string>
+    <string name="ai_disclaimer_responsibility">However, they are still powerful tools — and with great power comes great responsibility. Please bear the following in mind.</string>
+    <string name="ai_disclaimer_point1">AI can make mistakes, including \"hallucinations\" (confidently stating false or fabricated information). Never blindly accept its output.</string>
+    <string name="ai_disclaimer_point2">AI responses can reflect biases from their training data, be intentionally misleading, or may present a particular theological perspective as if it were neutral or complete.</string>
+    <string name="ai_disclaimer_point3">You are responsible for how you use AI-generated content. Always verify the results against Scripture before relying on them.</string>
+    <string name="ai_disclaimer_point4">AndBible strives to make verification easy (e.g. precise source citations in commentaries), but the ultimate responsibility always lies with you.</string>
+    <string name="ai_disclaimer_point5">"\"Test all things; hold fast what is good.\" (1 Thessalonians 5:21)"</string>
+    <string name="ai_disclaimer_point6">These tools have no soul and no Holy Spirit. They are text-processing tools, not spiritual guides. They are not suitable for directly preparing sermons, devotionals, or other spiritual content without careful human oversight, prayer, and discernment.</string>
+    <string name="ai_disclaimer_point7">Used wisely, they can benefit many users and use cases. But if you are unsure about accepting the risks, choosing not to use them is also a perfectly valid choice.</string>
+    <string name="ai_disclaimer_point8">Your data is sent to the servers of your chosen AI provider. By using an API key, you accept that provider\'s terms and privacy policy. Self-hosted models are possible but require more technical expertise, and may not produce results as good as commercial models.</string>
+    <string name="ai_disclaimer_point9">AI providers charge for API usage. Cost estimates shown in AndBible are approximate — always check your provider\'s billing for actual charges.</string>
+    <string name="ai_disclaimer_accept_title">Accept AI Disclaimer</string>
+    <string name="ai_disclaimer_accept_button">I accept and take full responsibility</string>
+
     <string name="prompt_permission_mode">Permission mode</string>
     <string name="prompt_permission_mode_description">Controls when user confirmation is required before the AI performs write operations. The per-tool settings below can override this for individual tools.</string>
     <string name="agent_permission_mode_summary">Controls when user confirmation is required before AI write operations</string>
@@ -1610,10 +1635,32 @@
     <string name="prompt_context_window_menu">Window menu</string>
     <string name="prompt_context_workspace_menu">Workspace menu</string>
     <string name="prompt_context_note_editor">Note editor</string>
+    <string name="prompt_bible_only">Bible documents only</string>
+    <string name="prompt_category_study">Study</string>
+    <string name="prompt_category_notes">Notes</string>
+    <string name="prompt_category_general">General</string>
+    <string name="prompt_category_test">Test</string>
+    <string name="prompt_category_uncategorized">Uncategorized</string>
+    <string name="addon_prompt_badge">Add-on: %s</string>
+    <string name="addon_prompt_notice">This prompt is from add-on module \"%s\" and cannot be edited. Use \"Copy to customize\" to create an editable copy.</string>
+    <string name="new_category">New category</string>
+    <string name="new_category_name">Category name</string>
+    <string name="rename_category">Rename</string>
+    <string name="move_category_up">Move up</string>
+    <string name="move_category_down">Move down</string>
+    <string name="hide_category">Hide from AI actions</string>
+    <string name="show_category">Show in AI actions</string>
+    <string name="hidden">hidden</string>
+    <string name="delete_category">Delete category</string>
+    <string name="delete_category_and_prompts">Delete category and its prompts</string>
+    <string name="delete_category_keep_prompts">Move prompts to root and delete category</string>
+    <string name="delete_category_confirm_title">Delete category \"%s\"?</string>
+    <string name="move_to_category">Move to category…</string>
+    <string name="category_none">No category</string>
+    <string name="import_prompts_editable">Import as editable prompts</string>
+    <string name="import_prompts_addon">Install as add-on (read-only)</string>
+    <string name="prompt_category">Category</string>
     <string name="new_prompt">New prompt</string>
-    <string name="reset_prompts_to_defaults">Reset to defaults</string>
-    <string name="reset_prompts_confirm_title">Reset prompts?</string>
-    <string name="reset_prompts_confirm_message">This will delete all custom prompts. Built-in prompts are not affected. Continue?</string>
     <string name="permission_always_ask">Always ask</string>
     <string name="permission_ask_once_per_run">Ask once per run</string>
     <string name="permission_allow_all">Allow all</string>
@@ -1633,7 +1680,14 @@
     <string name="prompt_edit_before_run_description">Show a text field for specifying the task before running the prompt</string>
     <string name="prompt_no_document_creation">No document creation</string>
     <string name="prompt_no_document_creation_description">When enabled, the AI will not create a document. Results are only shown in the activity log. Useful for action-only prompts (bookmarks, labels, StudyPad operations).</string>
+    <string name="prompt_auto_include_documents">Auto-include installed documents</string>
+    <string name="prompt_auto_include_documents_description">Automatically include the list of installed documents in the prompt context, saving an AI iteration.</string>
+    <string name="prompt_auto_include_commentaries">Auto-include commentaries</string>
+    <string name="prompt_auto_include_commentaries_description">Automatically fetch and include commentary entries for the selected verses, saving an AI iteration.</string>
+    <string name="prompt_is_text_transformation">Text transformation</string>
+    <string name="prompt_is_text_transformation_description">Uses a simplified system prompt that preserves formatting (links, headings, bold/italic) while transforming text content. No tools are used. Ideal for translation and editing prompts.</string>
     <string name="llm_no_document_creation_intercepted">Task completed (document creation disabled)</string>
+    <string name="llm_note_updated">Note updated</string>
     <string name="specify_before_run_title">Specify task</string>
     <string name="specify_before_run_hint">Describe the specific task…</string>
     <string name="prompt_cache_settings">Cache settings</string>
@@ -1648,6 +1702,7 @@
     <string name="ai_regenerate_title">Regenerate</string>
     <string name="ai_regenerate_instructions_hint">Additional instructions (optional)</string>
     <string name="ai_regenerate_keep_previous">Keep previous version</string>
+    <string name="ai_regenerate_fresh_run">Fresh run (ignore previous result)</string>
     <string name="ai_document_delete">Delete</string>
     <string name="ai_unknown_prompt">AI</string>
 
@@ -1673,8 +1728,6 @@
     <string name="default_prompt_compare_translations_desc">Shows how different installed translations render the text</string>
     <string name="default_prompt_thematic_study">Thematic study</string>
     <string name="default_prompt_thematic_study_desc">Builds a StudyPad with passages and notes on the central theme</string>
-    <string name="default_prompt_devotional">Devotional reflection</string>
-    <string name="default_prompt_devotional_desc">Writes a short devotional with application and prayer</string>
     <string name="default_prompt_bookmark_annotate">Bookmark &amp; annotate</string>
     <string name="default_prompt_bookmark_annotate_desc">Creates a bookmark with an AI-generated study note</string>
     <string name="default_prompt_study_layout">Open study layout</string>
@@ -1682,7 +1735,7 @@
     <string name="default_prompt_workspace_assistant">Workspace assistant</string>
     <string name="default_prompt_workspace_assistant_desc">Manage windows: create, close, rearrange, change documents</string>
     <string name="default_prompt_enhance_note">Enhance note</string>
-    <string name="default_prompt_enhance_note_desc">Enriches your bookmark note with cross-references and commentary</string>
+    <string name="default_prompt_enhance_note_desc">Improves grammar, clarity, and readability of your note</string>
     <string name="default_prompt_ask_question">Ask a question</string>
     <string name="default_prompt_ask_question_desc">Ask any question about the selected passage</string>
     <string name="default_prompt_custom">Custom prompt</string>

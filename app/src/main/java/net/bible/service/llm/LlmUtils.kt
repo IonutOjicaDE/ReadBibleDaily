@@ -48,6 +48,8 @@ enum class LlmProvider(
     val supportsDynamicModels: Boolean = true,
     /** Whether the /models endpoint works without an API key. */
     val modelsEndpointPublic: Boolean = false,
+    /** Whether this provider supports explicit cache_control breakpoints in requests. */
+    val supportsCacheControl: Boolean = false,
 ) {
     GEMINI("Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/", listOf(
         "gemini-2.5-flash" to p(0.15, 0.60, 0.15, 0.0375),
@@ -92,7 +94,7 @@ enum class LlmProvider(
         "anthropic/claude-sonnet-4" to null,
         "google/gemini-2.5-flash" to null,
         "openai/gpt-5-mini" to null,
-    ), apiKeyUrl = "https://openrouter.ai/keys", modelsEndpointPublic = true),
+    ), apiKeyUrl = "https://openrouter.ai/keys", modelsEndpointPublic = true, supportsCacheControl = true),
     CUSTOM("Custom", "", listOf(), tier = ProviderTier.UNCATEGORIZED, supportsDynamicModels = false);
 
     val models: List<String> get() = modelPricing.map { it.first }
@@ -152,9 +154,6 @@ data class LlmModelConfig(
         val model = resolveConfiguredModel() ?: return null
         return providerDao.getById(model.providerConfigId)
     }
-
-    /** Resolve the effective model name. */
-    fun resolveModel(): String? = resolveConfiguredModel()?.modelId
 
     companion object {
         /** Build from an AgentPrompt's per-prompt model override. */

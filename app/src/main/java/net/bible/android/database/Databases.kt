@@ -39,6 +39,8 @@ import net.bible.service.llm.LlmProviderConfig
 import net.bible.service.llm.LlmProviderConfigDao
 import net.bible.service.llm.LlmUsageRecord
 import net.bible.service.llm.LlmUsageRecordDao
+import net.bible.service.llm.PromptCategory
+import net.bible.service.llm.PromptCategoryDao
 
 
 @Database(
@@ -168,7 +170,7 @@ abstract class SettingsDatabase: RoomDatabase() {
     }
 }
 
-const val AI_SETTINGS_DATABASE_VERSION = 11
+const val AI_SETTINGS_DATABASE_VERSION = 18
 
 @Database(
     entities = [
@@ -177,6 +179,7 @@ const val AI_SETTINGS_DATABASE_VERSION = 11
         LlmConfiguredModel::class,
         GlobalAiSettings::class,
         LlmUsageRecord::class,
+        PromptCategory::class,
         LogEntry::class,
         SyncConfiguration::class,
         SyncStatus::class,
@@ -190,6 +193,7 @@ abstract class AiSettingsDatabase: SyncableRoomDatabase() {
     abstract fun llmConfiguredModelDao(): LlmConfiguredModelDao
     abstract fun globalAiSettingsDao(): GlobalAiSettingsDao
     abstract fun llmUsageRecordDao(): LlmUsageRecordDao
+    abstract fun promptCategoryDao(): PromptCategoryDao
     companion object {
         const val dbFileName = "ai_settings.sqlite3"
     }
