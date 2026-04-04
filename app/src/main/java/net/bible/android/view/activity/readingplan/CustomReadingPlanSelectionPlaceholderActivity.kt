@@ -73,6 +73,8 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private lateinit var planId: String
     private var chapterKeysByNodeKey: Map<String, List<Pair<Int, Int>>> = emptyMap()
     private var bookNodeKeysByNodeKey: Map<String, List<String>> = emptyMap()
+    private var initialChapterReadByKey: Map<Pair<Int, Int>, Boolean> = emptyMap()
+    private var pendingChapterReadByKey: MutableMap<Pair<Int, Int>, Boolean> = mutableMapOf()
     private var bookReadStateByNodeKey: Map<String, Boolean> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,6 +91,11 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         planId = intent.getStringExtra(EXTRA_PLAN_ID).orEmpty()
         pendingSelection = savedInstanceState?.getStringArrayList(STATE_PENDING_SELECTION)?.toSet()
             ?: initialSelection.selectedNodeKeys
+        pendingChapterReadByKey = savedInstanceState
+            ?.getStringArrayList(STATE_PENDING_CHAPTER_READ_OVERRIDES)
+            ?.let(::decodeChapterReadOverrides)
+            ?.toMutableMap()
+            ?: decodeChapterReadOverrides(intent.getStringArrayListExtra(EXTRA_PENDING_CHAPTER_READ_OVERRIDES)).toMutableMap()
 
         setupList()
         renderSummary()
@@ -100,6 +107,10 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         super.onSaveInstanceState(outState)
         outState.putSerializable(STATE_INITIAL_SELECTION, initialSelection)
         outState.putStringArrayList(STATE_PENDING_SELECTION, ArrayList(pendingSelection))
+        outState.putStringArrayList(
+            STATE_PENDING_CHAPTER_READ_OVERRIDES,
+            encodeChapterReadOverrides(pendingChapterReadByKey),
+        )
     }
 
     override fun onBackPressed() {
@@ -144,6 +155,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             bookNodeKeysByNodeKey = chapterCache.bookNodeKeysByNodeKey
             expandedKeys = CustomReadingPlanExpansionStateStore.loadAndPrune(treeIndex.validKeys).toMutableSet()
             pendingSelection = pendingSelection.intersect(treeIndex.validKeys)
+            initialChapterReadByKey = loadPersistedChapterReadByKey()
             refreshReadStateCache()
             updateLoadingState(false)
             refreshVisibleRows()
@@ -309,30 +321,35 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     }
 
     private suspend fun markNodeChapters(node: CustomReadingPlanTreeNode, isRead: Boolean) {
-        if (planId.isBlank()) return
         val chapterKeys = chapterKeysByNodeKey[node.key].orEmpty()
         if (chapterKeys.isEmpty()) return
-        CustomReadingPlanChapterStateService.setChaptersRead(planId, chapterKeys, isRead)
+        chapterKeys.forEach { chapterKey ->
+            pendingChapterReadByKey[chapterKey] = isRead
+        }
         refreshReadStateCache()
         refreshVisibleRows()
     }
 
     private suspend fun refreshReadStateCache() {
-        if (planId.isBlank()) {
-            bookReadStateByNodeKey = emptyMap()
-            return
-        }
-
-        val statesByBookId = CustomReadingPlanChapterStateService.loadPlanChapterStates(planId)
-            .groupBy { it.bookId }
-
         bookReadStateByNodeKey = chapterKeysByNodeKey
             .filterKeys { it.contains(":book:") }
             .mapValues { (_, chapterKeys) ->
                 val bookId = chapterKeys.firstOrNull()?.first ?: return@mapValues false
-                val chaptersById = statesByBookId[bookId].orEmpty().associateBy { it.chapter }
-                chapterKeys.isNotEmpty() && chapterKeys.all { (_, chapter) -> chaptersById[chapter]?.isRead == true }
+                chapterKeys.isNotEmpty() &&
+                    chapterKeys
+                        .filter { (candidateBookId, _) -> candidateBookId == bookId }
+                        .all { chapterKey -> resolvedChapterRead(chapterKey) }
             }
+    }
+
+    private suspend fun loadPersistedChapterReadByKey(): Map<Pair<Int, Int>, Boolean> {
+        if (planId.isBlank()) return emptyMap()
+        return CustomReadingPlanChapterStateService.loadPlanChapterStates(planId)
+            .associate { (it.bookId to it.chapter) to it.isRead }
+    }
+
+    private fun resolvedChapterRead(chapterKey: Pair<Int, Int>): Boolean {
+        return pendingChapterReadByKey[chapterKey] ?: initialChapterReadByKey[chapterKey] ?: false
     }
 
     private fun selectionAggregateState(node: CustomReadingPlanTreeNode): AggregateState {
@@ -409,6 +426,10 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                 EXTRA_RESULT_SELECTION_SUMMARY,
                 CustomReadingPlanSelectionSummaryFormatter.format(this@CustomReadingPlanSelectionPlaceholderActivity, selection, treeNodes),
             )
+            putStringArrayListExtra(
+                EXTRA_RESULT_PENDING_CHAPTER_READ_OVERRIDES,
+                encodeChapterReadOverrides(pendingChapterReadByKey),
+            )
         })
         finish()
     }
@@ -474,10 +495,13 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         const val EXTRA_PLAN_ID = "plan_id"
         const val EXTRA_SELECTION_SUMMARY = "selection_summary"
         const val EXTRA_SELECTION = "selection"
+        const val EXTRA_PENDING_CHAPTER_READ_OVERRIDES = "pending_chapter_read_overrides"
         const val EXTRA_RESULT_SELECTION = "result_selection"
         const val EXTRA_RESULT_SELECTION_SUMMARY = "result_selection_summary"
+        const val EXTRA_RESULT_PENDING_CHAPTER_READ_OVERRIDES = "result_pending_chapter_read_overrides"
         private const val STATE_INITIAL_SELECTION = "initial_selection"
         private const val STATE_PENDING_SELECTION = "pending_selection"
+        private const val STATE_PENDING_CHAPTER_READ_OVERRIDES = "pending_chapter_read_overrides"
 
         private const val MENU_INCLUDE_EXCLUDE = 1
         private const val MENU_MARK_SINGLE_BOOK = 2
@@ -485,6 +509,21 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         private const val MENU_EXCLUDE_SECTION = 4
         private const val MENU_MARK_ALL_READ = 5
         private const val MENU_MARK_ALL_UNREAD = 6
+
+        private fun encodeChapterReadOverrides(overrides: Map<Pair<Int, Int>, Boolean>): ArrayList<String> = ArrayList(
+            overrides.map { (key, isRead) ->
+                "${key.first}:${key.second}:${if (isRead) 1 else 0}"
+            }
+        )
+
+        fun decodeChapterReadOverrides(raw: List<String>?): Map<Pair<Int, Int>, Boolean> = raw.orEmpty().mapNotNull { encoded ->
+            val parts = encoded.split(':')
+            if (parts.size != 3) return@mapNotNull null
+            val bookId = parts[0].toIntOrNull() ?: return@mapNotNull null
+            val chapter = parts[1].toIntOrNull() ?: return@mapNotNull null
+            val isRead = parts[2] == "1"
+            (bookId to chapter) to isRead
+        }.toMap()
     }
 }
 

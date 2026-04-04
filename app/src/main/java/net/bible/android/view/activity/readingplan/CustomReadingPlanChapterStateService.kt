@@ -109,6 +109,30 @@ object CustomReadingPlanChapterStateService {
         dao.upsertCustomPlanChapterStates(updates)
     }
 
+    /**
+     * Applies deferred per-chapter read overrides only to existing rows for one plan.
+     *
+     * Selection screen actions can be staged before plan edit confirmation; this method commits the staged values
+     * after checklist reconciliation while intentionally skipping unknown keys to avoid creating orphan rows.
+     */
+    suspend fun applyChapterReadOverrides(
+        planId: String,
+        overrides: Map<Pair<Int, Int>, Boolean>,
+    ) = withContext(Dispatchers.IO) {
+        if (overrides.isEmpty()) return@withContext
+        val existingByKey = dao.loadCustomPlanChapterStates(planId).associateBy { it.bookId to it.chapter }
+        val now = System.currentTimeMillis()
+        val updates = overrides.mapNotNull { (key, isRead) ->
+            existingByKey[key]?.copy(
+                isRead = isRead,
+                updatedAt = now,
+            )
+        }
+        if (updates.isNotEmpty()) {
+            dao.upsertCustomPlanChapterStates(updates)
+        }
+    }
+
     suspend fun countTotalChapters(planId: String): Int = withContext(Dispatchers.IO) {
         dao.countCustomPlanChapters(planId)
     }

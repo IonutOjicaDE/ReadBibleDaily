@@ -43,6 +43,7 @@ import net.bible.android.control.event.ABEventBus
 import net.bible.android.view.activity.base.ActivityBase
 
 private const val STATE_DRAFT_PLAN = "draft_plan"
+private const val STATE_PENDING_CHAPTER_READ_OVERRIDES = "pending_chapter_read_overrides"
 private const val MIN_MINUTES = 5
 private const val MAX_MINUTES = 60
 private const val MIN_PERIOD_DAYS = 1
@@ -51,6 +52,7 @@ private const val MAX_PERIOD_DAYS = 7
 class CustomReadingPlanDetailActivity : ActivityBase() {
     private lateinit var binding: CustomReadingPlanDetailActivityBinding
     private lateinit var draftPlan: CustomReadingPlan
+    private var pendingChapterReadByKey: Map<Pair<Int, Int>, Boolean> = emptyMap()
     private var isNewPlan = false
     private var bindingState = false
     private val keyboardLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
@@ -63,6 +65,9 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
             ?: return@registerForActivityResult
         val selectionSummary = data.getStringExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_RESULT_SELECTION_SUMMARY)
             ?: CustomReadingPlanSelectionSummaryFormatter.format(this, selection, CustomReadingPlanTreeFactory.build(this))
+        pendingChapterReadByKey = CustomReadingPlanSelectionPlaceholderActivity.decodeChapterReadOverrides(
+            data.getStringArrayListExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_RESULT_PENDING_CHAPTER_READ_OVERRIDES),
+        )
         draftPlan = draftPlan.copy(
             selection = selection,
             selectionSummary = selectionSummary,
@@ -81,6 +86,10 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         isNewPlan = intent.getBooleanExtra(EXTRA_IS_NEW_PLAN, false)
         draftPlan = savedInstanceState?.getSerializable(STATE_DRAFT_PLAN) as? CustomReadingPlan
             ?: loadInitialPlan()
+        pendingChapterReadByKey = savedInstanceState
+            ?.getStringArrayList(STATE_PENDING_CHAPTER_READ_OVERRIDES)
+            ?.let(CustomReadingPlanSelectionPlaceholderActivity::decodeChapterReadOverrides)
+            ?: emptyMap()
 
         setupViews()
         bindDraftToViews()
@@ -111,6 +120,14 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putSerializable(STATE_DRAFT_PLAN, draftPlan)
+        outState.putStringArrayList(
+            STATE_PENDING_CHAPTER_READ_OVERRIDES,
+            ArrayList(
+                pendingChapterReadByKey.map { (key, isRead) ->
+                    "${key.first}:${key.second}:${if (isRead) 1 else 0}"
+                }
+            ),
+        )
     }
 
     override fun onBackPressed() {
@@ -192,6 +209,14 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_PLAN_TITLE, draftPlan.title)
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_SELECTION_SUMMARY, draftPlan.selectionSummary)
                 putExtra(CustomReadingPlanSelectionPlaceholderActivity.EXTRA_SELECTION, draftPlan.selection)
+                putStringArrayListExtra(
+                    CustomReadingPlanSelectionPlaceholderActivity.EXTRA_PENDING_CHAPTER_READ_OVERRIDES,
+                    ArrayList(
+                        pendingChapterReadByKey.map { (key, isRead) ->
+                            "${key.first}:${key.second}:${if (isRead) 1 else 0}"
+                        }
+                    ),
+                )
             })
         }
 
@@ -296,6 +321,7 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
                 draftPlan,
                 CustomReadingPlanTreeFactory.build(this@CustomReadingPlanDetailActivity),
             )
+            CustomReadingPlanChapterStateService.applyChapterReadOverrides(draftPlan.id, pendingChapterReadByKey)
             setResult(RESULT_OK, Intent().apply {
                 putExtra(EXTRA_RESULT_ACTION, RESULT_ACTION_SAVED)
                 putExtra(EXTRA_RESULT_PLAN_ID, draftPlan.id)
