@@ -34,7 +34,9 @@ import android.widget.Toast
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.launch
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.CustomReadingPlanDetailActivityBinding
 import net.bible.android.control.event.ABEventBus
@@ -287,12 +289,18 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
             return
         }
 
-        CustomReadingPlanInMemoryRepository.upsert(draftPlan)
-        setResult(RESULT_OK, Intent().apply {
-            putExtra(EXTRA_RESULT_ACTION, RESULT_ACTION_SAVED)
-            putExtra(EXTRA_RESULT_PLAN_ID, draftPlan.id)
-        })
-        finish()
+        lifecycleScope.launch {
+            CustomReadingPlanInMemoryRepository.upsertSuspend(draftPlan)
+            CustomReadingPlanChapterStateService.reconcileChecklistForConfirmedPlan(
+                draftPlan,
+                CustomReadingPlanTreeFactory.build(this@CustomReadingPlanDetailActivity),
+            )
+            setResult(RESULT_OK, Intent().apply {
+                putExtra(EXTRA_RESULT_ACTION, RESULT_ACTION_SAVED)
+                putExtra(EXTRA_RESULT_PLAN_ID, draftPlan.id)
+            })
+            finish()
+        }
     }
 
     private fun cancelEditing() {
@@ -306,12 +314,15 @@ class CustomReadingPlanDetailActivity : ActivityBase() {
         AlertDialog.Builder(this)
             .setMessage(getString(R.string.custom_reading_plan_delete_confirmation, draftPlan.title))
             .setPositiveButton(R.string.delete) { _, _ ->
-                CustomReadingPlanInMemoryRepository.delete(draftPlan.id)
-                setResult(RESULT_OK, Intent().apply {
-                    putExtra(EXTRA_RESULT_ACTION, RESULT_ACTION_DELETED)
-                    putExtra(EXTRA_RESULT_PLAN_ID, draftPlan.id)
-                })
-                finish()
+                lifecycleScope.launch {
+                    CustomReadingPlanInMemoryRepository.deleteSuspend(draftPlan.id)
+                    CustomReadingPlanChapterStateService.deletePlanChecklist(draftPlan.id)
+                    setResult(RESULT_OK, Intent().apply {
+                        putExtra(EXTRA_RESULT_ACTION, RESULT_ACTION_DELETED)
+                        putExtra(EXTRA_RESULT_PLAN_ID, draftPlan.id)
+                    })
+                    finish()
+                }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()

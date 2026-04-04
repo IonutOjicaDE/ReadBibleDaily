@@ -167,6 +167,31 @@ interface ProgressDao {
 
     @Query("SELECT * FROM ReadingPlanChapterProgress WHERE planId = :planId")
     fun loadReadingPlanChapterProgressForPlan(planId: String): List<ReadingPlanChapterProgress>
+
+    // Custom plan chapter checklist
+    @Query("SELECT * FROM CustomPlanChapterState WHERE planId = :planId ORDER BY bookId ASC, chapter ASC")
+    fun loadCustomPlanChapterStates(planId: String): List<CustomPlanChapterState>
+
+    @Query("SELECT * FROM CustomPlanChapterState WHERE planId = :planId AND bookId = :bookId AND chapter = :chapter LIMIT 1")
+    fun loadCustomPlanChapterState(planId: String, bookId: Int, chapter: Int): CustomPlanChapterState?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertCustomPlanChapterStates(states: List<CustomPlanChapterState>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun upsertCustomPlanChapterState(state: CustomPlanChapterState)
+
+    @Query("DELETE FROM CustomPlanChapterState WHERE planId = :planId")
+    fun deleteCustomPlanChapterStates(planId: String)
+
+    @Query("SELECT COUNT(*) FROM CustomPlanChapterState WHERE planId = :planId")
+    fun countCustomPlanChapters(planId: String): Int
+
+    @Query("SELECT COUNT(*) FROM CustomPlanChapterState WHERE planId = :planId AND isRead = 1")
+    fun countReadCustomPlanChapters(planId: String): Int
+
+    @Query("SELECT * FROM CustomPlanChapterState WHERE planId = :planId AND isRead = 0 ORDER BY bookId ASC, chapter ASC LIMIT 1")
+    fun getFirstUnreadCustomPlanChapter(planId: String): CustomPlanChapterState?
 }
 
 @Dao

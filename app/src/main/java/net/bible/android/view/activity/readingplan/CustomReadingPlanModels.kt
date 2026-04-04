@@ -18,7 +18,9 @@
 package net.bible.android.view.activity.readingplan
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import net.bible.android.activity.R
 import net.bible.android.database.readingplan.ReadingPlanEntities
 import net.bible.service.db.DatabaseContainer
@@ -112,6 +114,10 @@ object CustomReadingPlanInMemoryRepository {
     fun getPlan(planId: String): CustomReadingPlan? = plans.firstOrNull { it.id == planId }
 
     fun upsert(plan: CustomReadingPlan) {
+        runBlocking { upsertSuspend(plan) }
+    }
+
+    suspend fun upsertSuspend(plan: CustomReadingPlan) = withContext(Dispatchers.IO) {
         val index = plans.indexOfFirst { it.id == plan.id }
         if (index >= 0) {
             plans[index] = plan
@@ -119,7 +125,7 @@ object CustomReadingPlanInMemoryRepository {
             plans += plan
         }
         val sortOrder = planOrders[plan.id] ?: nextSortOrder().also { planOrders[plan.id] = it }
-        runBlocking { dao.upsertCustomPlan(plan.toEntity(sortOrder)) }
+        dao.upsertCustomPlan(plan.toEntity(sortOrder))
     }
 
     fun updateActive(planId: String, isActive: Boolean) {
@@ -131,9 +137,13 @@ object CustomReadingPlanInMemoryRepository {
     }
 
     fun delete(planId: String) {
+        runBlocking { deleteSuspend(planId) }
+    }
+
+    suspend fun deleteSuspend(planId: String) = withContext(Dispatchers.IO) {
         plans.removeAll { it.id == planId }
         planOrders.remove(planId)
-        runBlocking { dao.deleteCustomPlan(planId) }
+        dao.deleteCustomPlan(planId)
     }
 
     fun reorder(planIdsInOrder: List<String>) {
