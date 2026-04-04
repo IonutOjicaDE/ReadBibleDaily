@@ -64,6 +64,12 @@ data class VisibleCustomReadingPlanTreeNode(
     val depth: Int,
 )
 
+data class CustomReadingPlanTreeIndex(
+    val validKeys: Set<String>,
+    val subtreeKeysByNode: Map<String, Set<String>>,
+    val descendantKeysByNode: Map<String, Set<String>>,
+)
+
 /**
  * Section definition for the current 4-level Bible hierarchy:
  * module -> testament -> subsection -> individual books.
@@ -207,6 +213,31 @@ object StructuredBibleSubsectionProvider : BibleSubsectionProvider {
 }
 
 object CustomReadingPlanTreeSelection {
+    fun buildIndex(nodes: List<CustomReadingPlanTreeNode>): CustomReadingPlanTreeIndex {
+        val subtreeKeysByNode = mutableMapOf<String, Set<String>>()
+        val descendantKeysByNode = mutableMapOf<String, Set<String>>()
+
+        fun computeSubtree(node: CustomReadingPlanTreeNode): Set<String> {
+            val subtree = buildSet {
+                add(node.key)
+                node.children.forEach { child -> addAll(computeSubtree(child)) }
+            }
+            subtreeKeysByNode[node.key] = subtree
+            descendantKeysByNode[node.key] = subtree - node.key
+            return subtree
+        }
+
+        val validKeys = buildSet {
+            nodes.forEach { node -> addAll(computeSubtree(node)) }
+        }
+
+        return CustomReadingPlanTreeIndex(
+            validKeys = validKeys,
+            subtreeKeysByNode = subtreeKeysByNode,
+            descendantKeysByNode = descendantKeysByNode,
+        )
+    }
+
     fun flattenVisible(nodes: List<CustomReadingPlanTreeNode>, expandedKeys: Set<String>): List<VisibleCustomReadingPlanTreeNode> {
         val visible = mutableListOf<VisibleCustomReadingPlanTreeNode>()
         fun append(node: CustomReadingPlanTreeNode, depth: Int) {
@@ -237,10 +268,48 @@ object CustomReadingPlanTreeSelection {
         }
     }
 
+    fun selectionState(
+        node: CustomReadingPlanTreeNode,
+        selectedNodeKeys: Set<String>,
+        treeIndex: CustomReadingPlanTreeIndex,
+    ): CustomReadingPlanSelectionState {
+        if (node.children.isEmpty()) {
+            return if (node.key in selectedNodeKeys) {
+                CustomReadingPlanSelectionState.CHECKED
+            } else {
+                CustomReadingPlanSelectionState.UNCHECKED
+            }
+        }
+
+        val descendantKeys = treeIndex.descendantKeysByNode[node.key] ?: emptySet()
+        val selectedDescendants = descendantKeys.count { it in selectedNodeKeys }
+        return when {
+            selectedDescendants == 0 && node.key !in selectedNodeKeys -> CustomReadingPlanSelectionState.UNCHECKED
+            selectedDescendants == descendantKeys.size -> CustomReadingPlanSelectionState.CHECKED
+            else -> CustomReadingPlanSelectionState.PARTIAL
+        }
+    }
+
     fun setSelected(node: CustomReadingPlanTreeNode, selectedNodeKeys: Set<String>, selected: Boolean): Set<String> {
         val updated = selectedNodeKeys.toMutableSet()
         val subtreeKeys = node.subtreeKeys()
         if (selected) updated += subtreeKeys else updated -= subtreeKeys
+        return updated
+    }
+
+    fun setSelected(
+        node: CustomReadingPlanTreeNode,
+        selectedNodeKeys: Set<String>,
+        selected: Boolean,
+        treeIndex: CustomReadingPlanTreeIndex,
+    ): Set<String> {
+        val updated = selectedNodeKeys.toMutableSet()
+        val subtreeKeys = treeIndex.subtreeKeysByNode[node.key] ?: setOf(node.key)
+        if (selected) {
+            updated += subtreeKeys
+        } else {
+            updated -= subtreeKeys
+        }
         return updated
     }
 

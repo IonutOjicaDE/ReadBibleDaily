@@ -23,7 +23,9 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.ViewGroup
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.checkbox.MaterialCheckBox
 import net.bible.android.activity.R
@@ -46,6 +48,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private var visibleRows: List<TreeRowRenderModel> = emptyList()
     private var expandedKeys: MutableSet<String> = mutableSetOf()
     private var pendingSelection: Set<String> = emptySet()
+    private lateinit var treeIndex: CustomReadingPlanTreeIndex
     private lateinit var initialSelection: CustomReadingPlanSelection
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,9 +66,9 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             ?: initialSelection.selectedNodeKeys
 
         treeNodes = CustomReadingPlanTreeFactory.build(this)
-        val validKeys = CustomReadingPlanTreeSelection.validNodeKeys(treeNodes)
-        expandedKeys = CustomReadingPlanExpansionStateStore.loadAndPrune(validKeys).toMutableSet()
-        pendingSelection = pendingSelection.intersect(validKeys)
+        treeIndex = CustomReadingPlanTreeSelection.buildIndex(treeNodes)
+        expandedKeys = CustomReadingPlanExpansionStateStore.loadAndPrune(treeIndex.validKeys).toMutableSet()
+        pendingSelection = pendingSelection.intersect(treeIndex.validKeys)
 
         setupList()
         renderSummary()
@@ -112,7 +115,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             .map { visibleNode ->
                 TreeRowRenderModel(
                     visibleNode = visibleNode,
-                    selectionState = CustomReadingPlanTreeSelection.selectionState(visibleNode.node, pendingSelection),
+                    selectionState = CustomReadingPlanTreeSelection.selectionState(visibleNode.node, pendingSelection, treeIndex),
                     isExpanded = visibleNode.node.key in expandedKeys,
                 )
             }
@@ -136,12 +139,12 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         if (!expandedKeys.add(node.key)) {
             expandedKeys.remove(node.key)
         }
-        CustomReadingPlanExpansionStateStore.persist(expandedKeys, CustomReadingPlanTreeSelection.validNodeKeys(treeNodes))
+        CustomReadingPlanExpansionStateStore.persist(expandedKeys, treeIndex.validKeys)
         refreshVisibleRows()
     }
 
     private fun toggleSelection(node: CustomReadingPlanTreeNode, checked: Boolean) {
-        pendingSelection = CustomReadingPlanTreeSelection.setSelected(node, pendingSelection, checked)
+        pendingSelection = CustomReadingPlanTreeSelection.setSelected(node, pendingSelection, checked, treeIndex)
         refreshVisibleRows()
     }
 
@@ -165,13 +168,10 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private inner class CustomReadingPlanTreeAdapter(
         private val onExpandToggle: (CustomReadingPlanTreeNode) -> Unit,
         private val onSelectionToggle: (CustomReadingPlanTreeNode, Boolean) -> Unit,
-    ) : RecyclerView.Adapter<TreeRowViewHolder>() {
-        private val items = mutableListOf<TreeRowRenderModel>()
+    ) : ListAdapter<TreeRowRenderModel, TreeRowViewHolder>(TreeRowDiffCallback) {
 
         fun submit(rows: List<TreeRowRenderModel>) {
-            items.clear()
-            items += rows
-            notifyDataSetChanged()
+            submitList(rows)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TreeRowViewHolder {
@@ -179,10 +179,8 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             return TreeRowViewHolder(binding)
         }
 
-        override fun getItemCount(): Int = items.size
-
         override fun onBindViewHolder(holder: TreeRowViewHolder, position: Int) {
-            val item = items[position]
+            val item = getItem(position)
             holder.binding.apply {
                 val node = item.visibleNode.node
                 val indent = root.resources.getDimensionPixelSize(R.dimen.custom_reading_plan_tree_indent_step)
@@ -217,4 +215,12 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         private const val STATE_INITIAL_SELECTION = "initial_selection"
         private const val STATE_PENDING_SELECTION = "pending_selection"
     }
+}
+
+private object TreeRowDiffCallback : DiffUtil.ItemCallback<TreeRowRenderModel>() {
+    override fun areItemsTheSame(oldItem: TreeRowRenderModel, newItem: TreeRowRenderModel): Boolean =
+        oldItem.visibleNode.node.key == newItem.visibleNode.node.key
+
+    override fun areContentsTheSame(oldItem: TreeRowRenderModel, newItem: TreeRowRenderModel): Boolean =
+        oldItem == newItem
 }
