@@ -1991,6 +1991,14 @@
     <string name="custom_reading_plan_duration_months_days">%1$d months and %2$d days</string>
     <string name="custom_reading_plan_selection_empty">No installed Bible modules are available yet for Custom Reading Plans.</string>
     <string name="custom_reading_plan_toggle_expand">Expand or collapse section</string>
+    <string name="custom_reading_plan_menu_include_book">Include book in selection</string>
+    <string name="custom_reading_plan_menu_exclude_book">Exclude book from selection</string>
+    <string name="custom_reading_plan_menu_mark_read">Mark as read</string>
+    <string name="custom_reading_plan_menu_mark_unread">Mark as unread</string>
+    <string name="custom_reading_plan_menu_include_books">Include books in selection</string>
+    <string name="custom_reading_plan_menu_exclude_books">Exclude books from selection</string>
+    <string name="custom_reading_plan_menu_mark_all_read">Mark all as read</string>
+    <string name="custom_reading_plan_menu_mark_all_unread">Mark all as unread</string>
     <string name="custom_reading_plan_selection_summary_none">No books selected</string>
     <string name="custom_reading_plan_subsection_ot_pentateuch">Pentateuch</string>
     <string name="custom_reading_plan_subsection_ot_historical">Historical books</string>
