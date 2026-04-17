@@ -21,6 +21,7 @@ import android.util.Log
 import kotlinx.serialization.Serializable
 import net.bible.android.control.event.ABEventBus
 import net.bible.android.database.IdType
+import net.bible.android.database.LogEntryTypes
 import net.bible.android.database.mydocument.AiDocMarkerInfo
 import net.bible.android.database.mydocument.AiPageCacheEntry
 import net.bible.android.database.mydocument.MyDocument
@@ -28,7 +29,9 @@ import net.bible.android.database.mydocument.MyDocumentContentType
 import net.bible.android.database.mydocument.MyDocumentPage
 import net.bible.android.database.mydocument.MyDocumentPageContent
 import net.bible.service.db.DatabaseContainer
+import net.bible.service.db.MyDocumentsUpdatedViaSyncEvent
 import net.bible.service.llm.agent.CacheableContext
+import net.bible.service.sword.SwordContentFacade
 import org.crosswire.jsword.book.Book
 import org.crosswire.common.activate.Activator
 import org.crosswire.jsword.book.Books
@@ -53,6 +56,10 @@ class MyDocumentUpdatedEvent(val initials: String)
 class AiDocPagesChangedEvent(
     val markers: List<AiDocMarkerInfo> = emptyList(),
     val deletedPageIds: List<IdType> = emptyList(),
+    /** Source book initials for non-Bible page markers (commentary, etc.) */
+    val sourceBookInitials: String? = null,
+    /** Source book key for non-Bible page markers */
+    val sourceBookKey: String? = null,
 )
 
 /**
@@ -82,6 +89,63 @@ object MyDocumentBookManager {
 
     /** Special initials for the AI Documents default document */
     const val AI_DOCUMENTS_INITIALS = "AIDocuments"
+
+    val registeredInitials: Set<String>
+        get() = registeredBooks.keys.toSet()
+
+    init {
+        ABEventBus.register(this)
+    }
+
+    /**
+     * Handle sync event: re-register all documents and refresh only the
+     * BibleView windows that display documents affected by the sync.
+     *
+     * Must run on the main thread (onEventMainThread) because SwordGenBook
+     * and the JSword Activator are not thread-safe. Running clear() +
+     * registerAllDocuments() on a background thread causes a race condition
+     * where the main thread sees a newly registered book whose internal
+     * key map hasn't been activated yet, leading to NPE in getKey().
+     */
+    fun onEventMainThread(e: MyDocumentsUpdatedViaSyncEvent) {
+        val dao = DatabaseContainer.instance.myDocumentDb.myDocumentDao()
+        val affectedInitials = mutableSetOf<String>()
+        var refreshAll = false
+
+        val documentIds = mutableListOf<IdType>()
+        val pageIds = mutableListOf<IdType>()
+
+        for (entry in e.updated) {
+            when (entry.tableName) {
+                "MyDocument" -> documentIds.add(entry.entityId1)
+                "MyDocumentPage" -> {
+                    pageIds.add(entry.entityId1)
+                    // Deleted pages are already gone from DB — can't resolve parent document
+                    if (entry.type == LogEntryTypes.DELETE) refreshAll = true
+                }
+                "MyDocumentPageContent", "AiPageCacheEntry" -> {
+                    pageIds.add(entry.entityId1)
+                }
+            }
+        }
+
+        if (documentIds.isNotEmpty()) {
+            affectedInitials.addAll(dao.initialsByIds(documentIds))
+        }
+        if (pageIds.isNotEmpty()) {
+            affectedInitials.addAll(dao.initialsByPageIds(pageIds))
+        }
+
+        clear()
+        registerAllDocuments()
+
+        val initialsToRefresh = if (refreshAll) registeredInitials else affectedInitials
+        for (initials in initialsToRefresh) {
+            SwordContentFacade.evictBook(initials)
+            ABEventBus.post(MyDocumentUpdatedEvent(initials))
+        }
+        Log.i(TAG, "Sync update: refreshed ${initialsToRefresh.size} MyDocuments (refreshAll=$refreshAll)")
+    }
 
     /**
      * Register all MyDocuments from the database.
@@ -396,7 +460,9 @@ object MyDocumentBookManager {
             kjvOrdinalEnd = cacheableContext.kjvOrdinalEnd,
             contextHash = cacheableContext.computeHash(),
             usedWriteTools = usedWriteTools,
-            sourceModelName = sourceModelName
+            sourceModelName = sourceModelName,
+            sourceBookInitials = cacheableContext.activeDocumentInitials,
+            sourceBookKey = cacheableContext.sourceBookKey
         )
 
         // Save clean content - footer is rendered by Vue.js based on sourcePromptId
@@ -404,11 +470,15 @@ object MyDocumentBookManager {
         refreshDocument(aiDocument.initials)
         val start = cacheableContext.kjvOrdinalStart
         val end = cacheableContext.kjvOrdinalEnd
+        val bookInitials = cacheableContext.activeDocumentInitials
+        val bookKey = cacheableContext.sourceBookKey
         if (start != null && end != null) {
             val markers = dao.aiDocMarkersForRange(start, end)
             ABEventBus.post(AiDocPagesChangedEvent(markers))
+        } else if (bookInitials != null && bookKey != null) {
+            val markers = dao.aiDocMarkersForPage(bookInitials, bookKey)
+            ABEventBus.post(AiDocPagesChangedEvent(markers, sourceBookInitials = bookInitials, sourceBookKey = bookKey))
         }
-        // No event needed when ordinals are null — no marker exists without them
 
         Log.i(TAG, "Saved AI response as page: ${aiDocument.initials}/${page.pageKey}")
         return SavedPageInfo(aiDocument.initials, page.pageKey)

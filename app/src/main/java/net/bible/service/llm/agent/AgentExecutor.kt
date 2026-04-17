@@ -72,6 +72,36 @@ import java.io.StringReader
 private const val TAG = "AgentExecutor"
 private const val DEFAULT_MAX_ITERATIONS = 10
 
+/** Compact representation of a tool call for loop detection. */
+internal data class ToolCallSignature(val tool: AgentTool, val argsHash: Int)
+
+internal fun extractSignatures(toolCalls: List<ToolCall>): List<ToolCallSignature> =
+    toolCalls.map { tc ->
+        val normalized = try {
+            val json = JSONObject(tc.arguments)
+            // Sort keys for consistent hashing regardless of key order
+            JSONObject().apply {
+                json.keys().asSequence().sorted().forEach { key -> put(key, json.get(key)) }
+            }.toString()
+        } catch (_: Exception) { tc.arguments }
+        ToolCallSignature(tc.tool, normalized.hashCode())
+    }
+
+/**
+ * Detect repetitive tool call patterns.
+ * Returns true if any single (tool, args) signature appears [threshold] or more times
+ * in the last [windowSize] calls.
+ */
+internal fun detectLoop(
+    history: List<ToolCallSignature>,
+    threshold: Int = 3,
+    windowSize: Int = 5
+): Boolean {
+    if (history.size < threshold) return false
+    val window = history.takeLast(windowSize)
+    return window.groupBy { it }.any { (_, v) -> v.size >= threshold }
+}
+
 /**
  * Computes the set of tools to exclude from LLM tool definitions.
  *
@@ -147,7 +177,7 @@ class AgentExecutor(
             val resolved = LlmProcessingService.resolveFromConfig(llmConfig)
             emit(AgentEvent.Started(resolved.model))
             val messages = buildInitialMessages(prompt, context)
-            val excludedTools = computeExcludedTools(context)
+            val excludedTools = computeExcludedTools(prompt, context)
             val toolDefs = ToolRegistry.getToolDefinitions(excludedTools = excludedTools)
 
             // Capture tool definitions in raw log
@@ -184,6 +214,7 @@ class AgentExecutor(
         var currentContext = context  // Mutable context for session permission tracking
         var totalUsage = LlmUsage()
         var pendingDocumentTitle: String? = null
+        val toolCallHistory = mutableListOf<ToolCallSignature>()
         val resolved = preResolved ?: LlmProcessingService.resolveFromConfig(llmConfig)
         val loopHeaders = LlmProcessingService.buildProviderExtraHeaders(resolved.providerConfig)
 
@@ -204,12 +235,25 @@ class AgentExecutor(
 
                 when (parsed) {
                     is ParsedResponse.ToolCalls -> {
-                        when (val result = processToolCalls(prompt, adapter, parsed, messages, currentContext, rawLlmLog)) {
+                        toolCallHistory.addAll(extractSignatures(parsed.toolCalls))
+                        val loopDetected = detectLoop(toolCallHistory)
+                        if (loopDetected) {
+                            Log.w(TAG, "Loop detected at iteration $iteration: repeated tool calls")
+                        }
+                        val loopHint = if (loopDetected)
+                            "SYSTEM NOTE: You appear to be repeating the same tool calls without making progress. " +
+                            "The tool has returned the same results multiple times. Please try a completely different " +
+                            "approach, use different tools, or complete your response with the information you already have. " +
+                            "Do not retry the same tool with similar arguments."
+                        else null
+
+                        when (val result = processToolCalls(prompt, adapter, parsed, messages, currentContext, rawLlmLog, loopHint)) {
                             is ProcessToolsResult.Continue -> {
                                 currentContext = result.context
                                 if (result.pendingDocumentTitle != null) {
                                     pendingDocumentTitle = result.pendingDocumentTitle
                                 }
+                                if (loopDetected) toolCallHistory.clear()
                             }
                             is ProcessToolsResult.FinishWithDocument -> {
                                 Log.d(TAG, "Agent finished with document: ${result.title}")
@@ -330,7 +374,12 @@ class AgentExecutor(
         preResolved: LlmProcessingService.ResolvedProvider? = null
     ): Pair<ParsedResponse, LlmUsage> {
         Log.d(TAG, "Iteration $iteration: calling LLM API")
-        val apiResponse = LlmProcessingService.callLlmApiWithTools(messages, tools, llmConfig, extraHeaders, preResolved)
+        val apiResponse = try {
+            LlmProcessingService.callLlmApiWithTools(messages, tools, llmConfig, extraHeaders, preResolved)
+        } catch (e: Exception) {
+            rawLlmLog?.addRawApiResponse(iteration, "ERROR: ${e.message}")
+            throw e
+        }
         rawLlmLog?.addRawApiResponse(iteration, apiResponse.responseBody)
         val parsed = adapter.parseResponse(apiResponse.responseBody)
         return Pair(parsed, apiResponse.usage)
@@ -346,7 +395,8 @@ class AgentExecutor(
         parsed: ParsedResponse.ToolCalls,
         messages: MutableList<ChatMessage>,
         context: AgentContext,
-        rawLlmLog: RawLlmLog? = null
+        rawLlmLog: RawLlmLog? = null,
+        loopHint: String? = null
     ): ProcessToolsResult {
         Log.d(TAG, "LLM requested ${parsed.toolCalls.size} tool calls")
         var currentContext = context
@@ -408,6 +458,12 @@ class AgentExecutor(
                     }
                 }
             }
+        }
+
+        // Inject loop detection hint into the last tool result if needed
+        if (loopHint != null && toolResults.isNotEmpty()) {
+            val last = toolResults.last()
+            toolResults[toolResults.lastIndex] = ToolResultBlock(last.toolCallId, last.content + "\n\n" + loopHint)
         }
 
         // Add all tool results to messages
@@ -549,14 +605,16 @@ class AgentExecutor(
         val appLanguage = CommonUtils.aiSettings.aiDisplayLanguage
 
         return buildString {
-            val templateRes = if (prompt.isTextTransformation)
-                R.raw.llm_text_transformation_system_prompt
+            val (customPrompt, templateRes) = if (prompt.isTextTransformation)
+                CommonUtils.aiSettings.customTextTransformationSystemPrompt to R.raw.llm_text_transformation_system_prompt
             else
-                R.raw.llm_agent_system_prompt
-            val template = application.resources.openRawResource(templateRes)
-                .bufferedReader()
-                .use { it.readText() }
-            append(template.replace("{{APP_LANGUAGE}}", appLanguage))
+                CommonUtils.aiSettings.customAgentSystemPrompt to R.raw.llm_agent_system_prompt
+
+            val basePrompt = customPrompt?.takeIf { it.isNotBlank() }
+                ?: application.resources.openRawResource(templateRes)
+                    .bufferedReader()
+                    .use { it.readText() }
+            append(basePrompt.replace("{{APP_LANGUAGE}}", appLanguage))
 
             // Text transformations use a minimal system prompt — no extra context needed
             if (prompt.isTextTransformation) return@buildString
@@ -685,11 +743,7 @@ class AgentExecutor(
                         put("verseRef", context.selectedVerseRange.osisRef)
                     }
                     val result = GetCommentariesTool.execute(args, context)
-                    append("\n\n--- Commentary Entries (auto-included) ---\n")
-                    append("Each entry includes a 'linkUrl' — use it directly in clickable links. ")
-                    append("Commentary text has anchor markers like [§5] at sentence boundaries. ")
-                    append("ALWAYS append anchor ordinals to linkUrl for precise citations: ")
-                    append("[MHC §5](sword://MHC/Matt.5.3#o5) or ranges: [MHC §5-10](sword://MHC/Matt.5.3#o5-10)\n\n")
+                    append("\n\n--- Commentary Entries (auto-included, same format as getCommentaries tool) ---\n\n")
                     append(result.toJson())
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to auto-include commentaries", e)
@@ -805,16 +859,21 @@ class AgentExecutor(
 
     /**
      * Computes the set of tools to exclude from LLM tool definitions.
-     * Combines globally permanently denied tools and per-prompt denied tools,
+     * Text transformation prompts get no tools (only structural tools remain).
+     * Otherwise combines globally permanently denied tools and per-prompt denied tools,
      * then removes any tools that the per-prompt allows (override).
      * Structural tools are never excluded (handled by [ToolRegistry.getToolDefinitions]).
      */
-    private fun computeExcludedTools(context: AgentContext): Set<AgentTool> =
-        computeExcludedTools(
+    private fun computeExcludedTools(prompt: AgentPrompt, context: AgentContext): Set<AgentTool> {
+        if (prompt.isTextTransformation) {
+            return AgentTool.entries.toSet() - ToolRegistry.STRUCTURAL_TOOLS
+        }
+        return computeExcludedTools(
             permanentlyDeniedTools = CommonUtils.aiSettings.permanentlyDeniedTools,
             promptDeniedTools = context.promptDeniedTools,
             promptAvailableTools = context.promptAvailableTools,
         )
+    }
 
     /**
      * Waits for the current activity to become available.

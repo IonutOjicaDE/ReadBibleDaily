@@ -53,11 +53,11 @@ internal data class RecommendedSetup(
 )
 
 internal fun AiSettingsFragmentBase.getRecommendedSetups() = listOf(
-    RecommendedSetup(LlmProvider.GEMINI, "gemini-2.5-flash",
+    RecommendedSetup(LlmProvider.GEMINI, "gemini-3-flash-preview",
         getString(R.string.easy_setup_gemini_desc), getString(R.string.easy_setup_free_tier)),
     RecommendedSetup(LlmProvider.ANTHROPIC, "claude-haiku-4-5",
         getString(R.string.easy_setup_anthropic_desc)),
-    RecommendedSetup(LlmProvider.OPENAI, "gpt-4o-mini",
+    RecommendedSetup(LlmProvider.OPENAI, "gpt-5.4-mini",
         getString(R.string.easy_setup_openai_desc)),
 )
 
@@ -65,7 +65,8 @@ internal fun AiSettingsFragmentBase.getRecommendedSetups() = listOf(
 internal fun AiSettingsFragmentBase.showEasySetupStep1() {
     val setups = getRecommendedSetups()
     val items = setups.map { setup ->
-        "${setup.provider.displayName} — ${setup.description}"
+        val base = "${setup.provider.displayName} — ${setup.description}"
+        if (setup.badge != null) "$base (${setup.badge})" else base
     }.toTypedArray()
 
     AlertDialog.Builder(requireContext())
