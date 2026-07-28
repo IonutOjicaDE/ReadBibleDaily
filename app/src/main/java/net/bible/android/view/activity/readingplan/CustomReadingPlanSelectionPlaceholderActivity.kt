@@ -47,6 +47,8 @@ private data class TreeRowRenderModel(
     val visibleNode: VisibleCustomReadingPlanTreeNode,
     val selectionState: CustomReadingPlanSelectionState,
     val isExpanded: Boolean,
+    val readProgress: Float,
+    val hasReadableChapters: Boolean,
 )
 
 private enum class AggregateState {
@@ -76,6 +78,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     private var initialChapterReadByKey: Map<Pair<Int, Int>, Boolean> = emptyMap()
     private var pendingChapterReadByKey: MutableMap<Pair<Int, Int>, Boolean> = mutableMapOf()
     private var bookReadStateByNodeKey: Map<String, Boolean> = emptyMap()
+    private var readProgressByNodeKey: Map<String, Float> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -178,6 +181,8 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                     visibleNode = visibleNode,
                     selectionState = CustomReadingPlanTreeSelection.selectionState(visibleNode.node, pendingSelection, treeIndex),
                     isExpanded = visibleNode.node.key in expandedKeys,
+                    readProgress = readProgressByNodeKey[visibleNode.node.key] ?: 0f,
+                    hasReadableChapters = chapterKeysByNodeKey[visibleNode.node.key].orEmpty().isNotEmpty(),
                 )
             }
         treeAdapter.submit(visibleRows)
@@ -331,6 +336,15 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
     }
 
     private suspend fun refreshReadStateCache() {
+        readProgressByNodeKey = chapterKeysByNodeKey.mapValues { (_, chapterKeys) ->
+            if (chapterKeys.isEmpty()) {
+                0f
+            } else {
+                val readCount = chapterKeys.count(::resolvedChapterRead)
+                (readCount.toFloat() / chapterKeys.size.toFloat()).coerceIn(0f, 1f)
+            }
+        }
+
         bookReadStateByNodeKey = chapterKeysByNodeKey
             .filterKeys { it.contains(":book:") }
             .mapValues { (_, chapterKeys) ->
@@ -348,6 +362,10 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
             .associate { (it.bookId to it.chapter) to it.isRead }
     }
 
+    /**
+     * Resolves chapter state by reconciling in-memory overrides with persisted state.
+     * Pending overrides always win so UI feedback stays immediate before plan save.
+     */
     private fun resolvedChapterRead(chapterKey: Pair<Int, Int>): Boolean {
         return pendingChapterReadByKey[chapterKey] ?: initialChapterReadByKey[chapterKey] ?: false
     }
@@ -483,6 +501,19 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
                     val shouldCheck = item.selectionState != CustomReadingPlanSelectionState.CHECKED
                     onSelectionToggle(node, shouldCheck)
                 }
+                readProgressContainer.post {
+                    readProgressContainer.isVisible = item.hasReadableChapters
+                    if (!item.hasReadableChapters) return@post
+                    val targetWidth = (root.width * READ_PROGRESS_WIDTH_RATIO).toInt()
+                    val safeWidth = targetWidth.coerceAtLeast(0)
+                    readProgressContainer.layoutParams = readProgressContainer.layoutParams.apply {
+                        width = safeWidth
+                    }
+                    val readWidth = (safeWidth * item.readProgress).toInt().coerceIn(0, safeWidth)
+                    readProgressFill.layoutParams = readProgressFill.layoutParams.apply {
+                        width = readWidth
+                    }
+                }
                 root.setOnClickListener {
                     if (node.isExpandable) onExpandToggle(node) else onSelectionToggle(node, item.selectionState != CustomReadingPlanSelectionState.CHECKED)
                 }
@@ -509,6 +540,7 @@ class CustomReadingPlanSelectionPlaceholderActivity : ActivityBase() {
         private const val MENU_EXCLUDE_SECTION = 4
         private const val MENU_MARK_ALL_READ = 5
         private const val MENU_MARK_ALL_UNREAD = 6
+        private const val READ_PROGRESS_WIDTH_RATIO = 0.25f
 
         private fun encodeChapterReadOverrides(overrides: Map<Pair<Int, Int>, Boolean>): ArrayList<String> = ArrayList(
             overrides.map { (key, isRead) ->

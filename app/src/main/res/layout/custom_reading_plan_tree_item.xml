@@ -53,4 +53,20 @@
             android:padding="8dp"
             android:src="@drawable/ic_more_vert_black_24dp" />
     </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/readProgressContainer"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/custom_reading_plan_read_progress_height"
+        android:layout_gravity="end"
+        android:layout_marginEnd="@dimen/custom_reading_plan_read_progress_end_margin"
+        android:layout_marginBottom="@dimen/custom_reading_plan_read_progress_bottom_margin"
+        android:background="?android:attr/textColorTertiary">
+
+        <View
+            android:id="@+id/readProgressFill"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:background="?android:attr/textColorPrimary" />
+    </FrameLayout>
 </LinearLayout>
