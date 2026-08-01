@@ -33,6 +33,7 @@ import android.widget.EditText
 import android.widget.ListView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.widget.addTextChangedListener
 
 import net.bible.android.activity.R
 import net.bible.android.activity.databinding.ListBinding
@@ -67,6 +68,8 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
     private var pendingPlanName: String? = null
     private var pendingVersificationName: String? = null
     private var pendingBeginningVerseOsis: String? = null
+    private var pendingCreationStep = CreationStep.NONE
+    private var pendingNameInputText = ""
 
     override val integrateWithHistoryManager: Boolean = true
 
@@ -74,6 +77,7 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
     @SuppressLint("MissingSuperCall")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        restorePendingCreation(savedInstanceState)
         Log.i(TAG, "Displaying Reading Plan List")
         val binding = ListBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -97,6 +101,10 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
         ABEventBus.register(this)
 
         Log.i(TAG, "Finished displaying Reading Plan list")
+
+        if (pendingCreationStep == CreationStep.NAME) {
+            showCreateReadingPlanDialog()
+        }
     }
 
     fun onEventMainThread(e: ReadingPlansUpdatedViaSyncEvent) {
@@ -106,6 +114,15 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
     override fun onDestroy() {
         ABEventBus.unregister(this)
         super.onDestroy()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_CREATION_STEP, pendingCreationStep.name)
+        outState.putString(STATE_PENDING_PLAN_NAME, pendingPlanName)
+        outState.putString(STATE_PENDING_VERSIFICATION_NAME, pendingVersificationName)
+        outState.putString(STATE_PENDING_BEGINNING_VERSE_OSIS, pendingBeginningVerseOsis)
+        outState.putString(STATE_NAME_DIALOG_TEXT, pendingNameInputText)
+        super.onSaveInstanceState(outState)
     }
 
     /** if a plan is selected then ask confirmation, save plan, and go straight to first day
@@ -151,7 +168,7 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
                 true
             }
             R.id.create_reading_plan -> {
-                showCreateReadingPlanDialog()
+                startCreateReadingPlan()
                 true
             }
             android.R.id.home -> {
@@ -162,13 +179,27 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
         }
     }
 
-    private fun showCreateReadingPlanDialog() {
+    private fun startCreateReadingPlan() {
         clearPendingCreation()
+        pendingCreationStep = CreationStep.NAME
+        showCreateReadingPlanDialog()
+    }
+
+    private fun showCreateReadingPlanDialog() {
+        if (pendingCreationStep != CreationStep.NAME) return
+
         val nameInput = EditText(this).apply {
             hint = getString(R.string.reading_plan_name)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             setSingleLine()
+            setText(pendingNameInputText)
+            setSelection(text.length)
         }
+        nameInput.addTextChangedListener(afterTextChanged = {
+            if (pendingCreationStep == CreationStep.NAME) {
+                pendingNameInputText = it?.toString().orEmpty()
+            }
+        })
         val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.reading_plan_name)
             .setView(nameInput)
@@ -191,6 +222,8 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
                         ?: throw IllegalStateException("Unknown versification: $versificationName")
                     pendingPlanName = planName
                     pendingVersificationName = versificationName
+                    pendingNameInputText = ""
+                    pendingCreationStep = CreationStep.BEGINNING
                     dialog.dismiss()
                     launchBeginningVerseChooser()
                 } catch (e: Exception) {
@@ -202,6 +235,45 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
             }
         }
         dialog.show()
+    }
+
+    private fun restorePendingCreation(savedInstanceState: Bundle?) {
+        if (savedInstanceState == null) return
+
+        val restoredStepName = savedInstanceState.getString(STATE_CREATION_STEP)
+        val restoredStep = CreationStep.values().firstOrNull { it.name == restoredStepName }
+        if (restoredStep == null || restoredStep == CreationStep.NONE) {
+            clearPendingCreation()
+            return
+        }
+
+        val restoredPlanName = savedInstanceState.getString(STATE_PENDING_PLAN_NAME)
+        val restoredVersificationName = savedInstanceState.getString(STATE_PENDING_VERSIFICATION_NAME)
+        val restoredBeginningVerseOsis = savedInstanceState.getString(STATE_PENDING_BEGINNING_VERSE_OSIS)
+        val validState = when (restoredStep) {
+            CreationStep.NONE -> false
+            CreationStep.NAME -> restoredPlanName == null &&
+                restoredVersificationName == null && restoredBeginningVerseOsis == null
+            CreationStep.BEGINNING -> !restoredPlanName.isNullOrBlank() &&
+                !restoredVersificationName.isNullOrBlank() && restoredBeginningVerseOsis == null
+            CreationStep.ENDING -> !restoredPlanName.isNullOrBlank() &&
+                !restoredVersificationName.isNullOrBlank() && !restoredBeginningVerseOsis.isNullOrBlank()
+        }
+        if (!validState) {
+            Log.w(TAG, "Discarding invalid restored reading plan creation state")
+            clearPendingCreation()
+            return
+        }
+
+        pendingCreationStep = restoredStep
+        pendingPlanName = restoredPlanName
+        pendingVersificationName = restoredVersificationName
+        pendingBeginningVerseOsis = restoredBeginningVerseOsis
+        pendingNameInputText = if (restoredStep == CreationStep.NAME) {
+            savedInstanceState.getString(STATE_NAME_DIALOG_TEXT).orEmpty()
+        } else {
+            ""
+        }
     }
 
     private fun launchBeginningVerseChooser() {
@@ -257,6 +329,8 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
         pendingPlanName = null
         pendingVersificationName = null
         pendingBeginningVerseOsis = null
+        pendingCreationStep = CreationStep.NONE
+        pendingNameInputText = ""
     }
 
     private val importPlanLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uriResult ->
@@ -277,6 +351,8 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
     private val beginningVerseLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        if (pendingCreationStep != CreationStep.BEGINNING) return@registerForActivityResult
+
         if (result.resultCode != Activity.RESULT_OK) {
             clearPendingCreation()
             return@registerForActivityResult
@@ -291,6 +367,7 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
         try {
             VerseFactory.fromString(versification, verseOsis)
             pendingBeginningVerseOsis = verseOsis
+            pendingCreationStep = CreationStep.ENDING
             launchEndingVerseChooser()
         } catch (e: Exception) {
             failCreation(e)
@@ -300,6 +377,8 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
     private val endingVerseLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        if (pendingCreationStep != CreationStep.ENDING) return@registerForActivityResult
+
         if (result.resultCode != Activity.RESULT_OK) {
             clearPendingCreation()
             return@registerForActivityResult
@@ -345,6 +424,21 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
     companion object {
         private const val TAG = "ReadingPlanList"
 
+        private const val STATE_CREATION_STEP = "ReadingPlanSelectorList.creationStep"
+        private const val STATE_PENDING_PLAN_NAME = "ReadingPlanSelectorList.pendingPlanName"
+        private const val STATE_PENDING_VERSIFICATION_NAME =
+            "ReadingPlanSelectorList.pendingVersificationName"
+        private const val STATE_PENDING_BEGINNING_VERSE_OSIS =
+            "ReadingPlanSelectorList.pendingBeginningVerseOsis"
+        private const val STATE_NAME_DIALOG_TEXT = "ReadingPlanSelectorList.nameDialogText"
+
         private const val LIST_ITEM_TYPE = android.R.layout.simple_list_item_2
+    }
+
+    private enum class CreationStep {
+        NONE,
+        NAME,
+        BEGINNING,
+        ENDING
     }
 }
