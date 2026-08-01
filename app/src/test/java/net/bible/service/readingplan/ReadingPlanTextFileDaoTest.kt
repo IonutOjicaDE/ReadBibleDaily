@@ -17,11 +17,15 @@
 
 package net.bible.service.readingplan
 
+import kotlinx.coroutines.runBlocking
 import net.bible.android.TEST_SDK
 import net.bible.android.TestBibleApplication
 import net.bible.android.control.versification.TestData
+import net.bible.android.database.ReadingPlanDatabase
+import net.bible.android.database.readingplan.ReadingPlanDao
 import net.bible.service.common.AndBibleAddons
 import net.bible.service.common.CommonUtils
+import net.bible.service.db.DatabaseContainer
 import net.bible.test.DatabaseResetter
 import org.crosswire.common.util.NetUtil
 import org.crosswire.jsword.book.Book
@@ -35,10 +39,15 @@ import org.crosswire.jsword.versification.BibleBook
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.File
@@ -217,6 +226,65 @@ class ReadingPlanTextFileDaoTest {
         assertNotEquals(firstPlan.planCode, secondPlan.planCode)
     }
 
+    @Test
+    fun `failed session plan creation rolls back definition and caches`() {
+        val retainedCode = "session_${UUID.randomUUID()}"
+        val failedCode = "session_${UUID.randomUUID()}"
+        val candidates = ArrayDeque(listOf(retainedCode, failedCode, failedCode))
+        val dao = ReadingPlanTextFileDao { candidates.removeFirst() }
+        val retainedPlan = dao.addSessionPlan("Retained plan", testVerseRange())
+        val normalPlanCodes = existingPlanCodes(dao)
+        val expectedFailure = IllegalStateException("Forced DTO failure")
+        var failCandidate = true
+        val readingPlanDao = mock(ReadingPlanDao::class.java)
+        val readingPlanDatabase = mock(ReadingPlanDatabase::class.java)
+        `when`(readingPlanDatabase.readingPlanDao()).thenReturn(readingPlanDao)
+        runBlocking {
+            `when`(readingPlanDao.getPlan(anyString())).thenAnswer { invocation ->
+                if (failCandidate && invocation.getArgument<String>(0) == failedCode) {
+                    throw expectedFailure
+                }
+                null
+            }
+        }
+        val databaseContainer = DatabaseContainer.instance
+        val originalDatabase = databaseContainer.readingPlanDb
+        databaseContainer.readingPlanDb = readingPlanDatabase
+
+        try {
+            val thrown = try {
+                dao.addSessionPlan("Failed plan", testVerseRange())
+                fail("Expected session-plan creation to fail")
+                null
+            } catch (e: IllegalStateException) {
+                e
+            }
+
+            assertSame(expectedFailure, thrown)
+            failCandidate = false
+            assertEquals(SessionPlanState.EXPIRED, dao.sessionPlanState(failedCode))
+            assertLookupFails { dao.getReadingPlanInfoDto(failedCode) }
+            assertLookupFails { dao.getReading(failedCode, 1) }
+            assertEquals(retainedPlan.planCode, dao.getReadingPlanInfoDto(retainedCode).planCode)
+            assertEquals(
+                normalPlanCodes + retainedPlan.planCode,
+                dao.readingPlanList.map { it.planCode }
+            )
+
+            val retriedPlan = dao.addSessionPlan("Retried plan", testVerseRange())
+
+            assertEquals(failedCode, retriedPlan.planCode)
+            assertEquals(SessionPlanState.ACTIVE, dao.sessionPlanState(failedCode))
+            assertEquals(
+                normalPlanCodes + listOf(retainedPlan.planCode, retriedPlan.planCode),
+                dao.readingPlanList.map { it.planCode }
+            )
+            assertTrue(candidates.isEmpty())
+        } finally {
+            databaseContainer.readingPlanDb = originalDatabase
+        }
+    }
+
     private fun assertReadingEquals(expected: VerseRange, reading: OneDaysReadingsDto) {
         assertEquals(1, reading.numReadings)
         val parsedReading = reading.getReadingKey(1)
@@ -229,6 +297,15 @@ class ReadingPlanTextFileDaoTest {
         val start = Verse(TestData.KJV, BibleBook.JOHN, 3, 16)
         val end = Verse(TestData.KJV, BibleBook.JOHN, 3, 18)
         return VerseRange(TestData.KJV, start, end)
+    }
+
+    private fun assertLookupFails(block: () -> Unit) {
+        try {
+            block()
+            fail("Expected the rolled-back session plan lookup to fail")
+        } catch (_: Exception) {
+            // Expected: the rolled-back session definition must not be resolvable from a cache.
+        }
     }
 
     private fun createManualPlan(planCode: String): File {
