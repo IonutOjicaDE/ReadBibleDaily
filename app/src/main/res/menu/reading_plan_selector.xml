@@ -20,4 +20,7 @@
     <item
         android:id="@+id/import_reading_plan"
         android:title="@string/import_reading_plan" />
+    <item
+        android:id="@+id/create_reading_plan"
+        android:title="@string/create_reading_plan" />
 </menu>

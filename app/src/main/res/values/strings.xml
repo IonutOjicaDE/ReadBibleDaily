@@ -401,6 +401,11 @@
     <string name="done">Done</string>
     <string name="reset_plan_question">Are you sure you want to reset this plan?</string>
     <string name="import_reading_plan">Import reading plan…</string>
+    <string name="create_reading_plan">Create reading plan…</string>
+    <string name="reading_plan_name">Reading plan name</string>
+    <string name="reading_plan_name_required">Reading plan name is required</string>
+    <string name="reading_plan_ending_before_beginning">Ending verse must not precede the beginning</string>
+    <string name="reading_plan_versification_changed">The Bible versification changed; please start again</string>
     <string name="plan_duplicate_user_plan">
         There is a user reading plan in sdcard
         jsword/readingplan with the same name as an internal plan. It can not be listed here.
