@@ -416,6 +416,7 @@ class ReadingPlanSelectorList : ListActivityBase(R.menu.reading_plan_selector) {
                 VerseRange(versification, beginningVerse, endingVerse)
             )
             clearPendingCreation()
+            recreate()
         } catch (e: Exception) {
             failCreation(e)
         }
