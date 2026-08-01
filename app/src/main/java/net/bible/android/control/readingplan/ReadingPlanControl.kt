@@ -31,10 +31,12 @@ import net.bible.service.history.AddHistoryItem
 import net.bible.service.readingplan.OneDaysReadingsDto
 import net.bible.service.readingplan.ReadingPlanTextFileDao
 import net.bible.service.readingplan.ReadingPlanInfoDto
+import net.bible.service.readingplan.SessionPlanState
 
 import org.apache.commons.lang3.StringUtils
 import org.crosswire.jsword.book.basic.AbstractPassageBook
 import org.crosswire.jsword.passage.Key
+import org.crosswire.jsword.passage.VerseRange
 import org.crosswire.jsword.versification.VersificationConverter
 import java.lang.Exception
 
@@ -82,6 +84,9 @@ class ReadingPlanControl @Inject constructor(
     val readingPlanList: List<ReadingPlanInfoDto>
         get() = readingPlanTextDao.readingPlanList
 
+    fun createSessionPlan(planName: String, verseRange: VerseRange): ReadingPlanInfoDto =
+        readingPlanTextDao.addSessionPlan(planName, verseRange)
+
     /**
      * Check if any user plans in jsword/readingplan have same file
      * name as one of the default plans
@@ -102,10 +107,23 @@ class ReadingPlanControl @Inject constructor(
     val currentPlansReadingList: List<OneDaysReadingsDto>
         get() = readingPlanTextDao.getReadingList(currentPlanCode)
 
-    val currentPlanExists: Boolean get() = try {
-        readingPlanTextDao.getReading(currentPlanCode, 1)
-        true
-    } catch (e: Exception) { false }
+    val currentPlanExists: Boolean
+        get() {
+            val planCode = currentPlanCode
+            val expiredSessionPlan = try {
+                readingPlanTextDao.sessionPlanState(planCode) == SessionPlanState.EXPIRED
+            } catch (e: Exception) {
+                false
+            }
+            if (expiredSessionPlan) {
+                reset(planCode)
+                return false
+            }
+            return try {
+                readingPlanTextDao.getReading(planCode, 1)
+                true
+            } catch (e: Exception) { false }
+        }
 
     var currentPlanDay: Int
         get() {
