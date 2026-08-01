@@ -126,7 +126,18 @@ class ReadingPlanTextFileDao {
             setProperty(VERSIFICATION, verseRange.versification.name)
             setProperty("1", verseRange.osisRef)
         }
-        return getReadingPlanInfoDto(planCode)
+        try {
+            return getReadingPlanInfoDto(planCode)
+        } catch (e: Exception) {
+            sessionPlanProperties.remove(planCode)
+            if (cachedPlanProperties?.planCode == planCode) {
+                cachedPlanProperties = null
+            }
+            if (cachedReadingList?.firstOrNull()?.readingPlanInfo?.planCode == planCode) {
+                cachedReadingList = null
+            }
+            throw e
+        }
     }
 
     internal fun sessionPlanState(planCode: String): SessionPlanState = when {
