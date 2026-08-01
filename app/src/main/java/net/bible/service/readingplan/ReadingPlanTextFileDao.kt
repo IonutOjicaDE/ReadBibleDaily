@@ -28,6 +28,7 @@ import net.bible.service.common.CommonUtils
 
 import org.crosswire.common.util.IOUtil
 import org.crosswire.jsword.book.sword.SwordBookMetaData
+import org.crosswire.jsword.passage.VerseRange
 import org.crosswire.jsword.versification.Versification
 import org.crosswire.jsword.versification.system.SystemKJV
 import org.crosswire.jsword.versification.system.SystemNRSVA
@@ -41,12 +42,28 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.ArrayList
 import java.util.Properties
+import java.util.UUID
 import kotlin.math.max
 
 /**
  * @author Martin Denham [mjdenham at gmail dot com]
  */
+internal enum class SessionPlanState {
+    NOT_SESSION,
+    ACTIVE,
+    EXPIRED,
+}
+
 class ReadingPlanTextFileDao {
+    private val sessionPlanCodeProvider: () -> String
+    private val sessionPlanProperties = LinkedHashMap<String, ReadingPlanProperties>()
+
+    constructor() : this({ "$SESSION_PLAN_PREFIX${UUID.randomUUID()}" })
+
+    internal constructor(sessionPlanCodeProvider: () -> String) {
+        this.sessionPlanCodeProvider = sessionPlanCodeProvider
+    }
+
     private var cachedPlanProperties: ReadingPlanProperties? = null
     private var cachedReadingList: List<OneDaysReadingsDto>? = null
     private val readingPlanRepo = BibleApplication.application.applicationComponent.readingPlanRepo()
@@ -75,7 +92,14 @@ class ReadingPlanTextFileDao {
     private val allReadingPlanCodes: List<String>
         @Throws(IOException::class)
         get() {
+            val allCodes = ArrayList(normalReadingPlanCodes)
+            allCodes.addAll(sessionPlanProperties.keys)
+            return allCodes
+        }
 
+    private val normalReadingPlanCodes: List<String>
+        @Throws(IOException::class)
+        get() {
             val allCodes = ArrayList<String>()
 
             allCodes.addAll(internalPlanCodes)
@@ -90,6 +114,36 @@ class ReadingPlanTextFileDao {
 
             return allCodes
         }
+
+    fun addSessionPlan(planName: String, verseRange: VerseRange): ReadingPlanInfoDto {
+        val planCode = generateSessionPlanCode()
+        sessionPlanProperties[planCode] = ReadingPlanProperties().apply {
+            this.planCode = planCode
+            this.planName = planName.trim()
+            versification = verseRange.versification
+            numberOfPlanDays = 1
+            isDateBasedPlan = false
+            setProperty(VERSIFICATION, verseRange.versification.name)
+            setProperty("1", verseRange.osisRef)
+        }
+        return getReadingPlanInfoDto(planCode)
+    }
+
+    internal fun sessionPlanState(planCode: String): SessionPlanState = when {
+        sessionPlanProperties.containsKey(planCode) -> SessionPlanState.ACTIVE
+        !planCode.startsWith(SESSION_PLAN_PREFIX) -> SessionPlanState.NOT_SESSION
+        planCode in normalReadingPlanCodes -> SessionPlanState.NOT_SESSION
+        else -> SessionPlanState.EXPIRED
+    }
+
+    private fun generateSessionPlanCode(): String {
+        val existingPlanCodes = allReadingPlanCodes.toSet()
+        var candidate: String
+        do {
+            candidate = sessionPlanCodeProvider()
+        } while (!candidate.startsWith(SESSION_PLAN_PREFIX) || candidate in existingPlanCodes)
+        return candidate
+    }
 
     val internalPlanCodes: List<String>
         @Throws(IOException::class)
@@ -237,6 +291,12 @@ class ReadingPlanTextFileDao {
     @Synchronized
     private fun getPlanProperties(planCode: String): ReadingPlanProperties {
         if (planCode != cachedPlanProperties?.planCode) {
+            val sessionPlan = sessionPlanProperties[planCode]
+            if (sessionPlan != null) {
+                cachedPlanProperties = sessionPlan
+                return sessionPlan
+            }
+
             val resources = CommonUtils.resources
             val assetManager = resources.assets
             val filename = planCode + DOT_PROPERTIES
@@ -323,6 +383,7 @@ class ReadingPlanTextFileDao {
         private const val READING_PLAN_FOLDER = SharedConstants.READINGPLAN_DIR_NAME
         private const val DOT_PROPERTIES = ".properties"
         private const val VERSIFICATION = "Versification"
+        private const val SESSION_PLAN_PREFIX = "session_"
         private const val DEFAULT_VERSIFICATION = SystemKJV.V11N_NAME
         private const val INCLUSIVE_VERSIFICATION = SystemNRSVA.V11N_NAME
 
