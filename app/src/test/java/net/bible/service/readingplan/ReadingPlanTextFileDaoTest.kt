@@ -105,6 +105,89 @@ class ReadingPlanTextFileDaoTest {
     }
 
     @Test
+    fun `session plan can contain ordered days`() {
+        val dao = ReadingPlanTextFileDao()
+        val days = listOf(
+            SessionReadingPlanDay(listOf(verseRange(BibleBook.JOHN, 1, 1, 3))),
+            SessionReadingPlanDay(listOf(verseRange(BibleBook.JOHN, 2, 1, 3))),
+            SessionReadingPlanDay(listOf(verseRange(BibleBook.JOHN, 3, 1, 3))),
+        )
+
+        val plan = dao.addSessionPlan("Multi-day session plan", days)
+        val readings = dao.getReadingList(plan.planCode)
+
+        assertEquals(3, plan.numberOfPlanDays)
+        assertEquals(3, dao.getNumberOfPlanDays(plan.planCode))
+        assertEquals(listOf(1, 2, 3), readings.map { it.day })
+        assertEquals(
+            days.map { it.readings.single().osisRef },
+            readings.map { it.getReadingKey(1).osisRef },
+        )
+    }
+
+    @Test
+    fun `session plan day can contain multiple readings preserving OSIS references`() {
+        val dao = ReadingPlanTextFileDao()
+        val firstReading = verseRange(BibleBook.JOHN, 1, 1, 3)
+        val secondReading = verseRange(BibleBook.PS, 1, 1, 2)
+
+        val plan = dao.addSessionPlan(
+            "Multiple readings",
+            listOf(SessionReadingPlanDay(listOf(firstReading, secondReading))),
+        )
+        val reading = dao.getReadingList(plan.planCode).single()
+
+        assertEquals(2, reading.numReadings)
+        assertEquals(firstReading.osisRef, reading.getReadingKey(1).osisRef)
+        assertEquals(secondReading.osisRef, reading.getReadingKey(2).osisRef)
+    }
+
+    @Test
+    fun `invalid session plan input is rejected without registering a plan`() {
+        val firstCode = "session_${UUID.randomUUID()}"
+        val secondCode = "session_${UUID.randomUUID()}"
+        val candidates = ArrayDeque(listOf(firstCode, secondCode))
+        val dao = ReadingPlanTextFileDao { candidates.removeFirst() }
+
+        assertSessionPlanCreationFails {
+            dao.addSessionPlan("No days", emptyList())
+        }
+        assertSessionPlanCreationFails {
+            dao.addSessionPlan("Empty day", listOf(SessionReadingPlanDay(emptyList())))
+        }
+
+        val validPlan = dao.addSessionPlan("Valid plan", testVerseRange())
+
+        assertEquals(firstCode, validPlan.planCode)
+        assertEquals(SessionPlanState.ACTIVE, dao.sessionPlanState(firstCode))
+        assertEquals(listOf(secondCode), candidates.toList())
+    }
+
+    @Test
+    fun `incompatible session plan versifications are rejected atomically`() {
+        val firstCode = "session_${UUID.randomUUID()}"
+        val secondCode = "session_${UUID.randomUUID()}"
+        val candidates = ArrayDeque(listOf(firstCode, secondCode))
+        val dao = ReadingPlanTextFileDao { candidates.removeFirst() }
+
+        assertSessionPlanCreationFails {
+            dao.addSessionPlan(
+                "Incompatible versifications",
+                listOf(
+                    SessionReadingPlanDay(listOf(testVerseRange())),
+                    SessionReadingPlanDay(listOf(TestData.KJVA_1MACC_1_2_3)),
+                ),
+            )
+        }
+
+        val validPlan = dao.addSessionPlan("Valid plan", testVerseRange())
+
+        assertEquals(firstCode, validPlan.planCode)
+        assertEquals(SessionPlanState.ACTIVE, dao.sessionPlanState(firstCode))
+        assertEquals(listOf(secondCode), candidates.toList())
+    }
+
+    @Test
     fun `adding a session plan preserves every existing plan code`() {
         val dao = ReadingPlanTextFileDao()
         val existingCodes = existingPlanCodes(dao)
@@ -297,6 +380,21 @@ class ReadingPlanTextFileDaoTest {
         val start = Verse(TestData.KJV, BibleBook.JOHN, 3, 16)
         val end = Verse(TestData.KJV, BibleBook.JOHN, 3, 18)
         return VerseRange(TestData.KJV, start, end)
+    }
+
+    private fun verseRange(book: BibleBook, chapter: Int, startVerse: Int, endVerse: Int): VerseRange {
+        val start = Verse(TestData.KJV, book, chapter, startVerse)
+        val end = Verse(TestData.KJV, book, chapter, endVerse)
+        return VerseRange(TestData.KJV, start, end)
+    }
+
+    private fun assertSessionPlanCreationFails(block: () -> Unit) {
+        try {
+            block()
+            fail("Expected session plan creation to fail")
+        } catch (_: IllegalArgumentException) {
+            // Expected: invalid plans must not be registered.
+        }
     }
 
     private fun assertLookupFails(block: () -> Unit) {

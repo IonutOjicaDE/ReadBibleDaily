@@ -115,17 +115,27 @@ class ReadingPlanTextFileDao {
             return allCodes
         }
 
-    fun addSessionPlan(planName: String, verseRange: VerseRange): ReadingPlanInfoDto {
+    fun addSessionPlan(planName: String, verseRange: VerseRange): ReadingPlanInfoDto =
+        addSessionPlan(planName, listOf(SessionReadingPlanDay(listOf(verseRange))))
+
+    internal fun addSessionPlan(
+        planName: String,
+        days: List<SessionReadingPlanDay>,
+    ): ReadingPlanInfoDto {
+        val versification = sessionPlanVersification(days)
         val planCode = generateSessionPlanCode()
-        sessionPlanProperties[planCode] = ReadingPlanProperties().apply {
+        val properties = ReadingPlanProperties().apply {
             this.planCode = planCode
             this.planName = planName.trim()
-            versification = verseRange.versification
-            numberOfPlanDays = 1
+            this.versification = versification
+            numberOfPlanDays = days.size
             isDateBasedPlan = false
-            setProperty(VERSIFICATION, verseRange.versification.name)
-            setProperty("1", verseRange.osisRef)
+            setProperty(VERSIFICATION, versification.name)
+            days.forEachIndexed { index, day ->
+                setProperty((index + 1).toString(), day.readings.joinToString(", ") { it.osisRef })
+            }
         }
+        sessionPlanProperties[planCode] = properties
         try {
             return getReadingPlanInfoDto(planCode)
         } catch (e: Exception) {
@@ -138,6 +148,20 @@ class ReadingPlanTextFileDao {
             }
             throw e
         }
+    }
+
+    private fun sessionPlanVersification(days: List<SessionReadingPlanDay>): Versification {
+        require(days.isNotEmpty()) { "A session plan must contain at least one day" }
+        require(days.all { it.readings.isNotEmpty() }) {
+            "Each session plan day must contain at least one reading"
+        }
+
+        val readings = days.flatMap { it.readings }
+        val versification = readings.first().versification
+        require(readings.all { it.versification == versification }) {
+            "All session plan readings must use the same versification"
+        }
+        return versification
     }
 
     internal fun sessionPlanState(planCode: String): SessionPlanState = when {
